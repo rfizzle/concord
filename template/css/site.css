@@ -1,0 +1,43 @@
+/* Concord shared site template — brand-parameterized rules.
+   All colors come from the mod's theme via CSS variables; no mod-specific
+   values may appear in this file. */
+
+.pixelated { image-rendering: pixelated; image-rendering: crisp-edges; }
+::selection { background: var(--color-accent); color: var(--color-bone); }
+
+/* Brand gradient used on every heading. The 200% background-size lets the
+   hero variant animate the gradient position; static headings sit at 0%. */
+.heading-gradient {
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent2) 50%, var(--color-accent) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+
+@keyframes brand-pulse {
+  0%, 100% { background-position: 0% 50%; filter: brightness(1); }
+  50%      { background-position: 100% 50%; filter: brightness(1.15); }
+}
+.animate-brand-pulse { animation: brand-pulse 4s ease-in-out infinite; }
+
+/* Radial glow behind the hero, tinted by the mod's accent. */
+.hero-glow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(var(--glow-rgb), 0.4) 0%, transparent 70%);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* Accent-tinted drop shadow on the hero logo. */
+.hero-logo-shadow { filter: drop-shadow(0 0 30px rgba(var(--glow-rgb), 0.3)); }

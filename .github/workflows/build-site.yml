@@ -1,0 +1,71 @@
+# Concord — reusable site build & deploy workflow.
+#
+# Called by each member mod repo's .github/workflows/site.yml:
+#
+#   jobs:
+#     site:
+#       uses: rfizzle/concord/.github/workflows/build-site.yml@main
+#
+# Builds the mod's site/ content with the shared template in this repo and
+# deploys it to GitHub Pages (Pages source must be set to "GitHub Actions"
+# in the calling repo's settings).
+name: Build & deploy mod site
+
+on:
+  workflow_call:
+    inputs:
+      concord-ref:
+        description: "concord ref to build with (pin to a tag to freeze the template)"
+        type: string
+        default: main
+      site-dir:
+        description: "content directory in the calling repo"
+        type: string
+        default: site
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mod repo
+        uses: actions/checkout@v4
+
+      - name: Checkout concord (shared template)
+        uses: actions/checkout@v4
+        with:
+          repository: rfizzle/concord
+          ref: ${{ inputs.concord-ref }}
+          path: .concord
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build site
+        env:
+          SITE_DIR: ${{ github.workspace }}/${{ inputs.site-dir }}
+        run: |
+          npx -y @11ty/eleventy@3.0.0 \
+            --config="$GITHUB_WORKSPACE/.concord/template/eleventy.config.cjs" \
+            --input="$GITHUB_WORKSPACE/.concord/template/src" \
+            --output="$GITHUB_WORKSPACE/_site"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

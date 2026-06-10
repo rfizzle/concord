@@ -1,0 +1,33 @@
+{
+  "collection": {
+    "name": "Concord",
+    "tagline": "A Vanilla+ collection — the depth vanilla deserved.",
+    "url": "https://concord.rfizzle.com"
+  },
+  "members": [
+    {
+      "id": "meridian",
+      "name": "Meridian",
+      "tagline": "Chart your enchantments.",
+      "url": "https://meridian.rfizzle.com"
+    },
+    {
+      "id": "mercantile",
+      "name": "Mercantile",
+      "tagline": "Every villager remembers.",
+      "url": "https://mercantile.rfizzle.com"
+    },
+    {
+      "id": "tribulation",
+      "name": "Tribulation",
+      "tagline": "Survive what comes next.",
+      "url": "https://tribulation.rfizzle.com"
+    },
+    {
+      "id": "prosperity",
+      "name": "Prosperity",
+      "tagline": "Every chest, yours to discover.",
+      "url": "https://prosperity.rfizzle.com"
+    }
+  ]
+}

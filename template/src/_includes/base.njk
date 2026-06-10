@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-ink text-bone font-mono scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ pg.metaTitle }}</title>
+  <meta name="description" content="{{ pg.metaDescription }}">
+  {%- if site.metaKeywords %}
+  <meta name="keywords" content="{{ site.metaKeywords }}">
+  {%- endif %}
+
+  <!-- Canonical -->
+  <link rel="canonical" href="{{ site.url }}{{ pg.href }}">
+
+  <!-- Theme -->
+  <meta name="theme-color" content="{{ site.theme.ink | default("#0a0a0a") }}">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ site.name }}">
+  <meta property="og:title" content="{{ pg.ogTitle | default(pg.metaTitle) }}">
+  <meta property="og:description" content="{{ pg.ogDescription | default(pg.metaDescription) }}">
+  <meta property="og:url" content="{{ site.url }}{{ pg.href }}">
+  <meta property="og:image" content="{{ site.url }}/{{ site.ogImage | default("logo.png") }}">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{{ pg.ogTitle | default(pg.metaTitle) }}">
+  <meta name="twitter:description" content="{{ pg.ogDescription | default(pg.metaDescription) }}">
+  <meta name="twitter:image" content="{{ site.url }}/{{ site.ogImage | default("logo.png") }}">
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" href="/icon.png">
+  <link rel="apple-touch-icon" href="/icon.png">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.0"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-ink: {{ site.theme.ink | default("#0a0a0a") }};
+      --color-card: {{ site.theme.card | default("#1a1a1a") }};
+      --color-elevated: {{ site.theme.elevated | default("#222222") }};
+      --color-bone: {{ site.theme.bone | default("#e8e0d4") }};
+      --color-ash: {{ site.theme.ash | default("#a89f93") }};
+      --color-smoke: {{ site.theme.smoke | default("#6b6359") }};
+      --color-accent: {{ site.theme.accent }};
+      --color-accent-dark: {{ site.theme.accentDark | default(site.theme.accent) }};
+      --color-accent2: {{ site.theme.accent2 }};
+      --color-accent2-bright: {{ site.theme.accent2Bright | default(site.theme.accent2) }};
+      --font-mono: "SF Mono", "Cascadia Code", "Fira Code", Consolas, ui-monospace, monospace;
+    }
+  </style>
+  <style>:root { --glow-rgb: {{ site.theme.glowRgb }}; }</style>
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body class="bg-ink text-bone font-mono min-h-screen flex flex-col">
+
+  <!-- ===== HEADER (generated from site.nav) ===== -->
+  <header class="border-b border-elevated bg-ink/95 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3 group">
+        <img src="/icon.png" alt="" class="pixelated w-8 h-8" aria-hidden="true">
+        <span class="text-lg font-semibold heading-gradient group-hover:brightness-125 transition">{{ site.name }}</span>
+      </a>
+
+      <nav class="hidden md:flex items-center gap-6 text-sm">
+        {%- for p in pages %}
+        {%- if p.slug == pg.slug %}
+        <a href="{{ p.href }}" class="text-accent hover:text-accent2 transition" aria-current="page">{{ p.nav }}</a>
+        {%- else %}
+        <a href="{{ p.href }}" class="text-ash hover:text-bone transition">{{ p.nav }}</a>
+        {%- endif %}
+        {%- endfor %}
+      </nav>
+
+      <details class="md:hidden relative">
+        <summary class="text-ash hover:text-bone p-2" aria-label="Open navigation menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </summary>
+        <nav class="absolute right-0 mt-2 w-48 bg-card border border-elevated rounded-md shadow-lg py-2 text-sm z-50">
+          {%- for p in pages %}
+          {%- if p.slug == pg.slug %}
+          <a href="{{ p.href }}" class="block px-4 py-2 text-accent hover:bg-elevated" aria-current="page">{{ p.nav }}</a>
+          {%- else %}
+          <a href="{{ p.href }}" class="block px-4 py-2 text-ash hover:bg-elevated hover:text-bone">{{ p.nav }}</a>
+          {%- endif %}
+          {%- endfor %}
+        </nav>
+      </details>
+    </div>
+  </header>
+  <!-- ===== /HEADER ===== -->
+
+  <main class="flex-1">
+{{ content | safe }}
+  </main>
+
+  <!-- ===== FOOTER (generated from members.json) ===== -->
+  <footer class="border-t border-elevated bg-card/40 mt-auto">
+    <div class="max-w-6xl mx-auto px-4 py-10">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <div>
+          <div class="flex items-center gap-3 mb-3">
+            <img src="/logo.png" alt="" class="pixelated w-6 h-6" aria-hidden="true">
+            <span class="text-base font-semibold heading-gradient">{{ site.name }}</span>
+          </div>
+          <p class="text-sm text-ash leading-relaxed">{{ site.description }}</p>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-semibold text-bone mb-3 uppercase tracking-wider">{{ members.collection.name }}</h4>
+          <ul class="space-y-2 text-sm">
+            {%- for m in members.members %}
+            {%- if m.id == site.id %}
+            <li><span class="text-accent">{{ m.name }} <span class="text-smoke text-xs">(you are here)</span></span></li>
+            {%- else %}
+            <li><a href="{{ m.url }}" rel="noopener noreferrer" target="_blank" class="text-ash hover:text-accent transition">{{ m.name }}</a></li>
+            {%- endif %}
+            {%- endfor %}
+          </ul>
+          <p class="text-xs text-smoke mt-3">{{ members.collection.tagline }}</p>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-semibold text-bone mb-3 uppercase tracking-wider">Links</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="{{ site.github }}" rel="noopener noreferrer" target="_blank" class="text-ash hover:text-accent transition">GitHub</a></li>
+            <li><a href="{{ site.github }}/releases" rel="noopener noreferrer" target="_blank" class="text-ash hover:text-accent transition">Releases</a></li>
+            <li><a href="{{ site.github }}/issues" rel="noopener noreferrer" target="_blank" class="text-ash hover:text-accent transition">Report an issue</a></li>
+            <li><a href="{{ site.github }}/blob/{{ site.defaultBranch | default("main") }}/LICENSE" rel="noopener noreferrer" target="_blank" class="text-ash hover:text-accent transition">License</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="border-t border-elevated pt-6 flex flex-col md:flex-row justify-between gap-2 text-xs text-smoke">
+        <p>{{ site.copyright }}</p>
+        <p>{{ site.footerMeta }}</p>
+      </div>
+    </div>
+  </footer>
+  <!-- ===== /FOOTER ===== -->
+
+  <script>
+    // Auto-close the mobile <details> menu when a nav link is tapped.
+    document.querySelectorAll('details nav a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        var d = a.closest('details');
+        if (d) d.removeAttribute('open');
+      });
+    });
+  </script>
+</body>
+</html>

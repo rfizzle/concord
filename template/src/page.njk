@@ -1,0 +1,83 @@
+---
+layout: base.njk
+pagination:
+  data: pages
+  size: 1
+  alias: pg
+permalink: "{{ pg.permalink }}"
+---
+{%- import "blocks.njk" as B -%}
+{%- if pg.type == "home" %}
+
+    <!-- ===== HERO ===== -->
+    <section class="relative overflow-hidden px-4 py-16 md:py-24 text-center hero-glow">
+      <div class="max-w-4xl mx-auto relative">
+        <img src="/logo.png" alt="{{ site.name }} logo" class="pixelated hero-logo-shadow w-full max-w-md md:max-w-xl lg:max-w-2xl h-auto mx-auto mb-8">
+        <h1 class="text-5xl md:text-7xl font-bold mb-4 heading-gradient animate-brand-pulse">{{ site.name }}</h1>
+        <p class="text-lg md:text-xl text-ash mb-2">{{ pg.hero.lede | safe }}</p>
+        <p class="text-sm text-smoke max-w-xl mx-auto mb-10">{{ pg.hero.sub | safe }}</p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          {%- for btn in pg.hero.buttons %}
+          {%- if btn.primary %}
+          <a href="{{ btn.href }}"{% if btn.external %} rel="noopener noreferrer" target="_blank"{% endif %}
+             class="px-6 py-3 rounded-md bg-accent text-bone text-base font-semibold border border-accent/40 hover:bg-accent2-bright hover:brightness-110 transition">
+            {{ btn.label }}
+          </a>
+          {%- else %}
+          <a href="{{ btn.href }}"{% if btn.external %} rel="noopener noreferrer" target="_blank"{% endif %}
+             class="px-6 py-3 rounded-md bg-card border border-elevated text-bone font-semibold hover:border-accent transition">
+            {{ btn.label }}
+          </a>
+          {%- endif %}
+          {%- endfor %}
+        </div>
+      </div>
+    </section>
+    <!-- ===== /HERO ===== -->
+    {%- for section in pg.sections %}
+
+    <section class="px-4 py-12 md:py-16{% if section.band %} bg-card/40 border-y border-elevated{% endif %}">
+      <div class="max-w-{{ section.width | default("6xl") }} mx-auto">
+        <h2 class="text-2xl md:text-3xl font-bold mb-2 text-center heading-gradient">{{ section.title | safe }}</h2>
+        {%- if section.lede %}
+        <p class="text-center text-ash mb-10 text-sm{% if section.ledeNarrow %} max-w-2xl mx-auto{% endif %}">{{ section.lede | safe }}</p>
+        {%- endif %}
+        {%- for b in section.blocks %}{{ B.render(b) }}{% endfor %}
+        {%- if section.footnote %}
+        <p class="text-center text-smoke text-xs mt-6">{{ section.footnote | safe }}</p>
+        {%- endif %}
+      </div>
+    </section>
+    {%- endfor %}
+{%- else %}
+
+    <section class="px-4 py-12 md:py-16">
+      <div class="max-w-{{ pg.width | default("4xl") }} mx-auto">
+
+        <header class="mb-12 text-center">
+          <h1 class="text-4xl md:text-5xl font-bold mb-3 heading-gradient">{{ pg.title | safe }}</h1>
+          <p class="text-ash text-sm md:text-base max-w-2xl mx-auto">{{ pg.lede | safe }}</p>
+        </header>
+        {%- for section in pg.sections %}
+
+        <section{% if section.id %} id="{{ section.id }}"{% endif %} class="mb-{{ "16" if pg.scale == "lg" else "12" }}">
+          {%- if section.title %}
+          {%- if pg.scale == "lg" %}
+          <h2 class="text-2xl md:text-3xl font-bold mb-{{ section.titleGap | default("6") }} heading-gradient">{{ section.title | safe }}</h2>
+          {%- elif section.plainTitle %}
+          <h2 class="text-xl md:text-2xl font-bold mb-3 text-bone">{{ section.title | safe }}</h2>
+          {%- else %}
+          <h2 class="text-xl md:text-2xl font-bold mb-4 heading-gradient">{{ section.title | safe }}</h2>
+          {%- endif %}
+          {%- endif %}
+          {%- if section.intro %}
+          <p class="text-sm text-ash leading-relaxed mb-4">{{ section.intro | safe }}</p>
+          {%- endif %}
+          {%- for b in section.blocks %}{{ B.render(b) }}{% endfor %}
+        </section>
+        {%- endfor %}
+
+      </div>
+    </section>
+{%- endif %}

@@ -30,6 +30,8 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`REPO-LAYOUT.md`](REPO-LAYOUT.md) | The common repository layout all mod repos mirror |
 | [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) | Color tokens, per-mod palettes, typography, logo formula |
 | [`docs/tokens.css`](docs/tokens.css) | The shared design tokens as consumable CSS — mod sites hot-link this |
+| [`template/`](template/README.md) | The shared website template — mod repos hold only `site/` content; CI builds and deploys via [`build-site.yml`](.github/workflows/build-site.yml) |
+| [`members.json`](members.json) | The member registry — drives every site's cross-mod footer and the propagate workflow |
 
 ## How mod repos reference Concord
 

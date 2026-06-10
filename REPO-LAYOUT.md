@@ -51,14 +51,10 @@ Meridian and Prosperity.
 │   ├── hud-icon-16.png        #   HUD/UI glyph master (omit if mod has no HUD slot)
 │   └── exploration/           #   style explorations, rejected variants, gen prompts
 │
-├── docs/                      # the published website ONLY (GitHub Pages root)
-│   ├── CNAME                  #   <mod>.rfizzle.com
-│   ├── index.html             #   + features/config/commands/faq/guide/changelog/
-│   │                          #     developers.html and domain pages per VISION.md §4
-│   ├── css/
-│   ├── logo.png, icon.png     #   web-optimized copies of art/ masters
-│   ├── og-image.png, favicon.ico, favicon-32.png, apple-touch-icon.png
-│   ├── robots.txt, sitemap.xml
+├── site/                      # website CONTENT (built by the shared Concord template)
+│   ├── site.json              #   identity, nav, theme colors, links
+│   ├── pages/<slug>.json      #   one structured-content file per page
+│   ├── assets/                #   logo.png, icon.png, og-image.png, favicons
 │   ├── listing-modrinth.md    #   store listing copy (Mercantile pattern)
 │   └── listing-curseforge.md
 │
@@ -75,7 +71,14 @@ Meridian and Prosperity.
 ```
 
 **Gitignored runtime/IDE dirs** (never committed, standard list in §4): `.gradle/`,
-`build/`, `out/`, `classes/`, `run/`, `mods/`, `logs/`, `config/`, `.idea/`, `.vscode/`.
+`build/`, `out/`, `classes/`, `run/`, `mods/`, `logs/`, `config/`, `.idea/`, `.vscode/`,
+`_site/` (the generated website).
+
+**`docs/` is retired.** The website is no longer committed: `site/` holds the
+structured content, the shared template in the concord repo renders it, and CI
+deploys the result straight to GitHub Pages (source: "GitHub Actions"). During
+migration a repo may still carry its legacy `docs/` until its `site/` build is
+verified live.
 
 ---
 
@@ -121,11 +124,14 @@ Source-of-truth images and working files. `docs/` and `src/main/resources/assets
 hold *derived, optimized copies*; when art changes, the master changes first.
 Generation prompts (Gemini/PixelLab) live next to their outputs in `exploration/`.
 
-### `docs/` — the website, nothing else
-`docs/` *is* the GitHub Pages artifact. If a file isn't meant to be served at
-`<mod>.rfizzle.com`, it doesn't go here. Store listing copy (`listing-modrinth.md`,
-`listing-curseforge.md`) is the sanctioned exception — it's distribution-facing and
-harmless to serve. Standard page set per `VISION.md` §4.
+### `site/` — website content, not website output
+The mod repo holds only structured content: `site.json` (identity, nav order, the
+four theme colors), `pages/<slug>.json` (one per page, block-based — schema in the
+concord repo's `template/README.md`), and `assets/` (image masters' web copies).
+The shared Concord template renders it; `.github/workflows/site.yml` (≈15 lines,
+calls concord's reusable workflow) deploys it to Pages. Local preview: `make site`.
+Store listing copy (`listing-modrinth.md`, `listing-curseforge.md`) lives here too.
+Generated `_site/` output is never committed.
 
 ### `scripts/`
 Executable automation only (`release.sh` is the current standard member). Anything
@@ -205,7 +211,8 @@ hs_err_pid*.log
 - [ ] **Delete stray `net/` directory** (compiled `.class` files at repo root) and
       gitignore the pattern
 - [ ] Adopt the standard `.gitignore`; add `codecov.yml` when tests report coverage
-- [ ] Rename `docs/curseforge.md` → `docs/listing-curseforge.md`; add
+- [ ] Migrate `docs/` to `site/` content (Tribulation is the worked example);
+      move `docs/curseforge.md` → `site/listing-curseforge.md`; add
       `listing-modrinth.md`
 
 ### Mercantile (closest to standard — mostly renames)
@@ -224,8 +231,9 @@ hs_err_pid*.log
       now-empty `docs/design/` (design docs no longer published with the site)
 - [ ] `mkdir art/` ; `git mv logo.png art/logo.png` ; update README img src; copy
       icon master in
-- [ ] Rename `docs/curseforge.md` → `docs/listing-curseforge.md`; add
-      `listing-modrinth.md`
+- [x] Migrate `docs/` to `site/` content + `site.yml` workflow (done — the pilot);
+      delete legacy `docs/` once the Pages build is verified live; move
+      `docs/curseforge.md` → `site/listing-curseforge.md`; add `listing-modrinth.md`
 - [ ] Add `.plan/` (BACKLOG.md may simply point at GitHub Issues)
 - [ ] Gitignore `.claude/scheduled_tasks.lock`
 
@@ -254,7 +262,9 @@ A repo conforms when all of these are true at the same paths:
    being built)
 3. `.ai/` with `prompts/` + `review-criteria.yml`; `.plan/` with the three MD files
 4. `art/logo.png` + `art/icon-128.png` masters; README embeds `art/logo.png`
-5. `docs/` contains only the published site + `listing-*.md`
+5. `site/` contains the structured website content (`site.json`, `pages/`,
+   `assets/`, `listing-*.md`) + a `site.yml` workflow calling concord's reusable
+   build; no committed `docs/` or `_site/` output
 6. The standard `.gitignore`, with no committed runtime artifacts (`logs/`, `run/`,
    `replay_pid*`, compiled classes)
 

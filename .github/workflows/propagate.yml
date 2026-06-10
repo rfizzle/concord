@@ -1,0 +1,43 @@
+# Concord — template propagation.
+#
+# When the shared site template (or the member registry) changes, dispatch a
+# rebuild to every member repo so all sites pick up the change within minutes.
+#
+# Requires a repo secret CONCORD_DISPATCH_TOKEN: a fine-grained PAT with
+# "Contents: read" + "Actions: write" (or classic `repo` scope) on the member
+# repos. Without the secret this workflow fails gracefully per-repo.
+name: Propagate template to member sites
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "template/**"
+      - "members.json"
+  workflow_dispatch:
+
+jobs:
+  members:
+    runs-on: ubuntu-latest
+    outputs:
+      repos: ${{ steps.list.outputs.repos }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: echo "repos=$(jq -c '[.members[].id]' members.json)" >> "$GITHUB_OUTPUT"
+
+  dispatch:
+    needs: members
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJson(needs.members.outputs.repos) }}
+    steps:
+      - name: Dispatch rebuild to rfizzle/${{ matrix.repo }}
+        env:
+          GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
+        run: |
+          gh api "repos/rfizzle/${{ matrix.repo }}/dispatches" \
+            -f event_type=concord-template-updated \
+            || echo "::warning::could not dispatch to rfizzle/${{ matrix.repo }} (repo missing site workflow or token lacks access)"

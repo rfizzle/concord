@@ -247,8 +247,8 @@ mechanical sentence; OG image = full logo on Obsidian at 1200×630; canonical do
 
 ### Collection landing page — yes, build it
 
-Recommendation: **one lightweight page served from this repo's `docs/`** (at
-`rfizzle.com`, `mods.rfizzle.com`, or a dedicated Concord domain) — hero with the
+Recommendation: **one lightweight page served from this repo's `docs/`** at
+**`concord.rfizzle.com`** (matching the `<mod>.rfizzle.com` pattern) — hero with the
 collection tagline, four logo cards, a visual of the integration loop
 (Survive → Enchant → Trade → Discover), an "install any, combine all" explainer, and the
 integration matrix in friendly form. One page, same design tokens, near-zero maintenance.

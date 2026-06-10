@@ -1,0 +1,142 @@
+{#
+  Concord template — block renderer.
+  Every content page is a list of sections; every section is a list of blocks.
+  Inline HTML in content strings may use the generic theme classes:
+  text-accent, text-accent2, text-bone, text-ash, text-smoke, bg-accent/15, …
+#}
+
+{% macro render(b) %}
+{%- if b.type == "prose" -%}
+  {%- for para in b.html %}
+  <p class="text-sm text-ash leading-relaxed mb-4{% if b.wide %} max-w-3xl{% endif %}">{{ para | safe }}</p>
+  {%- endfor %}
+{%- elif b.type == "note" -%}
+  <p class="text-smoke text-xs mt-3{% if b.center %} text-center{% endif %}">{{ b.html | safe }}</p>
+{%- elif b.type == "sub" -%}
+  <article{% if b.id %} id="{{ b.id }}"{% endif %} class="mb-8">
+    <h3 class="text-lg font-semibold text-bone mb-3">{{ b.title | safe }}</h3>
+    {%- if b.intro %}
+    <p class="text-sm text-ash leading-relaxed mb-4 max-w-3xl">{{ b.intro | safe }}</p>
+    {%- endif %}
+    {%- for bb in b.blocks %}{{ render(bb) }}{% endfor %}
+  </article>
+{%- elif b.type == "table" -%}
+  <div class="overflow-x-auto{% if b.bottomGap %} mb-4{% endif %}">
+    <table class="w-full text-xs md:text-sm border border-elevated rounded-md">
+      <thead class="bg-card text-bone">
+        <tr>
+          {%- for h in b.headers %}
+          <th class="text-left py-2 px-3 border-b border-elevated{% if b.nowrapHeaders %} whitespace-nowrap{% endif %}">{{ h | safe }}</th>
+          {%- endfor %}
+        </tr>
+      </thead>
+      <tbody class="text-ash">
+        {%- for row in b.rows %}
+        <tr class="border-t border-elevated/40 hover:bg-card/50">
+          {%- for cell in row %}<td class="px-3 py-2">{{ cell | safe }}</td>{% endfor %}
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </table>
+  </div>
+  {%- if b.note %}
+  <p class="text-smoke text-xs mt-3">{{ b.note | safe }}</p>
+  {%- endif %}
+{%- elif b.type == "code" -%}
+  {%- if b.label %}
+  <p class="text-sm text-ash leading-relaxed mb-2">{{ b.label | safe }}</p>
+  {%- endif %}
+  <pre class="bg-card border border-elevated rounded-md p-4 text-xs{% if not b.small %} md:text-sm{% endif %} text-{{ b.tone | default("bone") }} overflow-x-auto{% if b.bottomGap %} mb-4{% endif %}{% if b.topGap %} mt-4{% endif %}"><code>{{ b.code }}</code></pre>
+{%- elif b.type == "cards" -%}
+  <div class="grid grid-cols-1 md:grid-cols-{{ b.mdColumns | default(2) }}{% if b.lgColumns %} lg:grid-cols-{{ b.lgColumns }}{% endif %} gap-{{ b.gap | default(4) }}{% if b.bottomGap %} mb-4{% endif %}">
+    {%- for item in b.items %}
+    <article{% if item.id %} id="{{ item.id }}"{% endif %} class="bg-card{% if b.leftAccent %} border-l-[3px] border-l-accent{% endif %} border border-elevated rounded-lg p-5{% if b.hoverAccent %} hover:border-accent transition{% endif %}">
+      {%- if item.icon %}
+      <span class="text-3xl mb-4 block" aria-hidden="true">{{ item.icon | safe }}</span>
+      {%- endif %}
+      <h3 class="text-{{ b.titleSize | default("lg") }} font-semibold text-{{ item.titleTone | default("accent") }} mb-2">{{ item.title | safe }}{% if item.badge %} <span class="inline-block ml-1 px-2 py-0.5 text-xs font-semibold rounded bg-accent2/15 border border-accent2/30 text-accent2 align-middle">{{ item.badge }}</span>{% endif %}</h3>
+      {%- for para in item.html %}
+      <p class="text-sm text-ash leading-relaxed{% if not loop.last or item.bullets or item.code %} mb-2{% endif %}">{{ para | safe }}</p>
+      {%- endfor %}
+      {%- if item.bullets %}
+      <ul class="text-sm text-ash leading-relaxed space-y-{{ item.bulletSpacing | default(1) }} list-disc list-inside">
+        {%- for li in item.bullets %}
+        <li>{{ li | safe }}</li>
+        {%- endfor %}
+      </ul>
+      {%- endif %}
+      {%- if item.code %}
+      <pre class="bg-ink border border-elevated rounded-md p-3 text-xs text-bone overflow-x-auto"><code>{{ item.code }}</code></pre>
+      {%- endif %}
+      {%- if item.note %}
+      <p class="text-smoke text-xs mt-3">{{ item.note | safe }}</p>
+      {%- endif %}
+    </article>
+    {%- endfor %}
+  </div>
+{%- elif b.type == "list" -%}
+  {%- if b.ordered %}
+  <ol class="list-decimal list-inside text-sm text-ash leading-relaxed space-y-{{ b.spacing | default(2) }} mb-4">
+    {%- for li in b.items %}
+    <li>{{ li | safe }}</li>
+    {%- endfor %}
+  </ol>
+  {%- else %}
+  <ul class="list-disc list-inside text-sm text-ash leading-relaxed space-y-{{ b.spacing | default(2) }} mb-4">
+    {%- for li in b.items %}
+    <li>{{ li | safe }}</li>
+    {%- endfor %}
+  </ul>
+  {%- endif %}
+{%- elif b.type == "steps" -%}
+  <ol class="space-y-0">
+    {%- for s in b.items %}
+    <li class="flex items-start gap-4 py-4{% if not loop.last %} border-b border-elevated{% endif %}">
+      <span class="shrink-0 w-8 h-8 bg-elevated border border-elevated rounded-full flex items-center justify-center text-sm font-semibold text-accent">{{ loop.index }}</span>
+      <span class="text-sm text-ash leading-relaxed pt-1">{{ s | safe }}</span>
+    </li>
+    {%- endfor %}
+  </ol>
+  {%- if b.note %}
+  <p class="mt-6 text-center text-smoke text-xs">{{ b.note | safe }}</p>
+  {%- endif %}
+{%- elif b.type == "faq" -%}
+  <div class="space-y-3">
+    {%- for item in b.items %}
+    <details class="bg-card border border-elevated rounded-lg group">
+      <summary class="px-5 py-4 text-base font-semibold text-bone hover:text-accent transition flex items-center justify-between">
+        {{ item.q | safe }}
+        <span class="text-accent text-xl ml-3 group-open:rotate-45 transition-transform">+</span>
+      </summary>
+      <div class="px-5 pb-5 text-sm text-ash leading-relaxed">
+        {{ item.a | safe }}
+      </div>
+    </details>
+    {%- endfor %}
+  </div>
+{%- elif b.type == "examples" -%}
+  {%- for ex in b.items %}
+  <article class="bg-card border border-elevated rounded-lg p-5{% if not loop.last %} mb-4{% endif %}">
+    <h3 class="text-base font-semibold text-bone mb-2">{{ ex.title | safe }}{% if ex.suffix %} <span class="text-smoke text-xs">{{ ex.suffix }}</span>{% endif %}</h3>
+    {%- for part in ex.body %}
+    {%- if part.type == "code" %}
+    <pre class="bg-ink border border-elevated rounded-md p-3 text-xs md:text-sm text-{{ part.tone | default("accent2") }} overflow-x-auto"><code>{{ part.code }}</code></pre>
+    {%- elif part.type == "prose" %}
+    <p class="text-sm text-ash leading-relaxed mt-3{% if not loop.last %} mb-2{% endif %}">{{ part.html | safe }}</p>
+    {%- endif %}
+    {%- endfor %}
+  </article>
+  {%- endfor %}
+{%- elif b.type == "panel" -%}
+  <section class="bg-card border border-elevated rounded-lg p-6">
+    <h2 class="text-lg font-semibold text-bone mb-2">{{ b.title | safe }}</h2>
+    {%- if b.items %}
+    <ul class="list-disc list-inside text-sm text-ash leading-relaxed space-y-1">
+      {%- for li in b.items %}
+      <li>{{ li | safe }}</li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+  </section>
+{%- endif %}
+{% endmacro %}
