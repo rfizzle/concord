@@ -1,0 +1,124 @@
+# Concord — reusable Claude spec writer for member mods.
+#
+# When an issue gets the `needs-spec` label, posts a structured
+# implementation spec as an issue comment. Prompt comes from the calling
+# repo's .ai/prompts/spec-writer.md when present, else the suite default
+# in this repo. Caller stub:
+#
+#   name: Claude Spec Writer
+#   on:
+#     issues: { types: [labeled] }
+#   concurrency:
+#     group: claude-spec-${{ github.event.issue.number }}
+#     cancel-in-progress: false
+#   permissions:
+#     contents: read
+#     issues: write
+#   jobs:
+#     spec:
+#       uses: rfizzle/concord/.github/workflows/claude-spec.yml@master
+#       secrets: inherit
+name: Claude Spec Writer
+
+on:
+  workflow_call:
+    inputs:
+      label:
+        type: string
+        default: needs-spec
+      max-budget-usd:
+        type: string
+        default: "2.00"
+      max-turns:
+        type: string
+        default: "6"
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+
+jobs:
+  spec:
+    if: github.event.label.name == inputs.label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout concord (prompt defaults)
+        uses: actions/checkout@v4
+        with:
+          repository: rfizzle/concord
+          ref: master
+          path: .concord
+
+      - name: Install Claude Code
+        run: curl -fsSL https://claude.ai/install.sh | bash
+
+      - name: Build spec prompt
+        run: |
+          PROMPT_FILE=.ai/prompts/spec-writer.md
+          [ -f "$PROMPT_FILE" ] || PROMPT_FILE=.concord/.ai/prompts/spec-writer.md
+
+          ISSUE_TITLE="$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json title --jq .title)"
+          ISSUE_BODY="$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json body --jq .body)"
+
+          PROMPT="$(cat "$PROMPT_FILE")
+
+          ---
+          Project conventions (from AGENTS.md):
+          $(cat AGENTS.md 2>/dev/null || echo '(no AGENTS.md in this repository)')
+
+          ---
+          Issue #${{ github.event.issue.number }}: ${ISSUE_TITLE}
+
+          ${ISSUE_BODY}"
+
+          echo "$PROMPT" > /tmp/spec-prompt.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run spec writer
+        run: |
+          ATTEMPT=0
+          MAX_ATTEMPTS=3
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Spec attempt ${ATTEMPT}/${MAX_ATTEMPTS}"
+
+            RESULT="$(~/.local/bin/claude -p \
+              --output-format json \
+              --max-turns ${{ inputs.max-turns }} \
+              --max-budget-usd ${{ inputs.max-budget-usd }} \
+              < /tmp/spec-prompt.txt 2>/tmp/spec-stderr.txt)" || true
+
+            COMMENT="$(echo "$RESULT" | jq -r '.result // empty' 2>/dev/null)" || true
+
+            if [ -n "$COMMENT" ] && echo "$COMMENT" | grep -q "## Implementation Spec"; then
+              echo "Spec produced successfully on attempt ${ATTEMPT}"
+              echo "$COMMENT" > /tmp/spec-comment.md
+              break
+            fi
+
+            echo "Attempt ${ATTEMPT} did not produce valid output"
+            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              echo "::error::All ${MAX_ATTEMPTS} spec attempts failed to produce valid output"
+              exit 1
+            fi
+          done
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+      - name: Post spec comment
+        run: |
+          if [ -s /tmp/spec-comment.md ]; then
+            gh issue comment ${{ github.event.issue.number }} \
+              --repo ${{ github.repository }} \
+              --body-file /tmp/spec-comment.md
+          else
+            echo "No spec comment to post"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

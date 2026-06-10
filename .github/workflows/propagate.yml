@@ -10,7 +10,7 @@ name: Propagate template to member sites
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "template/**"
       - "members.json"

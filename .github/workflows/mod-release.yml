@@ -1,0 +1,75 @@
+# Concord — reusable release workflow for member mods.
+#
+# Builds on a v* tag push and creates a GitHub Release with the mod jar
+# (sources/dev jars excluded). Mod id defaults to the repository name —
+# the suite convention is repo name == mod id == jar prefix. Caller stub:
+#
+#   name: Release
+#   on:
+#     push: { tags: ["v*"] }
+#   permissions:
+#     contents: write
+#   jobs:
+#     release:
+#       uses: rfizzle/concord/.github/workflows/mod-release.yml@master
+#       secrets: inherit
+name: Mod Release
+
+on:
+  workflow_call:
+    inputs:
+      mod-id:
+        description: "jar prefix / mod id (defaults to the repository name)"
+        type: string
+        default: ""
+
+env:
+  MOD_ID: ${{ inputs.mod-id || github.event.repository.name }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Derive release metadata
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "title=${MOD_ID^} v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.meta.outputs.title }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
+          files: |
+            build/libs/${{ env.MOD_ID }}-*.jar
+            !build/libs/${{ env.MOD_ID }}-*-sources.jar
+            !build/libs/${{ env.MOD_ID }}-*-dev.jar

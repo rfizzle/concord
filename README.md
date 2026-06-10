@@ -32,6 +32,19 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`docs/tokens.css`](docs/tokens.css) | The shared design tokens as consumable CSS — mod sites hot-link this |
 | [`template/`](template/README.md) | The shared website template — mod repos hold only `site/` content; CI builds and deploys via [`build-site.yml`](.github/workflows/build-site.yml) |
 | [`members.json`](members.json) | The member registry — drives every site's cross-mod footer and the propagate workflow |
+| [`.github/workflows/`](.github/workflows) | Reusable CI for all members: `mod-ci`, `mod-release`, `mod-build-artifact`, `claude-review`, `claude-spec`, `claude-mention`, `build-site` — mod repos carry only thin trigger stubs |
+| [`.ai/`](.ai) | Suite-default Claude prompts (`code-reviewer`, `spec-writer`) and `review-criteria.yml` — a repo-local `.ai/` file overrides the default |
+
+### The CI contract
+
+The reusable workflows assume every member repo provides: repo name == mod id ==
+jar prefix (`build/libs/<mod>-<version>.jar`), and gradle tasks `build` (compile +
+unit tests + jar), `jacocoTestReport` (XML at
+`build/reports/jacoco/test/jacocoTestReport.xml`), `runGametest` (JUnit XML at
+`build/junit-gametest.xml`), and `printVersion`. Secrets per repo:
+`CODECOV_TOKEN` (optional), `CLAUDE_CODE_OAUTH_TOKEN` (for the Claude workflows).
+Each mod repo's stubs declare only triggers, concurrency, and permissions — the
+stub bodies are documented at the top of each reusable workflow.
 
 ## How mod repos reference Concord
 
@@ -44,10 +57,10 @@ This mod is a member of Concord, the Vanilla+ collection. Suite-wide standards l
 the [concord repo](https://github.com/rfizzle/concord) — checked out at `../concord/`
 in the local workspace. Normative for this repo:
 
-- [API-STANDARD.md](https://github.com/rfizzle/concord/blob/main/API-STANDARD.md) — the `api` package conventions (conforms to v1)
-- [HUD-STANDARD.md](https://github.com/rfizzle/concord/blob/main/HUD-STANDARD.md) — HUD slot, stacking, accessors (conforms to v1)
-- [DESIGN-SYSTEM.md](https://github.com/rfizzle/concord/blob/main/design/DESIGN-SYSTEM.md) — palette, typography, logo rules
-- [REPO-LAYOUT.md](https://github.com/rfizzle/concord/blob/main/REPO-LAYOUT.md) — where non-code files live
+- [API-STANDARD.md](https://github.com/rfizzle/concord/blob/master/API-STANDARD.md) — the `api` package conventions (conforms to v1)
+- [HUD-STANDARD.md](https://github.com/rfizzle/concord/blob/master/HUD-STANDARD.md) — HUD slot, stacking, accessors (conforms to v1)
+- [DESIGN-SYSTEM.md](https://github.com/rfizzle/concord/blob/master/design/DESIGN-SYSTEM.md) — palette, typography, logo rules
+- [REPO-LAYOUT.md](https://github.com/rfizzle/concord/blob/master/REPO-LAYOUT.md) — where non-code files live
 ```
 
 Conformance is **declared, not copied**: a mod states the standard version it conforms

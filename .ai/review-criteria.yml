@@ -1,0 +1,88 @@
+# Code review criteria for Tribulation.
+#
+# Edit this file to change what the reviewer scores. Categories are scored on a
+# 3-level scale (pass / warn / fail → rendered as ✓ / ⚠ / ✗) and are
+# informational only — none block merge.
+#
+# Each category may declare `applies_when` to scope it to specific diffs;
+# omitting it means the category always applies.
+
+scoring: pass_warn_fail
+blocking: false
+
+categories:
+  - id: spec_alignment
+    name: Spec alignment
+    description: |
+      Does the PR implement what the linked issue spec describes?
+      Acceptance criteria covered? Anything out-of-scope sneaking in?
+    look_at:
+      - linked issue body (the spec posted by claude-spec workflow)
+
+  - id: conventions
+    name: Project conventions
+    description: |
+      Mojang mappings (not Yarn). Mod ID via Tribulation.id(). Correct source
+      set (main / client / gametest). Commit messages follow Conventional
+      Commits with a topical scope naming the feature area
+      (feat(scaling): …, fix(abilities): …, ci(review): …); historical
+      commits use a variety of scopes — new commits should use a topical
+      scope naming the feature area.
+    look_at:
+      - AGENTS.md
+
+  - id: correctness
+    name: Correctness
+    description: |
+      Logic bugs, off-by-ones, null/Optional handling, edge cases, error
+      paths. Are loops bounded? Are early returns correct?
+
+  - id: thread_safety
+    name: Thread safety
+    description: |
+      Client/server boundary crossings. Shared mutable state guarded
+      (ConcurrentMap, volatile, Atomic, synchronized where appropriate).
+      No client-only types referenced from main source set.
+    look_at:
+      - .ai/skills/mc-shared-state/SKILL.md
+
+  - id: mixin_safety
+    name: Mixin safety
+    description: |
+      Injection point correctness. @Inject vs @Redirect vs @ModifyVariable
+      choice. CallbackInfo / CallbackInfoReturnable return handling.
+      Access widener scope minimized.
+    look_at:
+      - .ai/skills/mc-mixin-craft/SKILL.md
+    applies_when: |
+      PR touches *Mixin.java, src/main/resources/tribulation.mixins.json,
+      or a *.accesswidener file.
+
+  - id: test_coverage
+    name: Test coverage
+    description: |
+      Non-trivial logic has tests. Correct tier chosen: pure JUnit for plain
+      logic, fabric-loader-junit for things needing the loader, Fabric
+      gametests for anything needing a live world. No mocking of Fabric APIs
+      that should be exercised in a gametest.
+    look_at:
+      - .ai/skills/mc-mod-testing/SKILL.md
+      - .ai/skills/mc-testing-mock/SKILL.md
+
+  - id: performance
+    name: Performance (20Hz tick budget)
+    description: |
+      Per-tick allocations in hot paths. O(n²) loops over entity lists.
+      Unbounded caches. Synchronous I/O on the server thread. New mixins
+      on hot vanilla methods are flagged for scrutiny. Scaling formula hot
+      paths (mob spawn handler runs on every hostile spawn — flag per-spawn
+      allocations).
+
+  - id: compat
+    name: Compat risk
+    description: |
+      Changes that could break optional integrations (Mod Menu, Cloth Config,
+      Jade/WTHIT, EMI/REI/JEI). Any new public API used by compat classes.
+    applies_when: |
+      PR touches com.rfizzle.tribulation.compat.*, public APIs that compat
+      classes import, or fabric.mod.json depends/recommends entries.

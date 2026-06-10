@@ -1,0 +1,118 @@
+# Concord — reusable CI for member mods.
+#
+# Replaces the per-repo ci.yml + test.yml pair: one gradle build (which
+# compiles, runs unit tests, and jars) with JaCoCo coverage + Codecov
+# uploads, plus a gametest job. Caller stub:
+#
+#   name: CI
+#   on:
+#     push: { branches: [master] }
+#     pull_request: { branches: [master] }
+#   permissions:
+#     contents: read
+#     checks: write
+#     pull-requests: write
+#   jobs:
+#     ci:
+#       uses: rfizzle/concord/.github/workflows/mod-ci.yml@master
+#       secrets: inherit
+#
+# CI contract (every member repo's gradle must provide):
+#   ./gradlew build jacocoTestReport runGametest
+#   coverage xml at build/reports/jacoco/test/jacocoTestReport.xml
+#   junit xml at build/test-results/test/ and build/junit-gametest.xml
+name: Mod CI
+
+on:
+  workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build (compile + unit tests + jar) with coverage
+        run: ./gradlew build jacocoTestReport --no-daemon --stacktrace
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/reports/jacoco/test/jacocoTestReport.xml
+          flags: unit
+          fail_ci_if_error: false
+
+      - name: Upload unit test results to Codecov
+        if: always()
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/test-results/test/**/*.xml
+          flags: unit
+
+      - name: Upload unit test report (fallback)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: build/reports/tests/test/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  gametest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run gametests
+        run: ./gradlew runGametest --no-daemon --stacktrace
+
+      - name: Upload gametest results to Codecov
+        if: always()
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/junit-gametest.xml
+          flags: gametest
+
+      - name: Upload gametest report (fallback)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gametest-report
+          path: |
+            build/gametest/
+            build/junit-gametest.xml
+          retention-days: 7
+          if-no-files-found: ignore

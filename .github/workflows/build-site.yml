@@ -4,7 +4,7 @@
 #
 #   jobs:
 #     site:
-#       uses: rfizzle/concord/.github/workflows/build-site.yml@main
+#       uses: rfizzle/concord/.github/workflows/build-site.yml@master
 #
 # Builds the mod's site/ content with the shared template in this repo and
 # deploys it to GitHub Pages (Pages source must be set to "GitHub Actions"
@@ -17,7 +17,7 @@ on:
       concord-ref:
         description: "concord ref to build with (pin to a tag to freeze the template)"
         type: string
-        default: main
+        default: master
       site-dir:
         description: "content directory in the calling repo"
         type: string
@@ -66,6 +66,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Configure Pages (auto-enable with Actions source)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

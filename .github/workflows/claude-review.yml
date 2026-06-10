@@ -1,0 +1,155 @@
+# Concord — reusable Claude code review for member mods.
+#
+# Posts a structured review comment on non-draft PRs. The prompt and
+# scoring criteria come from the calling repo's .ai/ directory when
+# present, falling back to the suite defaults in this repo's .ai/.
+# AGENTS.md always comes from the calling repo. Caller stub:
+#
+#   name: Claude Code Review
+#   on:
+#     pull_request: { types: [opened, synchronize, ready_for_review, reopened] }
+#   concurrency:
+#     group: claude-review-${{ github.event.pull_request.number }}
+#     cancel-in-progress: true
+#   permissions:
+#     contents: read
+#     pull-requests: write
+#     issues: read
+#   jobs:
+#     review:
+#       uses: rfizzle/concord/.github/workflows/claude-review.yml@master
+#       secrets: inherit
+name: Claude Code Review
+
+on:
+  workflow_call:
+    inputs:
+      max-budget-usd:
+        type: string
+        default: "3.00"
+      max-turns:
+        type: string
+        default: "25"
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout concord (prompt defaults)
+        uses: actions/checkout@v4
+        with:
+          repository: rfizzle/concord
+          ref: master
+          path: .concord
+
+      - name: Install Claude Code
+        run: curl -fsSL https://claude.ai/install.sh | bash
+
+      - name: Build review prompt
+        run: |
+          # Repo-local prompt/criteria win; concord defaults otherwise.
+          PROMPT_FILE=.ai/prompts/code-reviewer.md
+          [ -f "$PROMPT_FILE" ] || PROMPT_FILE=.concord/.ai/prompts/code-reviewer.md
+          CRITERIA_FILE=.ai/review-criteria.yml
+          [ -f "$CRITERIA_FILE" ] || CRITERIA_FILE=.concord/.ai/review-criteria.yml
+
+          DIFF="$(gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }})"
+          PR_TITLE="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json title --jq .title)"
+          PR_BODY="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json body --jq .body)"
+
+          # Most recent prior review by this bot, so the reviewer doesn't
+          # re-raise findings the latest push already addressed.
+          PREV_REVIEW="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} \
+            --json comments \
+            --jq '[.comments[] | select(.body | startswith("## Code Review"))] | last | .body // ""')"
+
+          PROMPT="$(cat "$PROMPT_FILE")
+
+          ---
+          Project conventions (from AGENTS.md):
+          $(cat AGENTS.md 2>/dev/null || echo '(no AGENTS.md in this repository)')
+
+          ---
+          Categories to score (from review-criteria.yml):
+          $(cat "$CRITERIA_FILE")
+
+          ---
+          HEAD commit: ${{ github.event.pull_request.head.sha }}
+
+          PR title: ${PR_TITLE}
+
+          PR description:
+          ${PR_BODY}
+
+          ---
+          Previous review (if any) — do not repeat findings this push has
+          already addressed; only carry forward items that are genuinely still
+          open:
+          ${PREV_REVIEW:-(none)}
+
+          ---
+          The full repository is checked out in the current working directory.
+          (The .concord/ subdirectory is the suite standards repo, checked out
+          for reference — it is not part of this PR.)
+          Read any file you need (Read/Grep) to verify a finding before
+          including it.
+
+          Diff:
+          ${DIFF}"
+
+          echo "$PROMPT" > /tmp/review-prompt.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run review
+        run: |
+          ATTEMPT=0
+          MAX_ATTEMPTS=3
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Review attempt ${ATTEMPT}/${MAX_ATTEMPTS}"
+
+            RESULT="$(~/.local/bin/claude -p \
+              --output-format json \
+              --max-turns ${{ inputs.max-turns }} \
+              --max-budget-usd ${{ inputs.max-budget-usd }} \
+              < /tmp/review-prompt.txt 2>/tmp/review-stderr.txt)" || true
+
+            COMMENT="$(echo "$RESULT" | jq -r '.result // empty' 2>/dev/null)" || true
+
+            if [ -n "$COMMENT" ] && echo "$COMMENT" | grep -q "## Code Review"; then
+              echo "Review produced successfully on attempt ${ATTEMPT}"
+              echo "$COMMENT" > /tmp/review-comment.md
+              break
+            fi
+
+            echo "Attempt ${ATTEMPT} did not produce valid output"
+            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              echo "::error::All ${MAX_ATTEMPTS} review attempts failed to produce valid output"
+              exit 1
+            fi
+          done
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+      - name: Post review comment
+        run: |
+          if [ -s /tmp/review-comment.md ]; then
+            gh pr comment ${{ github.event.pull_request.number }} \
+              --repo ${{ github.repository }} \
+              --body-file /tmp/review-comment.md
+          else
+            echo "No review comment to post"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
