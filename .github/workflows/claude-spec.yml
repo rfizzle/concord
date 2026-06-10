@@ -113,12 +113,24 @@ jobs:
 
       - name: Post spec comment
         run: |
-          if [ -s /tmp/spec-comment.md ]; then
-            gh issue comment ${{ github.event.issue.number }} \
-              --repo ${{ github.repository }} \
-              --body-file /tmp/spec-comment.md
-          else
+          if [ ! -s /tmp/spec-comment.md ]; then
             echo "No spec comment to post"
+            exit 0
           fi
+          # Trim any model preamble before the spec header.
+          sed -n '/^## Implementation Spec/,$p' /tmp/spec-comment.md > /tmp/spec-trimmed.md
+          [ -s /tmp/spec-trimmed.md ] || cp /tmp/spec-comment.md /tmp/spec-trimmed.md
+          # GitHub's API occasionally returns transient 401s — retry with backoff.
+          for i in 1 2 3; do
+            if gh issue comment ${{ github.event.issue.number }} \
+              --repo ${{ github.repository }} \
+              --body-file /tmp/spec-trimmed.md; then
+              exit 0
+            fi
+            echo "Post attempt $i failed; retrying in $((i * 10))s"
+            sleep $((i * 10))
+          done
+          echo "::error::Failed to post spec comment after 3 attempts"
+          exit 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

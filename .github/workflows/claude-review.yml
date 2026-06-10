@@ -144,15 +144,25 @@ jobs:
 
       - name: Post review comment
         run: |
-          echo "gh binary: $(command -v gh)"
-          echo "GH_TOKEN length: ${#GH_TOKEN}"
-          gh auth status 2>&1 || true
-          if [ -s /tmp/review-comment.md ]; then
-            gh pr comment ${{ github.event.pull_request.number }} \
-              --repo ${{ github.repository }} \
-              --body-file /tmp/review-comment.md
-          else
+          if [ ! -s /tmp/review-comment.md ]; then
             echo "No review comment to post"
+            exit 0
           fi
+          # Trim any model preamble before the "## Code Review" header so the
+          # next run's previous-review lookup (startswith) can find this one.
+          sed -n '/^## Code Review/,$p' /tmp/review-comment.md > /tmp/review-trimmed.md
+          [ -s /tmp/review-trimmed.md ] || cp /tmp/review-comment.md /tmp/review-trimmed.md
+          # GitHub's API occasionally returns transient 401s — retry with backoff.
+          for i in 1 2 3; do
+            if gh pr comment ${{ github.event.pull_request.number }} \
+              --repo ${{ github.repository }} \
+              --body-file /tmp/review-trimmed.md; then
+              exit 0
+            fi
+            echo "Post attempt $i failed; retrying in $((i * 10))s"
+            sleep $((i * 10))
+          done
+          echo "::error::Failed to post review comment after 3 attempts"
+          exit 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
