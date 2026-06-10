@@ -144,6 +144,9 @@ jobs:
 
       - name: Post review comment
         run: |
+          echo "gh binary: $(command -v gh)"
+          echo "GH_TOKEN length: ${#GH_TOKEN}"
+          gh auth status 2>&1 || true
           if [ -s /tmp/review-comment.md ]; then
             gh pr comment ${{ github.event.pull_request.number }} \
               --repo ${{ github.repository }} \
