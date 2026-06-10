@@ -1,0 +1,7 @@
+# local AI state
+.claude/settings.local.json
+.claude/projects/
+
+# OS junk
+.DS_Store
+Thumbs.db

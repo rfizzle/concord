@@ -1,0 +1,33 @@
+/*
+ * Concord — shared design tokens v1
+ * A Vanilla+ collection — the depth vanilla deserved.
+ *
+ * The shared neutral/surface tokens used by every Concord mod site.
+ * Mod sites hot-link this file; per-mod accents and tinted surfaces are
+ * defined locally in each site's own CSS and NEVER added here.
+ *
+ *   <link rel="stylesheet" href="https://rfizzle.com/tokens.css">
+ *
+ * Normative reference: design/DESIGN-SYSTEM.md in the concord repo.
+ */
+
+:root {
+  /* surfaces */
+  --color-ink: #0a0a0a;        /* page background */
+  --color-card: #1a1a1a;       /* cards, panels */
+  --color-elevated: #222222;   /* hover, elevated surfaces */
+
+  /* text */
+  --color-bone: #e8e0d4;       /* primary */
+  --color-ash: #a89f93;        /* secondary */
+  --color-smoke: #6b6359;      /* tertiary / disabled */
+
+  /* typography */
+  --font-mono: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+}
+
+/* shared heading pulse — pair with a per-mod accent gradient */
+@keyframes concord-pulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.15); }
+}
