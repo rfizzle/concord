@@ -51,7 +51,7 @@ The four taglines sit under the collection's one line:
 |---|---|---|
 | **Tribulation** | Survive | "Survive what comes next." |
 | **Meridian** | Enchant | "Chart your enchantments." |
-| **Mercantile** | Trade | "Every villager remembers." *(proposed — see §2)* |
+| **Mercantile** | Trade | "Every villager remembers." |
 | **Prosperity** | Discover | "Every chest, yours to discover." |
 
 ---
@@ -83,14 +83,16 @@ Apothecary, Tempest, Stratum).
 
 ### Tagline pattern
 
-Three of four taglines already follow a pattern worth codifying: **a short declarative
-or imperative sentence about the player's relationship to the system** — "Survive what
-comes next," "Chart your enchantments," "Every chest, yours to discover." Mercantile's
-current line ("Turn villagers from disposable trade machines into mobile, named,
-persistent characters") is a feature description, not a tagline. Proposed replacement:
-**"Every villager remembers."** — it states the reputation thesis in three words and
-mirrors Prosperity's "Every chest…" construction, giving the Trade and Discover mods a
-deliberate echo.
+The four taglines follow a codified pattern: **a short declarative or imperative
+sentence about the player's relationship to the system** — "Survive what comes
+next," "Chart your enchantments," "Every chest, yours to discover." Mercantile's
+former line ("Turn villagers from disposable trade machines into mobile, named,
+persistent characters") was a feature description, not a tagline; it was replaced
+with **"Every villager remembers."** (adopted 2026-06-12) — it states the
+reputation thesis in three words and mirrors Prosperity's "Every chest…"
+construction, giving the Trade and Discover mods a deliberate echo. The
+descriptive copy survives as the supporting line under the tagline (README
+masthead, site hero) and in SEO metadata.
 
 ### Voice & tone
 
