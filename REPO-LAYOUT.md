@@ -2,12 +2,12 @@
 
 > Where non-programmatic files live, so all Concord member repos (and every future
 > member) mirror each other. Grounded in the current state of `meridian`, `mercantile`,
-> `tribulation`, and `prosperity` as of 2026-06-10. Companion to [`VISION.md`](VISION.md).
+> `tribulation`, and `prosperity` as of 2026-06-11. Companion to [`VISION.md`](VISION.md).
 
-The rule of thumb: **`src/` is for the compiler, `docs/` is for the website,
-everything else that's text or art has exactly one named home.** Tribulation and
-Mercantile are closest to this standard already; most of the migration work is in
-Meridian and Prosperity.
+The rule of thumb: **`src/` is for the compiler, `site/` is for the website,
+everything else that's text or art has exactly one named home.** Meridian completed
+its migration on 2026-06-11 and joins Tribulation as a reference; the remaining
+work is in Mercantile and Prosperity.
 
 ---
 
@@ -34,10 +34,7 @@ Meridian and Prosperity.
 │   ├── skills/                #   committed if repo-specific
 │   └── settings.local.json    #   gitignored
 │
-├── .plan/                     # lightweight planning (committed, logs gitignored)
-│   ├── BACKLOG.md
-│   ├── SPRINT.md
-│   └── DONE.md
+├── .plan/                     # local planning scratchpad (gitignored, never committed)
 │
 ├── design/                    # the "why & what" — pre-implementation truth
 │   ├── DESIGN.md              #   vision, brand, palette, motifs, HUD slot
@@ -72,7 +69,7 @@ Meridian and Prosperity.
 
 **Gitignored runtime/IDE dirs** (never committed, standard list in §4): `.gradle/`,
 `build/`, `out/`, `classes/`, `run/`, `mods/`, `logs/`, `config/`, `.idea/`, `.vscode/`,
-`_site/` (the generated website).
+`_site/` (the generated website), `.plan/` (local planning).
 
 **`docs/` is retired.** The website is no longer committed: `site/` holds the
 structured content, the shared template in the concord repo renders it, and CI
@@ -105,12 +102,12 @@ default to concord's `.ai/`; a repo-local `prompts/*.md` or
 in concord's README). One-shot handoff briefs belong in `design/handoffs/`;
 reusable role prompts belong in concord.
 
-### `.plan/` — planning
-Three files, fixed names: `BACKLOG.md` (prioritized, feeds from `VISION.md`
-§6), `SPRINT.md` (current slice), `DONE.md` (append-only log). Runner/review logs
-under `.plan/` are gitignored. Repos that track everything in GitHub Issues keep
-the directory with `BACKLOG.md` pointing at the issue tracker — presence is what
-makes the repos mirror.
+### `.plan/` — planning (local only)
+A local dev scratchpad, **never committed** — the whole directory is gitignored
+(decided 2026-06-11 during the Meridian migration). Durable work tracking lives
+in GitHub Issues (the `needs-spec` → `jules` lifecycle); anything under `.plan/`
+is personal working state. Repos that still commit `.plan/` files (Mercantile)
+untrack them as part of their migration.
 
 ### `design/` — pre-implementation truth
 The **why and what**, kept out of the published site (Tribulation currently
@@ -186,8 +183,7 @@ config/
 .claude/settings.local.json
 .claude/projects/
 .claude/scheduled_tasks.lock
-.plan/logs/
-.plan/*.log
+.plan/
 
 # OS junk
 .DS_Store
@@ -202,19 +198,21 @@ hs_err_pid*.log
 
 ## 5. Per-repo migration checklist
 
-### Meridian (largest gap — no AI/plan scaffolding)
-- [ ] `mkdir design/` ; `git mv DESIGN.md design/DESIGN.md`
-- [ ] Write `AGENTS.md` (adapt Tribulation's skeleton); `ln -s AGENTS.md CLAUDE.md`
-- [ ] Create `.ai/` (README, `prompts/` seeded from Tribulation's code-reviewer /
-      spec-writer, `review-criteria.yml`) and `.plan/` (BACKLOG/SPRINT/DONE)
-- [ ] `mkdir art/` ; `git mv logo.png art/logo.png` ; update README `<img src>` →
+### Meridian (migrated 2026-06-11 — PRs #22–#26)
+- [x] `mkdir design/` ; `git mv DESIGN.md design/DESIGN.md`
+- [x] Write `AGENTS.md` (adapt Tribulation's skeleton); `ln -s AGENTS.md CLAUDE.md`
+- [x] Create `.ai/` (README + `skills/` vendored from concord; no prompt/criteria
+      overrides — concord defaults apply). `.plan/` is local-only per the updated
+      standard, so nothing to commit
+- [x] `mkdir art/` ; `git mv logo.png art/logo.png` ; update README `<img src>` →
       `art/logo.png`; add `icon-128.png` master (copy of the in-jar icon)
-- [ ] **Delete stray `net/` directory** (compiled `.class` files at repo root) and
+- [x] **Delete stray `net/` directory** (compiled `.class` files at repo root) and
       gitignore the pattern
-- [ ] Adopt the standard `.gitignore`; add `codecov.yml` when tests report coverage
-- [ ] Migrate `docs/` to `site/` content (Tribulation is the worked example);
-      move `docs/curseforge.md` → `site/listing-curseforge.md`; add
-      `listing-modrinth.md`
+- [x] Adopt the standard `.gitignore`; add `codecov.yml` (JaCoCo wired in CI;
+      `CODECOV_TOKEN` secret still unset — upload is optional until added)
+- [x] Migrate `docs/` to `site/` content + `site.yml`; `docs/curseforge.md` →
+      `site/listing-curseforge.md`; `listing-modrinth.md` added; legacy `docs/`
+      deleted after verifying meridian.rfizzle.com live (Pages source: Actions)
 
 ### Mercantile (closest to standard — mostly renames)
 - [ ] `git mv spec design` ; write `design/DESIGN.md` (it's the only mod without
@@ -222,8 +220,8 @@ hs_err_pid*.log
 - [ ] `mkdir art/` ; `git mv logo.png art/logo.png` ; update README img src; copy
       icon master in
 - [ ] **Delete `replay_pid391.log`**; gitignore `replay_pid*.log` and `config/`
-- [ ] Move `.plan/logs`, `*.log` files under `.plan/` into gitignore (keep the
-      three MD files committed)
+- [ ] Untrack `.plan/` entirely (now local-only per the updated standard) and
+      gitignore the whole directory
 - [ ] `CLAUDE.md` → verify it's a symlink to `AGENTS.md` (convert if a copy)
 
 ### Tribulation (reference repo — one move)
@@ -235,16 +233,15 @@ hs_err_pid*.log
 - [x] Migrate `docs/` to `site/` content + `site.yml` workflow (done — the pilot);
       delete legacy `docs/` once the Pages build is verified live; move
       `docs/curseforge.md` → `site/listing-curseforge.md`; add `listing-modrinth.md`
-- [ ] Add `.plan/` (BACKLOG.md may simply point at GitHub Issues)
-- [ ] Gitignore `.claude/scheduled_tasks.lock`
+- [ ] Gitignore `.claude/scheduled_tasks.lock` and `.plan/`
 
 ### Prosperity (greenfield — scaffold the standard from day one)
 - [ ] `mkdir design/` ; `git mv DESIGN.md SPEC.md design/`
 - [ ] `git mv art/hud-exploration art/exploration` ;
       `git mv art/hud_icon_prosperity.png art/hud-icon-16.png`
 - [ ] Initialize as a git repo with the standard `.gitignore` (currently not one)
-- [ ] Write `AGENTS.md` + `CLAUDE.md` symlink, `.ai/` (seed from Tribulation),
-      `.plan/` (BACKLOG.md = the build plan from `VISION.md` §6)
+- [ ] Write `AGENTS.md` + `CLAUDE.md` symlink, `.ai/` (skills vendored from
+      concord); track the build plan from `VISION.md` §6 in GitHub Issues
 - [ ] **Delete `.claude/blah.txt`**
 - [ ] `docs/` stays empty until the site is built; add `CNAME`
       (`prosperity.rfizzle.com`) when Pages is enabled
@@ -261,7 +258,9 @@ A repo conforms when all of these are true at the same paths:
    and nothing else prose or binary at root
 2. `design/DESIGN.md` exists (and `design/SPEC.md` for any mod specced before/while
    being built)
-3. `.ai/` with `prompts/` + `review-criteria.yml`; `.plan/` with the three MD files
+3. `.ai/` with `skills/` vendored from concord (`prompts/` / `review-criteria.yml`
+   only as deliberate whole-file overrides — concord defaults otherwise); no
+   committed `.plan/`
 4. `art/logo.png` + `art/icon-128.png` masters; README embeds `art/logo.png`
 5. `site/` contains the structured website content (`site.json`, `pages/`,
    `assets/`, `listing-*.md`) + a `site.yml` workflow calling concord's reusable
