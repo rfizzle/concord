@@ -119,6 +119,11 @@ jobs:
             fi
 
             echo "Attempt ${ATTEMPT} did not produce valid output"
+            echo "--- claude stderr (tail) ---"
+            tail -c 2000 /tmp/spec-stderr.txt || true
+            echo "--- raw result (head) ---"
+            echo "$RESULT" | head -c 2000
+            echo "---"
             if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
               echo "::error::All ${MAX_ATTEMPTS} spec attempts failed to produce valid output"
               exit 1
