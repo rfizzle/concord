@@ -5,9 +5,10 @@
 > `tribulation`, and `prosperity` as of 2026-06-11. Companion to [`VISION.md`](VISION.md).
 
 The rule of thumb: **`src/` is for the compiler, `site/` is for the website,
-everything else that's text or art has exactly one named home.** Meridian completed
-its migration on 2026-06-11 and joins Tribulation as a reference; the remaining
-work is in Mercantile and Prosperity.
+everything else that's text or art has exactly one named home.** Meridian
+(2026-06-11) and Mercantile (2026-06-12) completed their migrations and join
+Tribulation as references; the remaining work is Tribulation's last root moves
+and Prosperity.
 
 ---
 
@@ -214,15 +215,21 @@ hs_err_pid*.log
       `site/listing-curseforge.md`; `listing-modrinth.md` added; legacy `docs/`
       deleted after verifying meridian.rfizzle.com live (Pages source: Actions)
 
-### Mercantile (closest to standard — mostly renames)
-- [ ] `git mv spec design` ; write `design/DESIGN.md` (it's the only mod without
-      one — brand section can seed from `VISION.md` §2–3)
-- [ ] `mkdir art/` ; `git mv logo.png art/logo.png` ; update README img src; copy
-      icon master in
-- [ ] **Delete `replay_pid391.log`**; gitignore `replay_pid*.log` and `config/`
-- [ ] Untrack `.plan/` entirely (now local-only per the updated standard) and
-      gitignore the whole directory
-- [ ] `CLAUDE.md` → verify it's a symlink to `AGENTS.md` (convert if a copy)
+### Mercantile (migrated 2026-06-12)
+- [x] `spec/` → `design/` ; `design/DESIGN.md` written (brand seeded from
+      `VISION.md` §2–3 + the live site palette). Bonus: `SPEC.md`/`REVIEW.md`
+      were gitignored before — they are now actually tracked
+- [x] `mkdir art/` ; `git mv logo.png art/logo.png` ; README img src updated;
+      `icon-128.png` master added (derived from the 1024px docs icon)
+- [x] **Delete `replay_pid391.log`**; standard `.gitignore` adopted
+- [x] `.plan/` was already untracked; now gitignored as a whole directory
+- [x] `CLAUDE.md` verified as a symlink to `AGENTS.md`; `.ai/` prompt/criteria
+      overrides dropped (they were the ancestors of the concord defaults)
+- [x] CI workflows replaced with thin stubs calling the concord reusables;
+      `test.yml` dropped (covered by `mod-ci.yml`)
+- [x] Migrate `docs/` to `site/` content + `site.yml`; listings moved to
+      `site/listing-*.md`; legacy `docs/` stays until mercantile.rfizzle.com
+      is verified live on the Actions Pages source, then is removed
 
 ### Tribulation (reference repo — one move)
 - [ ] `mkdir design/` ; `git mv docs/design/DESIGN.md design/DESIGN.md` ;
