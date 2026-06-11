@@ -34,6 +34,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`members.json`](members.json) | The member registry — drives every site's cross-mod footer and the propagate workflow |
 | [`.github/workflows/`](.github/workflows) | Reusable CI for all members: `mod-ci`, `mod-release`, `mod-build-artifact`, `claude-review`, `claude-spec`, `claude-mention`, `build-site` — mod repos carry only thin trigger stubs |
 | [`.ai/`](.ai) | Suite-default Claude prompts (`code-reviewer`, `spec-writer`) and `review-criteria.yml` — generic, mod identity comes from each repo's AGENTS.md. Resolution: explicit `prompt-file`/`criteria-file` workflow input → repo-local `.ai/` file (whole-file override) → these defaults |
+| [`.ai/skills/`](.ai/skills) | Canonical `mc-*` domain skills for all member repos. Mod repos keep vendored copies (so Claude Code, Jules, and bare clones all work) and refresh them with `make sync-skills` — edit skills HERE, never in a mod repo |
 
 ### The CI contract
 
@@ -45,6 +46,26 @@ unit tests + jar), `jacocoTestReport` (XML at
 `CODECOV_TOKEN` (optional), `CLAUDE_CODE_OAUTH_TOKEN` (for the Claude workflows).
 Each mod repo's stubs declare only triggers, concurrency, and permissions — the
 stub bodies are documented at the top of each reusable workflow.
+
+### Syncing skills
+
+Skills are edited in this repo and vendored into each mod repo. The standard
+Makefile target (copy into new member repos):
+
+```make
+CONCORD_DIR ?= ../concord
+
+sync-skills:
+	@test -d $(CONCORD_DIR)/.ai/skills || { echo "concord checkout not found at $(CONCORD_DIR) (set CONCORD_DIR=...)"; exit 1; }
+	rsync -a --delete $(CONCORD_DIR)/.ai/skills/ .ai/skills/
+	@git -C $(CONCORD_DIR) rev-parse HEAD > .ai/skills/.concord-rev
+	@echo "synced .ai/skills from concord @ $$(git -C $(CONCORD_DIR) rev-parse --short HEAD)"
+```
+
+`.ai/skills/` in a mod repo is wholly owned by the sync (`--delete` propagates
+removals); `.concord-rev` records provenance. A repo needing a repo-local
+skill puts it outside the synced directory and wires `.claude/skills`
+accordingly.
 
 ## How mod repos reference Concord
 

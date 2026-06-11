@@ -26,9 +26,9 @@ Meridian and Prosperity.
 │
 ├── .ai/                       # AI working area (committed)
 │   ├── README.md              #   what lives here and why
-│   ├── prompts/               #   reusable role prompts + one-shot handoffs
-│   ├── skills/                #   repo-specific skills
-│   └── review-criteria.yml    #   automated review rubric
+│   ├── skills/                #   vendored from concord — refresh via `make sync-skills`
+│   ├── skills/.concord-rev    #   provenance: concord SHA of the last sync
+│   └── prompts/, review-criteria.yml  # OPTIONAL overrides of the concord defaults
 │
 ├── .claude/                   # Claude Code local state (mostly gitignored)
 │   ├── skills/                #   committed if repo-specific
@@ -97,12 +97,13 @@ conventions (Mojang mappings, `<Mod>.id()` helper, conventional commits) →
 development lifecycle.
 
 ### `.ai/` — AI working area
-Committed. Reusable prompts (`prompts/code-reviewer.md`, `prompts/spec-writer.md`),
-repo skills, and `review-criteria.yml`. One-shot handoff briefs (like
-`suite-vision-handoff.md`) belong in `design/handoffs/` once they're about *this
-mod's* design, or in `.ai/prompts/` if they're reusable roles — the test is
-"would a second run produce a different artifact?" Reusable → `.ai/prompts/`,
-one-shot → `design/handoffs/`.
+Committed. `skills/` is **vendored from the concord repo** — edit skills in
+concord, refresh with `make sync-skills` (the directory is wholly owned by the
+sync; `.concord-rev` records the source SHA). CI prompts and review criteria
+default to concord's `.ai/`; a repo-local `prompts/*.md` or
+`review-criteria.yml` here is a whole-file override (see the resolution order
+in concord's README). One-shot handoff briefs belong in `design/handoffs/`;
+reusable role prompts belong in concord.
 
 ### `.plan/` — planning
 Three files, fixed names: `BACKLOG.md` (prioritized, feeds from `VISION.md`
