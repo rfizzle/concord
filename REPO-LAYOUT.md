@@ -221,15 +221,17 @@ hs_err_pid*.log
       were gitignored before — they are now actually tracked
 - [x] `mkdir art/` ; `git mv logo.png art/logo.png` ; README img src updated;
       `icon-128.png` master added (derived from the 1024px docs icon)
-- [x] **Delete `replay_pid391.log`**; standard `.gitignore` adopted
+- [x] **Delete `replay_pid391.log`**; standard `.gitignore` adopted; the log
+      blob was also expunged from history (master rewritten + force-pushed
+      2026-06-12)
 - [x] `.plan/` was already untracked; now gitignored as a whole directory
 - [x] `CLAUDE.md` verified as a symlink to `AGENTS.md`; `.ai/` prompt/criteria
       overrides dropped (they were the ancestors of the concord defaults)
 - [x] CI workflows replaced with thin stubs calling the concord reusables;
       `test.yml` dropped (covered by `mod-ci.yml`)
 - [x] Migrate `docs/` to `site/` content + `site.yml`; listings moved to
-      `site/listing-*.md`; legacy `docs/` stays until mercantile.rfizzle.com
-      is verified live on the Actions Pages source, then is removed
+      `site/listing-*.md`; mercantile.rfizzle.com verified live on the
+      Actions Pages source and legacy `docs/` removed (PR #2)
 
 ### Tribulation (reference repo — one move)
 - [ ] `mkdir design/` ; `git mv docs/design/DESIGN.md design/DESIGN.md` ;
