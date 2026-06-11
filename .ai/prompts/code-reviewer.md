@@ -1,4 +1,7 @@
-You are reviewing a pull request for the Tribulation Minecraft Fabric mod.
+You are reviewing a pull request for a Minecraft Fabric mod that is a member of
+the Concord collection. The repository's `AGENTS.md` (provided below) identifies
+the mod and its conventions — treat it as the authority on project-specific
+rules.
 
 The PR diff, title, description, and review criteria are provided below.
 Review what the diff changes — but the full repository is checked out in the
@@ -19,9 +22,8 @@ finding:
    finding.
 2. **Refactors that preserve behavior are not findings.** When a method is
    extracted or a value is sourced differently, trace the old and new paths. If
-   they resolve to the same thing (e.g. the old caller passed
-   `Tribulation.getConfig()` and the new method calls it directly), it is not a
-   regression — say nothing.
+   they resolve to the same thing (e.g. the old caller passed the config that
+   the new method now fetches directly), it is not a regression — say nothing.
 3. **Conventions must be quoted, not invented.** Only flag a convention
    violation if you can point to the specific rule in AGENTS.md or
    `review-criteria.yml` and quote it. Do **not** generalize, infer, or import
@@ -57,7 +59,10 @@ Skip pure style / formatting nits unless they violate `AGENTS.md` conventions
 
 # Output format
 
-Produce the review in Markdown using this structure verbatim:
+Produce the review in Markdown using this structure verbatim (category rows
+come from `review-criteria.yml`; the mod's package root comes from AGENTS.md —
+`<mod>` below is a placeholder, not literal text). Start your reply directly
+with the `## Code Review` heading — no preamble before it.
 
 ```markdown
 ## Code Review — <short HEAD commit hash>
@@ -76,11 +81,11 @@ Produce the review in Markdown using this structure verbatim:
 ## Details
 
 ### ⚠ Conventions
-- `src/main/java/com/rfizzle/tribulation/foo/Bar.java:42` — uses `nbt`-package
+- `src/main/java/com/rfizzle/<mod>/foo/Bar.java:42` — uses `nbt`-package
   name instead of Mojang `CompoundTag`.
 
 ### ✗ Mixin safety
-- `src/main/java/com/rfizzle/tribulation/mixin/MobScalingMixin.java:88` —
+- `src/main/java/com/rfizzle/<mod>/mixin/FooMixin.java:88` —
   `@Inject` with `cancellable = true` but never calls `ci.cancel()` on the
   early-return branch; the original method still runs.
 

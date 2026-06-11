@@ -1,8 +1,13 @@
 # Concord — reusable Claude code review for member mods.
 #
-# Posts a structured review comment on non-draft PRs. The prompt and
-# scoring criteria come from the calling repo's .ai/ directory when
-# present, falling back to the suite defaults in this repo's .ai/.
+# Posts a structured review comment on non-draft PRs.
+#
+# Prompt/criteria resolution order (first match wins):
+#   1. explicit `prompt-file` / `criteria-file` workflow inputs (paths in
+#      the calling repo) — set these in the stub to use custom locations
+#   2. the calling repo's .ai/prompts/code-reviewer.md / .ai/review-criteria.yml
+#      (whole-file override; delete them to fall back to the suite defaults)
+#   3. the suite defaults in this repo's .ai/
 # AGENTS.md always comes from the calling repo. Caller stub:
 #
 #   name: Claude Code Review
@@ -24,6 +29,14 @@ name: Claude Code Review
 on:
   workflow_call:
     inputs:
+      prompt-file:
+        description: "path (in the calling repo) to a custom reviewer prompt; empty = auto-resolve"
+        type: string
+        default: ""
+      criteria-file:
+        description: "path (in the calling repo) to custom review criteria; empty = auto-resolve"
+        type: string
+        default: ""
       max-budget-usd:
         type: string
         default: "3.00"
@@ -56,11 +69,24 @@ jobs:
 
       - name: Build review prompt
         run: |
-          # Repo-local prompt/criteria win; concord defaults otherwise.
-          PROMPT_FILE=.ai/prompts/code-reviewer.md
-          [ -f "$PROMPT_FILE" ] || PROMPT_FILE=.concord/.ai/prompts/code-reviewer.md
-          CRITERIA_FILE=.ai/review-criteria.yml
-          [ -f "$CRITERIA_FILE" ] || CRITERIA_FILE=.concord/.ai/review-criteria.yml
+          # Resolution: explicit input > repo-local .ai/ file > concord default.
+          # An explicit input that points at a missing file is a config error.
+          if [ -n "${{ inputs.prompt-file }}" ]; then
+            PROMPT_FILE="${{ inputs.prompt-file }}"
+            [ -f "$PROMPT_FILE" ] || { echo "::error::prompt-file '$PROMPT_FILE' not found"; exit 1; }
+          else
+            PROMPT_FILE=.ai/prompts/code-reviewer.md
+            [ -f "$PROMPT_FILE" ] || PROMPT_FILE=.concord/.ai/prompts/code-reviewer.md
+          fi
+          if [ -n "${{ inputs.criteria-file }}" ]; then
+            CRITERIA_FILE="${{ inputs.criteria-file }}"
+            [ -f "$CRITERIA_FILE" ] || { echo "::error::criteria-file '$CRITERIA_FILE' not found"; exit 1; }
+          else
+            CRITERIA_FILE=.ai/review-criteria.yml
+            [ -f "$CRITERIA_FILE" ] || CRITERIA_FILE=.concord/.ai/review-criteria.yml
+          fi
+          echo "Using prompt: $PROMPT_FILE"
+          echo "Using criteria: $CRITERIA_FILE"
 
           DIFF="$(gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }})"
           PR_TITLE="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json title --jq .title)"

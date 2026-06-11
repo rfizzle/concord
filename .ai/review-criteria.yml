@@ -1,8 +1,12 @@
-# Code review criteria for Tribulation.
+# Concord default code-review criteria for member mods.
 #
-# Edit this file to change what the reviewer scores. Categories are scored on a
-# 3-level scale (pass / warn / fail → rendered as ✓ / ⚠ / ✗) and are
-# informational only — none block merge.
+# Resolution order in CI: explicit `criteria-file` workflow input → the
+# repo's own .ai/review-criteria.yml → this file. Copy this file into a mod
+# repo's .ai/ (whole-file override) to add domain-specific criteria — e.g.
+# a hot-path performance note for the mod's busiest handler.
+#
+# Categories are scored on a 3-level scale (pass / warn / fail → rendered as
+# ✓ / ⚠ / ✗) and are informational only — none block merge.
 #
 # Each category may declare `applies_when` to scope it to specific diffs;
 # omitting it means the category always applies.
@@ -17,17 +21,15 @@ categories:
       Does the PR implement what the linked issue spec describes?
       Acceptance criteria covered? Anything out-of-scope sneaking in?
     look_at:
-      - linked issue body (the spec posted by claude-spec workflow)
+      - linked issue body (the spec posted by the claude-spec workflow)
 
   - id: conventions
     name: Project conventions
     description: |
-      Mojang mappings (not Yarn). Mod ID via Tribulation.id(). Correct source
-      set (main / client / gametest). Commit messages follow Conventional
-      Commits with a topical scope naming the feature area
-      (feat(scaling): …, fix(abilities): …, ci(review): …); historical
-      commits use a variety of scopes — new commits should use a topical
-      scope naming the feature area.
+      Mojang mappings (not Yarn). ResourceLocations via the mod's id()
+      helper, never hand-built with an inlined mod id. Correct source set
+      (main / client / gametest). Commit messages follow Conventional
+      Commits with a topical scope naming the feature area (per AGENTS.md).
     look_at:
       - AGENTS.md
 
@@ -44,7 +46,7 @@ categories:
       (ConcurrentMap, volatile, Atomic, synchronized where appropriate).
       No client-only types referenced from main source set.
     look_at:
-      - .ai/skills/mc-shared-state/SKILL.md
+      - .ai/skills/mc-shared-state/SKILL.md (if present)
 
   - id: mixin_safety
     name: Mixin safety
@@ -53,10 +55,10 @@ categories:
       choice. CallbackInfo / CallbackInfoReturnable return handling.
       Access widener scope minimized.
     look_at:
-      - .ai/skills/mc-mixin-craft/SKILL.md
+      - .ai/skills/mc-mixin-craft/SKILL.md (if present)
     applies_when: |
-      PR touches *Mixin.java, src/main/resources/tribulation.mixins.json,
-      or a *.accesswidener file.
+      PR touches *Mixin.java, a *.mixins.json file, or a *.accesswidener
+      file.
 
   - id: test_coverage
     name: Test coverage
@@ -66,23 +68,23 @@ categories:
       gametests for anything needing a live world. No mocking of Fabric APIs
       that should be exercised in a gametest.
     look_at:
-      - .ai/skills/mc-mod-testing/SKILL.md
-      - .ai/skills/mc-testing-mock/SKILL.md
+      - .ai/skills/mc-mod-testing/SKILL.md (if present)
+      - .ai/skills/mc-testing-mock/SKILL.md (if present)
 
   - id: performance
     name: Performance (20Hz tick budget)
     description: |
       Per-tick allocations in hot paths. O(n²) loops over entity lists.
       Unbounded caches. Synchronous I/O on the server thread. New mixins
-      on hot vanilla methods are flagged for scrutiny. Scaling formula hot
-      paths (mob spawn handler runs on every hostile spawn — flag per-spawn
-      allocations).
+      on hot vanilla methods are flagged for scrutiny.
 
   - id: compat
     name: Compat risk
     description: |
       Changes that could break optional integrations (Mod Menu, Cloth Config,
-      Jade/WTHIT, EMI/REI/JEI). Any new public API used by compat classes.
+      Jade/WTHIT, EMI/REI/JEI) or sibling Concord mods consuming this mod's
+      public api package. Any new public API used by compat classes.
     applies_when: |
-      PR touches com.rfizzle.tribulation.compat.*, public APIs that compat
-      classes import, or fabric.mod.json depends/recommends entries.
+      PR touches a compat.* package, the mod's public api package, public
+      APIs that compat classes import, or fabric.mod.json depends/recommends
+      entries.

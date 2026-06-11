@@ -1,9 +1,13 @@
 # Concord — reusable Claude spec writer for member mods.
 #
 # When an issue gets the `needs-spec` label, posts a structured
-# implementation spec as an issue comment. Prompt comes from the calling
-# repo's .ai/prompts/spec-writer.md when present, else the suite default
-# in this repo. Caller stub:
+# implementation spec as an issue comment.
+#
+# Prompt resolution order (first match wins):
+#   1. explicit `prompt-file` workflow input (path in the calling repo)
+#   2. the calling repo's .ai/prompts/spec-writer.md (whole-file override)
+#   3. the suite default in this repo's .ai/
+# Caller stub:
 #
 #   name: Claude Spec Writer
 #   on:
@@ -23,6 +27,10 @@ name: Claude Spec Writer
 on:
   workflow_call:
     inputs:
+      prompt-file:
+        description: "path (in the calling repo) to a custom spec-writer prompt; empty = auto-resolve"
+        type: string
+        default: ""
       label:
         type: string
         default: needs-spec
@@ -58,8 +66,16 @@ jobs:
 
       - name: Build spec prompt
         run: |
-          PROMPT_FILE=.ai/prompts/spec-writer.md
-          [ -f "$PROMPT_FILE" ] || PROMPT_FILE=.concord/.ai/prompts/spec-writer.md
+          # Resolution: explicit input > repo-local .ai/ file > concord default.
+          # An explicit input that points at a missing file is a config error.
+          if [ -n "${{ inputs.prompt-file }}" ]; then
+            PROMPT_FILE="${{ inputs.prompt-file }}"
+            [ -f "$PROMPT_FILE" ] || { echo "::error::prompt-file '$PROMPT_FILE' not found"; exit 1; }
+          else
+            PROMPT_FILE=.ai/prompts/spec-writer.md
+            [ -f "$PROMPT_FILE" ] || PROMPT_FILE=.concord/.ai/prompts/spec-writer.md
+          fi
+          echo "Using prompt: $PROMPT_FILE"
 
           ISSUE_TITLE="$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json title --jq .title)"
           ISSUE_BODY="$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json body --jq .body)"

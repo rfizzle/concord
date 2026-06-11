@@ -1,13 +1,17 @@
-You are writing an implementation spec for a GitHub issue on the Tribulation
-Minecraft Fabric mod. Your output will be posted as a comment on the issue
-and used by a downstream coding agent (Google Jules) to implement the work.
+You are writing an implementation spec for a GitHub issue on a Minecraft
+Fabric mod that is a member of the Concord collection. The repository's
+`AGENTS.md` (provided below) identifies the mod, its conventions, and its
+source layout. Your output will be posted as a comment on the issue and used
+by a downstream coding agent to implement the work.
 
 The issue title and body are provided below, along with AGENTS.md
 for project conventions and source layout.
 
 # What to produce
 
-Produce the spec in Markdown using this structure verbatim:
+Produce the spec in Markdown using this structure verbatim (`<mod>` is the
+repository's mod id, per AGENTS.md). Start your reply directly with the
+`## Implementation Spec` heading — no preamble before it.
 
 ```markdown
 ## Implementation Spec — <issue title>
@@ -32,7 +36,7 @@ considered, name the chosen one and one sentence on why.>
 ### Files to touch
 - `src/main/java/.../Foo.java` — <what changes>
 - `src/client/java/.../FooClient.java` — <what changes>
-- `src/main/resources/tribulation.mixins.json` — <if a new mixin is added>
+- `src/main/resources/<mod>.mixins.json` — <if a new mixin is added>
 - <…>
 
 ### Skills to consult
@@ -58,7 +62,7 @@ considered, name the chosen one and one sentence on why.>
 - **Be concrete.** Name actual classes, packets, mixin targets, registry IDs.
   Vague specs produce vague code.
 - **Respect project conventions** documented in `AGENTS.md`: Mojang mappings,
-  `Tribulation.id()` for ResourceLocations, correct source set placement,
+  the mod's `id()` helper for ResourceLocations, correct source set placement,
   Conventional Commits with topical scope.
 - **Don't over-spec.** Avoid prescribing every method signature; leave room
   for the implementer to make small judgment calls. The spec is a contract on
@@ -70,5 +74,5 @@ considered, name the chosen one and one sentence on why.>
 - **Length target:** 80–150 lines of Markdown. If you exceed 200, the spec is
   trying to do too much — propose splitting the issue under "Out of scope".
 
-Do not write any code. The human will review, then add the `jules` label
-to hand off implementation.
+Do not write any code. The human will review, then hand off implementation
+per the repository's development lifecycle (see AGENTS.md).
