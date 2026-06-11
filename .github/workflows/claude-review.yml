@@ -89,6 +89,23 @@ jobs:
           echo "Using criteria: $CRITERIA_FILE"
 
           DIFF="$(gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }})"
+
+          # Cap the inlined diff so one huge file (a deleted log, generated
+          # assets) can't blow the model's context window — "Prompt is too
+          # long" fails the call before a single turn. The reviewer has the
+          # full checkout and git history; tell it what was cut so it can
+          # read the rest itself.
+          MAX_DIFF_BYTES=400000
+          DIFF_BYTES=${#DIFF}
+          if [ "$DIFF_BYTES" -gt "$MAX_DIFF_BYTES" ]; then
+            echo "Diff is ${DIFF_BYTES} bytes; truncating inlined copy to ${MAX_DIFF_BYTES}"
+            DIFF="$(printf '%s' "$DIFF" | head -c "$MAX_DIFF_BYTES")
+
+          [INLINED DIFF TRUNCATED at ${MAX_DIFF_BYTES} of ${DIFF_BYTES} bytes.
+          The working directory contains the full PR checkout with history;
+          run 'git diff origin/${{ github.event.pull_request.base.ref }}...HEAD --stat'
+          for the full file list and diff any remaining file directly.]"
+          fi
           PR_TITLE="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json title --jq .title)"
           PR_BODY="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json body --jq .body)"
 
