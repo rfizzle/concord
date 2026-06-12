@@ -167,9 +167,12 @@ Rules for coexistence when multiple mods are installed:
 - **Logos:** the established formula is strong and must be the spec — **pixel-art,
   dark stone brickwork frame, one central glowing motif object, mod name in blocky pixel
   type below**. Meridian: arch + compass rose. Tribulation: hourglass + heart/skulls.
-  Prosperity: chalice + key. Mercantile currently has only an icon — it needs a full
-  logo in this formula (proposal: a stone market arch framing a bell above a stack of
-  emeralds).
+  Prosperity: chalice + key. Mercantile shipped its own full logo — a pixel-art
+  market stall with hanging scales inside a circular emerald-rimmed medallion on
+  green brickwork (`mercantile/art/logo.png`, described in its `design/DESIGN.md`).
+  It predates this formula and is **ratified as-is** (2026-06-12); the earlier
+  bell-over-emeralds arch proposal is retired. The stone-frame formula remains
+  the spec for new logos.
 - **Icons:** two sizes per mod, both pixel art — a 128×128 mod icon (`fabric.mod.json` /
   store listings) and a 16×16 HUD/UI glyph. Existing 16×16 glyphs: Tribulation skull,
   Prosperity chest; Mercantile needs one (bell or emerald), Meridian has none and needs
@@ -268,6 +271,12 @@ matching CurseForge listing cross-links.
   Tribulation and scales loot by its difficulty tier — never required")
 - Required deps: Fabric API (+ CCA for Prosperity) only. Everything else under optional.
 - Badges: MC 1.21.1 · Fabric · MIT, consistent README header across repos.
+- **Slugs:** the bare mod names are taken by unrelated projects on both stores, so
+  the suite convention is `<mod>-<domain>-overhaul` — live on CurseForge as
+  `meridian-enchanting-overhaul` (1546092) and `tribulation-difficulty-overhaul`
+  (1546072); Modrinth submissions pending review; Mercantile/Prosperity
+  registrations pending. READMEs and sites link a store only once its listing is
+  publicly live (GitHub Releases is always listed and is the canonical source).
 
 ---
 
@@ -547,7 +556,8 @@ Ordered; each step's dependency noted.
    [`docs/tokens.css`](docs/tokens.css).* Finish the Tribulation site punch list;
    propagate the template;
    add the cross-mod footer to all four; build the collection landing page; create the
-   Modrinth Collection; Mercantile full logo + surface tint.
+   Modrinth Collection; Mercantile surface tint (its full logo shipped and is
+   ratified, §3.2).
    *Dependency: none on code — start anytime; footer links want all four sites
    template-consistent first.*
 6. **MP-fairness pass (after parity).** Tribulation shared-progression mode, Mercantile
