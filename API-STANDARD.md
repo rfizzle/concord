@@ -17,8 +17,14 @@ Each mod publishes exactly one stable surface: **`com.rfizzle.<mod>.api`**.
 
 - Everything inside `api` is stable and documented; everything outside it is internal
   and may change without notice in any release.
-- `api` classes are annotated `@ApiStatus.Stable`. Internal classes that tooling might
-  surface should carry `@ApiStatus.Internal`.
+- `api` classes carry a stability marker. **Erratum 2026-06-12:** this standard
+  originally prescribed `@ApiStatus.Stable`, which does not exist —
+  `org.jetbrains.annotations.ApiStatus` has no `Stable` member in any published
+  version. The convention is instead: each mod declares a local marker annotation
+  **`com.rfizzle.<mod>.api.Stable`** (an empty `@Documented` annotation in the api
+  package — convention over dependency, per the suite's no-shared-jar rule) and
+  applies it to every api class. Internal classes that tooling might surface still
+  carry the real `org.jetbrains` `@ApiStatus.Internal`.
 - Entity/player data attachments, mixin interfaces, and manager classes are **not** API
   even when technically public — if a sibling needs the data, the owning mod adds an
   accessor to its `api` package.
@@ -110,7 +116,7 @@ this standard from its first commit.
 A mod conforms to API Standard v1 when:
 
 - [ ] All externally consumable surface lives in `com.rfizzle.<mod>.api`, annotated
-      `@ApiStatus.Stable`
+      with the mod's local `@Stable` marker (see §2 erratum)
 - [ ] No `api` method mutates mod state outside the provider/callback pattern
 - [ ] All provider/callback invocations are wrapped in host-side error isolation
 - [ ] The mod's own sibling integrations use `modCompileOnly` + `isModLoaded` guards in
