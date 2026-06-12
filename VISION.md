@@ -275,9 +275,12 @@ matching CurseForge listing cross-links.
   the suite convention is `<mod>-<domain>-overhaul` — live on CurseForge as
   `meridian-enchanting-overhaul` (1546092) and `tribulation-difficulty-overhaul`
   (1546072); CurseForge registrations for Mercantile/Prosperity pending.
-  Modrinth submissions are in review under project IDs Mercantile `Bnp3Drhe`,
-  Meridian `qywREjYt`, Tribulation `8KuQhMGI` — once approved, link as
-  `modrinth.com/mod/<id>` and badge with `img.shields.io/modrinth/dt/<id>`.
+  Modrinth projects exist as drafts under the same slug convention —
+  `mercantile-villager-overhaul` (`Bnp3Drhe`), `meridian-enchanting-overhaul`
+  (`qywREjYt`), `tribulation-difficulty-overhaul` (`8KuQhMGI`) — awaiting
+  submission and review (the Meridian draft still needs its 128×128 icon
+  uploaded, `meridian/art/icon-128.png`). Once public, link as
+  `modrinth.com/mod/<slug>` and badge with `img.shields.io/modrinth/dt/<id>`.
   READMEs and sites link a store only once its listing is publicly live
   (GitHub Releases is always listed and is the canonical source).
 
