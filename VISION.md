@@ -274,9 +274,12 @@ matching CurseForge listing cross-links.
 - **Slugs:** the bare mod names are taken by unrelated projects on both stores, so
   the suite convention is `<mod>-<domain>-overhaul` — live on CurseForge as
   `meridian-enchanting-overhaul` (1546092) and `tribulation-difficulty-overhaul`
-  (1546072); Modrinth submissions pending review; Mercantile/Prosperity
-  registrations pending. READMEs and sites link a store only once its listing is
-  publicly live (GitHub Releases is always listed and is the canonical source).
+  (1546072); CurseForge registrations for Mercantile/Prosperity pending.
+  Modrinth submissions are in review under project IDs Mercantile `Bnp3Drhe`,
+  Meridian `qywREjYt`, Tribulation `8KuQhMGI` — once approved, link as
+  `modrinth.com/mod/<id>` and badge with `img.shields.io/modrinth/dt/<id>`.
+  READMEs and sites link a store only once its listing is publicly live
+  (GitHub Releases is always listed and is the canonical source).
 
 ---
 
