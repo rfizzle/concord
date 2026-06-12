@@ -1,11 +1,25 @@
-# Concord — template propagation.
+# Concord — template & file propagation.
 #
-# When the shared site template (or the member registry) changes, dispatch a
-# rebuild to every member repo so all sites pick up the change within minutes.
+# Two propagation mechanisms, one workflow:
+#
+#   1. Site rebuilds — when the shared site template (or the member registry)
+#      changes, dispatch a `concord-template-updated` event to every member
+#      repo so all sites pick up the change within minutes. Nothing is
+#      committed to the member repos; their site workflows rebuild against
+#      concord@master.
+#
+#   2. File sync — files under propagate/ are concord-owned payloads copied
+#      verbatim into every member repo at the same relative path (e.g.
+#      propagate/.github/ISSUE_TEMPLATE/bug.yml lands at
+#      .github/ISSUE_TEMPLATE/bug.yml). Only wholly concord-owned files belong
+#      here — never files repos customize (.gitignore, Makefile stay
+#      copy-paste-by-hand per REPO-LAYOUT.md). The sync is idempotent: a file
+#      is committed to a member repo's default branch only when its content
+#      differs.
 #
 # Requires a repo secret CONCORD_DISPATCH_TOKEN: a fine-grained PAT with
-# "Contents: read" + "Actions: write" (or classic `repo` scope) on the member
-# repos. Without the secret this workflow fails gracefully per-repo.
+# "Contents: read & write" + "Actions: write" (or classic `repo` scope) on the
+# member repos. Without the secret this workflow fails gracefully per-repo.
 name: Propagate template to member sites
 
 on:
@@ -14,6 +28,7 @@ on:
     paths:
       - "template/**"
       - "members.json"
+      - "propagate/**"
   workflow_dispatch:
 
 jobs:
@@ -41,3 +56,35 @@ jobs:
           gh api "repos/rfizzle/${{ matrix.repo }}/dispatches" \
             -f event_type=concord-template-updated \
             || echo "::warning::could not dispatch to rfizzle/${{ matrix.repo }} (repo missing site workflow or token lacks access)"
+
+  sync-files:
+    needs: members
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJson(needs.members.outputs.repos) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync propagate/ files to rfizzle/${{ matrix.repo }}
+        env:
+          GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
+          REPO: rfizzle/${{ matrix.repo }}
+        run: |
+          find propagate -type f | sort | while read -r src; do
+            dest="${src#propagate/}"
+            local_b64=$(base64 -w0 "$src")
+            remote=$(gh api "repos/$REPO/contents/$dest" 2>/dev/null || true)
+            remote_sha=$(printf '%s' "$remote" | jq -r '.sha // empty')
+            remote_b64=$(printf '%s' "$remote" | jq -r '.content // empty' | tr -d '\n')
+            if [ "$remote_b64" = "$local_b64" ]; then
+              echo "up to date: $dest"
+              continue
+            fi
+            gh api -X PUT "repos/$REPO/contents/$dest" \
+              -f message="chore: sync $dest from concord@${GITHUB_SHA::7}" \
+              -f content="$local_b64" \
+              ${remote_sha:+-f sha="$remote_sha"} \
+              && echo "synced: $dest" \
+              || echo "::warning::could not sync $dest to $REPO (token lacks Contents: write?)"
+          done
