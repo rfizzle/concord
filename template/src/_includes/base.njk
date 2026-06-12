@@ -94,30 +94,43 @@
 {{ content | safe }}
   </main>
 
-  <!-- ===== FOOTER (generated from members.json) ===== -->
+  <!-- ===== FOOTER (cross-mod strip generated from members.json) ===== -->
   <footer class="border-t border-elevated bg-card/40 mt-auto">
     <div class="max-w-6xl mx-auto px-4 py-10">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+
+      <!-- Cross-mod Concord strip (VISION §4 / DESIGN-SYSTEM §6). Neutral
+           tokens only — sibling accents never leave their own sites; the one
+           accent here is this site's own, marking the current mod. 16×16
+           member glyphs are deferred until every member ships one. -->
+      <div class="mb-8 pb-8 border-b border-elevated">
+        <p class="text-sm text-ash mb-4">
+          Part of <a href="{{ members.collection.url }}" rel="noopener noreferrer" target="_blank" class="font-semibold text-bone hover:underline">{{ members.collection.name }}</a> — a Vanilla+ collection
+        </p>
+        <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4 text-sm">
+          {%- for m in members.members %}
+          <li>
+            {%- if currentMember and m.id == currentMember.id %}
+            <span class="font-semibold text-accent">{{ m.name }}</span>
+            <span class="block text-xs text-ash mt-0.5">{{ m.tagline }}</span>
+            {%- elif m.status == "released" %}
+            <a href="{{ m.url }}" rel="noopener noreferrer" target="_blank" class="font-semibold text-bone hover:underline">{{ m.name }}</a>
+            <span class="block text-xs text-ash mt-0.5">{{ m.tagline }}</span>
+            {%- else %}
+            <span class="font-semibold text-smoke">{{ m.name }} <span class="font-normal text-xs">(coming soon)</span></span>
+            <span class="block text-xs text-smoke mt-0.5">{{ m.tagline }}</span>
+            {%- endif %}
+          </li>
+          {%- endfor %}
+        </ul>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
           <div class="flex items-center gap-3 mb-3">
             <img src="/logo.png" alt="" class="pixelated w-6 h-6" aria-hidden="true">
             <span class="text-base font-semibold heading-gradient">{{ site.name }}</span>
           </div>
           <p class="text-sm text-ash leading-relaxed">{{ site.description }}</p>
-        </div>
-
-        <div>
-          <h4 class="text-sm font-semibold text-bone mb-3 uppercase tracking-wider">{{ members.collection.name }}</h4>
-          <ul class="space-y-2 text-sm">
-            {%- for m in members.members %}
-            {%- if m.id == site.id %}
-            <li><span class="text-accent">{{ m.name }} <span class="text-smoke text-xs">(you are here)</span></span></li>
-            {%- else %}
-            <li><a href="{{ m.url }}" rel="noopener noreferrer" target="_blank" class="text-ash hover:text-accent transition">{{ m.name }}</a></li>
-            {%- endif %}
-            {%- endfor %}
-          </ul>
-          <p class="text-xs text-smoke mt-3">{{ members.collection.tagline }}</p>
         </div>
 
         <div>
