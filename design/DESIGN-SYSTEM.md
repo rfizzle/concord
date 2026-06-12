@@ -60,7 +60,7 @@ Deepslate Grey `#5B6470` / Copper Orange `#E07A3F`.
 
 ## 4. Logos
 
-The formula, applied by every member:
+The formula, the spec for every **new** member logo:
 
 > **Pixel art. Dark stone brickwork frame. One central glowing motif object. Mod name
 > in blocky pixel type below.**
@@ -70,7 +70,7 @@ The formula, applied by every member:
 | Meridian | Stone arch + eight-pointed compass rose, crescent moon |
 | Tribulation | Hourglass, heart above, skulls below |
 | Prosperity | Overflowing chalice, ornate key crowning the frame |
-| Mercantile | *(needed)* — proposed: market arch framing a bell above stacked emeralds |
+| Mercantile | Market stall with hanging scales, in a circular emerald-rimmed medallion on green brickwork — shipped logo, **ratified as-is 2026-06-12** (predates the formula; the earlier bell-over-emeralds proposal is retired — see [`../VISION.md`](../VISION.md) §3.2) |
 
 One motif object per mod; the motif may recur in headers and flavor art but never in
 another mod's assets.
