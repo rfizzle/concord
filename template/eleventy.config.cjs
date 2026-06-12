@@ -33,8 +33,21 @@ module.exports = function (eleventyConfig) {
     return pg;
   });
 
+  // The member entry for the site being built, matched on url/domain (falling
+  // back to id) so a mod repo can't drift out of the registry silently. Null
+  // for a site that isn't a registered member (e.g. a preview of a new mod).
+  const host = (u) => String(u || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
+  const currentMember =
+    members.members.find((m) => host(m.url) === host(site.url) || host(m.url) === host(site.domain)) ||
+    members.members.find((m) => m.id === site.id) ||
+    null;
+
   eleventyConfig.addGlobalData("site", site);
   eleventyConfig.addGlobalData("members", members);
+  eleventyConfig.addGlobalData("currentMember", currentMember);
+  // Single-sourced tagline (DESIGN-SYSTEM §6): members.json is the one place
+  // a member's tagline lives; templates and page content read it from here.
+  eleventyConfig.addGlobalData("tagline", currentMember ? currentMember.tagline : "");
   eleventyConfig.addGlobalData("pages", pages);
 
   // Mod assets (logo.png, icon.png, og-image.png, …) land at the site root so

@@ -9,25 +9,49 @@
       "id": "meridian",
       "name": "Meridian",
       "tagline": "Chart your enchantments.",
-      "url": "https://meridian.rfizzle.com"
+      "url": "https://meridian.rfizzle.com",
+      "status": "released",
+      "conformance": {
+        "apiStandard": null,
+        "hudStandard": null,
+        "layoutMigrated": true
+      }
     },
     {
       "id": "mercantile",
       "name": "Mercantile",
       "tagline": "Every villager remembers.",
-      "url": "https://mercantile.rfizzle.com"
+      "url": "https://mercantile.rfizzle.com",
+      "status": "released",
+      "conformance": {
+        "apiStandard": null,
+        "hudStandard": null,
+        "layoutMigrated": true
+      }
     },
     {
       "id": "tribulation",
       "name": "Tribulation",
       "tagline": "Survive what comes next.",
-      "url": "https://tribulation.rfizzle.com"
+      "url": "https://tribulation.rfizzle.com",
+      "status": "released",
+      "conformance": {
+        "apiStandard": null,
+        "hudStandard": null,
+        "layoutMigrated": false
+      }
     },
     {
       "id": "prosperity",
       "name": "Prosperity",
       "tagline": "Every chest, yours to discover.",
-      "url": "https://prosperity.rfizzle.com"
+      "url": "https://prosperity.rfizzle.com",
+      "status": "in-design",
+      "conformance": {
+        "apiStandard": null,
+        "hudStandard": null,
+        "layoutMigrated": false
+      }
     }
   ]
 }
