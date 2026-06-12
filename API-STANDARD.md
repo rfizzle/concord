@@ -98,7 +98,9 @@ only. Nothing in an `api` package may let a client influence server state.
 ## 9. Required surface per member
 
 The per-mod API work items (what each mod must add to enable the integration matrix)
-are tracked in [`VISION.md`](VISION.md) §5.3 and each mod's `.plan/BACKLOG.md`. In
+are tracked in [`VISION.md`](VISION.md) §5.3 and each mod's GitHub Issues (the
+`needs-spec` → `jules` lifecycle; `.plan/` is local-only scratch per
+[`REPO-LAYOUT.md`](REPO-LAYOUT.md) and is never the durable tracker). In
 summary: Tribulation adds boss/threshold/HUD accessors; Meridian and Mercantile promote
 their de-facto surfaces into formal `api` packages with events; Prosperity builds to
 this standard from its first commit.
