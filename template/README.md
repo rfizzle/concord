@@ -97,6 +97,9 @@ Card item: `{ id?, icon?, title, titleTone?: "accent"\|"bone", badge?, html: [st
 
 ## Generated for free
 
-Header nav + mobile menu (from `nav`), the Concord footer (from
-`../members.json` — adding a member there updates every site's footer on the
-next rebuild), canonical/OG/Twitter meta, `sitemap.xml`, `robots.txt`, `CNAME`.
+Header nav + mobile menu (from `nav`), the cross-mod Concord footer strip
+(from `../members.json` — names, taglines, status; adding a member there
+updates every site's footer on the next rebuild), the home page `<title>`
+(`Name — Tagline`, single-sourced from `members.json`; other pages keep their
+own `metaTitle`; the tagline is also exposed to templates as `tagline`),
+canonical/OG/Twitter meta, `sitemap.xml`, `robots.txt`, `CNAME`.

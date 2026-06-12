@@ -45,6 +45,9 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addGlobalData("site", site);
   eleventyConfig.addGlobalData("members", members);
   eleventyConfig.addGlobalData("currentMember", currentMember);
+  // Single-sourced tagline (DESIGN-SYSTEM §6): members.json is the one place
+  // a member's tagline lives; templates and page content read it from here.
+  eleventyConfig.addGlobalData("tagline", currentMember ? currentMember.tagline : "");
   eleventyConfig.addGlobalData("pages", pages);
 
   // Mod assets (logo.png, icon.png, og-image.png, …) land at the site root so

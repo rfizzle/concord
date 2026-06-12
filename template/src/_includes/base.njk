@@ -3,7 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {#- Home title is `Name — Tagline` (DESIGN-SYSTEM §6), single-sourced from
+      members.json; other pages keep their own metaTitle pattern. -#}
+  {%- if pg.type == "home" and currentMember %}
+  <title>{{ currentMember.name }} — {{ currentMember.tagline }}</title>
+  {%- else %}
   <title>{{ pg.metaTitle }}</title>
+  {%- endif %}
   <meta name="description" content="{{ pg.metaDescription }}">
   {%- if site.metaKeywords %}
   <meta name="keywords" content="{{ site.metaKeywords }}">
