@@ -39,7 +39,9 @@ on:
         default: "2.00"
       max-turns:
         type: string
-        default: "6"
+        # Headroom for the alignment step: list .ai/skills/, read the triggered
+        # SKILL.md files, then write the spec.
+        default: "12"
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true
@@ -141,6 +143,8 @@ jobs:
           # Trim any model preamble before the spec header.
           sed -n '/^## Implementation Spec/,$p' /tmp/spec-comment.md > /tmp/spec-trimmed.md
           [ -s /tmp/spec-trimmed.md ] || cp /tmp/spec-comment.md /tmp/spec-trimmed.md
+          # Hand off to the coding agent: a trailing @jules mention triggers pickup.
+          printf '\n\n---\n\n@jules — implement to the spec above.\n' >> /tmp/spec-trimmed.md
           # GitHub's API occasionally returns transient 401s — retry with backoff.
           for i in 1 2 3; do
             if gh issue comment ${{ github.event.issue.number }} \
