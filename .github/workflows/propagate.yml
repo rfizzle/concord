@@ -8,25 +8,23 @@
 #      committed to the member repos; their site workflows rebuild against
 #      concord@master.
 #
-#   2. File sync — files under propagate/ are concord-owned payloads copied
-#      verbatim into every member repo at the same relative path (e.g.
-#      propagate/.github/ISSUE_TEMPLATE/bug.yml lands at
-#      .github/ISSUE_TEMPLATE/bug.yml). Only wholly concord-owned files belong
-#      here — never files repos customize (.gitignore, Makefile stay
-#      copy-paste-by-hand per REPO-LAYOUT.md). The sync is idempotent: a file
-#      is committed to a member repo's default branch only when its content
-#      differs.
+#   2. File sync (PR-based) — concord-owned payloads are proposed to every member
+#      via a single `concord-sync` pull request, because member default branches
+#      are protected and reject direct commits. Each run stages onto the branch:
+#        - everything under propagate/ (e.g. .github/ISSUE_TEMPLATE/*.yml) at the
+#          same relative path — only wholly concord-owned files belong here; files
+#          repos customize (.gitignore, Makefile) stay copy-paste-by-hand;
+#        - AGENTS.md's <!-- concord:NAME:start/end --> regions, rewritten from
+#          AGENTS-COMMON.md (repo-owned prose outside the markers is untouched; a
+#          member with no markers yet is left alone — seeding is the opt-in).
+#      The branch is reset to the default head each run, so the PR diff is exactly
+#      concord's desired changes; with nothing to change, no PR is opened. Logic
+#      lives in scripts/open-sync-pr.sh.
 #
-#   3. AGENTS.md region sync — the invariant regions of each member's AGENTS.md
-#      (defined in AGENTS-COMMON.md, delimited by <!-- concord:NAME:start/end -->)
-#      are rewritten in place from concord's canonical copy. Only the marked
-#      regions change; repo-owned prose outside them is untouched, and a member
-#      with no markers yet is skipped (seeding markers once is the opt-in).
-#      Idempotent: committed only when a region's content actually differs.
-#
-# Requires a repo secret CONCORD_DISPATCH_TOKEN: a fine-grained PAT with
-# "Contents: read & write" + "Actions: write" (or classic `repo` scope) on the
-# member repos. Without the secret this workflow fails gracefully per-repo.
+# Requires a repo secret CONCORD_DISPATCH_TOKEN: a fine-grained PAT scoped to all
+# member repos with "Contents: read & write", "Pull requests: read & write", and
+# "Actions: write" (or classic `repo` scope). Without it the workflow fails
+# gracefully per-repo.
 name: Propagate template to member sites
 
 on:
@@ -38,6 +36,7 @@ on:
       - "propagate/**"
       - "AGENTS-COMMON.md"
       - "scripts/inject-agents-regions.py"
+      - "scripts/open-sync-pr.sh"
   workflow_dispatch:
 
 jobs:
@@ -66,7 +65,7 @@ jobs:
             -f event_type=concord-template-updated \
             || echo "::warning::could not dispatch to rfizzle/${{ matrix.repo }} (repo missing site workflow or token lacks access)"
 
-  sync-files:
+  sync-pr:
     needs: members
     runs-on: ubuntu-latest
     strategy:
@@ -75,60 +74,7 @@ jobs:
         repo: ${{ fromJson(needs.members.outputs.repos) }}
     steps:
       - uses: actions/checkout@v4
-      - name: Sync propagate/ files to rfizzle/${{ matrix.repo }}
+      - name: Propose concord-owned files to rfizzle/${{ matrix.repo }}
         env:
           GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
-          REPO: rfizzle/${{ matrix.repo }}
-        run: |
-          find propagate -type f | sort | while read -r src; do
-            dest="${src#propagate/}"
-            local_b64=$(base64 -w0 "$src")
-            remote=$(gh api "repos/$REPO/contents/$dest" 2>/dev/null || true)
-            remote_sha=$(printf '%s' "$remote" | jq -r '.sha // empty')
-            remote_b64=$(printf '%s' "$remote" | jq -r '.content // empty' | tr -d '\n')
-            if [ "$remote_b64" = "$local_b64" ]; then
-              echo "up to date: $dest"
-              continue
-            fi
-            gh api -X PUT "repos/$REPO/contents/$dest" \
-              -f message="chore: sync $dest from concord@${GITHUB_SHA::7}" \
-              -f content="$local_b64" \
-              ${remote_sha:+-f sha="$remote_sha"} \
-              && echo "synced: $dest" \
-              || echo "::warning::could not sync $dest to $REPO (token lacks Contents: write?)"
-          done
-
-  sync-agents-regions:
-    needs: members
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        repo: ${{ fromJson(needs.members.outputs.repos) }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Sync AGENTS.md regions to rfizzle/${{ matrix.repo }}
-        env:
-          GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
-          REPO: rfizzle/${{ matrix.repo }}
-        run: |
-          remote=$(gh api "repos/$REPO/contents/AGENTS.md" 2>/dev/null || true)
-          remote_sha=$(printf '%s' "$remote" | jq -r '.sha // empty')
-          if [ -z "$remote_sha" ]; then
-            echo "::warning::no AGENTS.md in $REPO — skipping"
-            exit 0
-          fi
-          printf '%s' "$remote" | jq -r '.content' | base64 -d > member-agents.md
-          python3 scripts/inject-agents-regions.py AGENTS-COMMON.md member-agents.md
-          new_b64=$(base64 -w0 member-agents.md)
-          remote_b64=$(printf '%s' "$remote" | jq -r '.content' | tr -d '\n')
-          if [ "$new_b64" = "$remote_b64" ]; then
-            echo "up to date: $REPO AGENTS.md"
-            exit 0
-          fi
-          gh api -X PUT "repos/$REPO/contents/AGENTS.md" \
-            -f message="chore: sync AGENTS.md shared regions from concord@${GITHUB_SHA::7}" \
-            -f content="$new_b64" \
-            -f sha="$remote_sha" \
-            && echo "synced: $REPO AGENTS.md" \
-            || echo "::warning::could not sync AGENTS.md to $REPO (token lacks Contents: write?)"
+        run: bash scripts/open-sync-pr.sh "rfizzle/${{ matrix.repo }}"
