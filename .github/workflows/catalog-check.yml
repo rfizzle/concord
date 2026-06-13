@@ -1,0 +1,23 @@
+# Fail a PR that changes the skills but forgets to regenerate the catalog.
+# The old per-repo skill table drifted because nothing enforced it; this guards
+# the single source so .ai/skills/CATALOG.md is always in step with the skills.
+name: Skills catalog freshness
+
+on:
+  pull_request:
+    paths:
+      - ".ai/skills/**"
+      - "scripts/gen-skills-catalog.py"
+  push:
+    branches: [master]
+    paths:
+      - ".ai/skills/**"
+      - "scripts/gen-skills-catalog.py"
+
+jobs:
+  catalog-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify CATALOG.md is up to date
+        run: python3 scripts/gen-skills-catalog.py --check

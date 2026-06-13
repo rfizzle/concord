@@ -94,10 +94,22 @@ Tribulation skeleton: project overview → build commands → source layout →
 conventions (Mojang mappings, `<Mod>.id()` helper, conventional commits) →
 development lifecycle.
 
+The invariant tail sections — **Working with domain skills**, **Development
+lifecycle**, and **Version scheme** — are Concord-owned: each is wrapped in
+`<!-- concord:NAME:start -->` / `<!-- concord:NAME:end -->` markers and kept in
+sync from concord's [`AGENTS-COMMON.md`](AGENTS-COMMON.md) by `propagate.yml`.
+Don't hand-edit between those markers; edit the canonical copy in concord. The
+skills section is just a pointer to the generated `.ai/skills/CATALOG.md` — the
+old per-repo "when you're touching X, read Y" table is retired (it drifted: it
+hard-coded a skill count). A new repo opts in by pasting the marker pairs around
+those three sections once.
+
 ### `.ai/` — AI working area
 Committed. `skills/` is **vendored from the concord repo** — edit skills in
 concord, refresh with `make sync-skills` (the directory is wholly owned by the
-sync; `.concord-rev` records the source SHA). CI prompts and review criteria
+sync; `.concord-rev` records the source SHA). The generated `skills/CATALOG.md`
+(concord's `make catalog`) indexes the skills and rides the same sync, so
+`AGENTS.md` points at it rather than repeating the list. CI prompts and review criteria
 default to concord's `.ai/`; a repo-local `prompts/*.md` or
 `review-criteria.yml` here is a whole-file override (see the resolution order
 in concord's README). One-shot handoff briefs belong in `design/handoffs/`;

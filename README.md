@@ -28,6 +28,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`API-STANDARD.md`](API-STANDARD.md) | The public-API + event pattern every mod's `api` package follows |
 | [`HUD-STANDARD.md`](HUD-STANDARD.md) | The shared HUD element spec: slots, stacking, visibility, coordination |
 | [`REPO-LAYOUT.md`](REPO-LAYOUT.md) | The common repository layout all mod repos mirror |
+| [`AGENTS-COMMON.md`](AGENTS-COMMON.md) | The Concord-owned regions shared by every member's `AGENTS.md` (skills pointer, dev lifecycle, version scheme) — synced into place by `propagate.yml`; edit shared agent guidance HERE |
 | [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) | Color tokens, per-mod palettes, typography, logo formula |
 | [`docs/tokens.css`](docs/tokens.css) | The shared design tokens as consumable CSS — mod sites hot-link this |
 | [`template/`](template/README.md) | The shared website template — mod repos hold only `site/` content; CI builds and deploys via [`build-site.yml`](.github/workflows/build-site.yml) |
@@ -35,7 +36,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`propagate/`](propagate) | Canonical concord-owned files (currently the `.github/ISSUE_TEMPLATE/` forms) synced verbatim into every member repo by `propagate.yml` — edit HERE, never in a mod repo |
 | [`.github/workflows/`](.github/workflows) | Reusable CI for all members: `mod-ci`, `mod-release`, `mod-build-artifact`, `claude-review`, `claude-spec`, `claude-mention`, `build-site` — mod repos carry only thin trigger stubs |
 | [`.ai/`](.ai) | Suite-default Claude prompts (`code-reviewer`, `spec-writer`) and `review-criteria.yml` — generic, mod identity comes from each repo's AGENTS.md. Resolution: explicit `prompt-file`/`criteria-file` workflow input → repo-local `.ai/` file (whole-file override) → these defaults |
-| [`.ai/skills/`](.ai/skills) | Canonical `mc-*` domain skills for all member repos. Mod repos keep vendored copies (so Claude Code, Jules, and bare clones all work) and refresh them with `make sync-skills` — edit skills HERE, never in a mod repo |
+| [`.ai/skills/`](.ai/skills) | Canonical `mc-*` domain skills for all member repos. Mod repos keep vendored copies (so Claude Code, Jules, and bare clones all work) and refresh them with `make sync-skills` — edit skills HERE, never in a mod repo. The generated [`CATALOG.md`](.ai/skills/CATALOG.md) (`make catalog`) indexes them — one row per skill, summary + when to read it — and rides the same sync, so each `AGENTS.md` points at it instead of carrying its own table |
 
 ### The CI contract
 
@@ -88,6 +89,19 @@ in the local workspace. Normative for this repo:
 Conformance is **declared, not copied**: a mod states the standard version it conforms
 to in one line and bumps it deliberately. The only mechanically *consumed* artifact is
 `docs/tokens.css`, which the mod websites hot-link once the Concord site is on Pages.
+
+### Shared AGENTS.md regions
+
+Most of a member's `AGENTS.md` is mod-specific (overview, mod id, entrypoints, assets,
+compat, commit-scope examples) and stays repo-owned. But a few sections are byte-identical
+across every mod — the domain-skills pointer, the development lifecycle, and the version
+scheme. Those live once in [`AGENTS-COMMON.md`](AGENTS-COMMON.md), delimited by
+`<!-- concord:NAME:start -->` / `<!-- concord:NAME:end -->` markers, and `propagate.yml`
+rewrites the matching marked region in each member's `AGENTS.md` whenever the canonical
+copy changes. Only the marked regions move; prose outside them is never touched, and a repo
+that hasn't seeded the markers is skipped. To opt a repo in, paste the marker pairs around
+the corresponding sections once (or run `make agents-sync` locally against a sibling
+checkout). Edit shared agent guidance in `AGENTS-COMMON.md`, never in a mod repo.
 
 What stays deliberately duplicated in each mod: the ~80 lines of HUD offset logic and
 the `api` package code itself. Concord rejects a shared runtime library on principle
