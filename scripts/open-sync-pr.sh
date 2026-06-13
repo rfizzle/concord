@@ -34,12 +34,18 @@ while IFS= read -r src; do
   DESIRED["${src#propagate/}"]="$src"
 done < <(find propagate -type f | sort)
 
-# 2) AGENTS.md regions — fetch the member's file, rewrite only the marked regions
-agents=$(gh api "repos/$REPO/contents/AGENTS.md?ref=$DEFAULT" 2>/dev/null || true)
-if [ -n "$agents" ]; then
+# 2) AGENTS.md regions — fetch the member's file, rewrite only the marked regions.
+# Use the exit status (not the body) to detect existence: a 404 still prints its
+# JSON to stdout, so guard on a real base64 file response, and only stage the
+# result if inject succeeds — never let a decode/parse failure ship garbage.
+if agents=$(gh api "repos/$REPO/contents/AGENTS.md?ref=$DEFAULT" 2>/dev/null) \
+   && [ "$(printf '%s' "$agents" | jq -r '.encoding // empty')" = "base64" ]; then
   printf '%s' "$agents" | jq -r '.content' | base64 -d > "$work/AGENTS.md"
-  python3 scripts/inject-agents-regions.py AGENTS-COMMON.md "$work/AGENTS.md" || true
-  DESIRED["AGENTS.md"]="$work/AGENTS.md"
+  if python3 scripts/inject-agents-regions.py AGENTS-COMMON.md "$work/AGENTS.md"; then
+    DESIRED["AGENTS.md"]="$work/AGENTS.md"
+  else
+    echo "  warn: skipping AGENTS.md for $REPO (inject failed)" >&2
+  fi
 fi
 
 # Which desired files actually differ from the default branch?
