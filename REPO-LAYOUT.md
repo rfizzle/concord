@@ -47,6 +47,7 @@ and Prosperity.
 │   ├── logo.png               #   full logo master (stone-frame formula)
 │   ├── icon-128.png           #   mod icon master (fabric.mod.json / store listings)
 │   ├── hud-icon-16.png        #   HUD/UI glyph master (omit if mod has no HUD slot)
+│   ├── hud-icon-16.glyph      #   .glyph source beside each pipeline master (re-renderable)
 │   └── exploration/           #   style explorations, rejected variants, gen prompts
 │
 ├── site/                      # website CONTENT (built by the shared Concord template)
@@ -135,6 +136,10 @@ records what was *intended* and why.
 Source-of-truth images and working files. `docs/` and `src/main/resources/assets/`
 hold *derived, optimized copies*; when art changes, the master changes first.
 Generation prompts (Gemini/PixelLab) live next to their outputs in `exploration/`.
+Every pipeline-generated master ships its **`.glyph` source beside it**, same basename
+(`hud-icon-16.png` ↔ `hud-icon-16.glyph`), so the texture is re-renderable for minor edits
+— the spec is the source of truth (concord `design/DESIGN-SYSTEM.md` §8, the `mc-textures`
+skill). Custom textures are encouraged, not a fallback to vanilla sprites.
 
 ### `site/` — website content, not website output
 The mod repo holds only structured content: `site.json` (identity, nav order, the

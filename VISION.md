@@ -23,8 +23,13 @@ loot — and finish it. Not replace it: finish it. Meridian makes enchanting a s
 build toward instead of a slot machine. Mercantile makes villagers people you have a
 history with instead of lever-operated vending machines. Tribulation makes the world push
 back the longer and farther you survive. Prosperity makes every chest worth opening for
-every player who finds it. Each mod reuses vanilla mobs, items, and visual language; none
-adds a dimension, a skill tree, or a wiki dependency.
+every player who finds it. Each mod completes a vanilla *system* rather than bolting on a
+new one — none adds a dimension, a skill tree, or a wiki dependency. The discipline is
+mechanical, not cosmetic: a mod is free to ship its own high-quality textures wherever
+they raise the bar (icons, HUD glyphs, items, blocks — even retextured vanilla mobs), as
+long as the result still reads as Minecraft. The standing pathway for that art is the
+design system's texture pipeline (see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md)
+§8); custom textures are encouraged, not merely tolerated.
 
 The unified promise the four make *together* — that none makes alone — is a **complete
 risk/reward loop layered over unmodified vanilla survival**. Tribulation supplies the
@@ -178,6 +183,12 @@ Rules for coexistence when multiple mods are installed:
   Prosperity chest; Mercantile needs one (bell or emerald), Meridian has none and needs
   none (no HUD slot, §3.3) but should keep a 16×16 for Jade/recipe-viewer contexts
   (open book).
+- **Textures more broadly:** custom item/block/UI textures are first-class, not a
+  fallback to "use the vanilla sprite." The house style is pixel art in the design-system
+  palette, produced through the texture pipeline (the `/glyph` command over
+  `scripts/glyph.py`, plus the `mc-textures` skill), and every committed texture ships its
+  `.glyph` source beside it so it stays re-renderable. Full spec in
+  [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
 
 ### 3.3 Shared HUD Standard (collection-wide spec, elevated from Tribulation)
 

@@ -39,6 +39,9 @@ New slots are assigned here, in this file, by appending — never by renumbering
   Prosperity's specced 1.5s tier-crossing lerp).
 - Glyph tinting by state is encouraged (Tribulation: white → yellow → orange → red →
   dark crimson across tiers); it is the element's only decoration.
+- The glyph is a **purpose-built 16×16 texture**, not a downscaled vanilla item render
+  (those go muddy at 16px). Author it through the texture pipeline and commit its `.glyph`
+  source beside the master — see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
 
 ## 4. Positioning
 
@@ -92,6 +95,8 @@ and all four visibility rules.
 - [ ] Slot registered in §2 of this file (or explicit no-slot decision recorded in the
       mod's `design/DESIGN.md`)
 - [ ] 20px element + 2px gap; visual spec per §3; vanilla font only
+- [ ] Glyph is a purpose-built texture with its `.glyph` source committed beside the
+      master (DESIGN-SYSTEM §8) — not a downscaled vanilla item
 - [ ] Anchor + pixel-offset config; default top-left, 4px
 - [ ] All four visibility rules implemented
 - [ ] `isHudVisible()` / `getHudHeight()` exposed in the `api` package,
