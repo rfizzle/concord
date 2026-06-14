@@ -10,11 +10,18 @@ actually see.
 
 Multiple frames produce an **animated** texture: a vertical sprite strip
 (16 wide × 16·N tall) plus a `<name>.png.mcmeta` sidecar, exactly as vanilla
-Minecraft animated textures are packaged. The preview becomes a horizontal
-filmstrip so you can eyeball every frame at once.
+Minecraft animated textures are packaged. Two previews come with it: a
+horizontal filmstrip (every frame side-by-side, to eyeball each one) and an
+`@Nx-anim` **animated PNG** (full RGBA, true alpha, real motion — to watch the
+loop).
 
-Zero dependencies: PNGs are encoded with the stdlib (`zlib` + manual chunks),
-so this runs anywhere Python 3 does, no `pip install` required.
+`--scale-to N` mints a true high-res master by nearest-neighbor upscale (N an
+integer multiple of the native grid), the honest way to fill the large tiers of
+a 16/32/64/128/256 size ladder from a native master — for static glyphs and
+animated strips alike.
+
+Zero dependencies: every PNG/APNG is encoded with the stdlib (`zlib` + manual
+chunks), so this runs anywhere Python 3 does, no `pip install` required.
 
 SPEC FORMAT
 -----------
@@ -286,20 +293,58 @@ def _png_chunk(tag, data):
     )
 
 
-def write_png(path, pixels, width, height):
-    """Encode an 8-bit RGBA PNG from a row-major pixel list (stdlib only)."""
+def _raw_scanlines(pixels, width, height):
+    """Filter-0 (None) scanlines for a row-major RGBA pixel list, pre-compression."""
     raw = bytearray()
     for y in range(height):
         raw.append(0)  # filter type 0 (None) for each scanline
         for x in range(width):
             raw += bytes(pixels[y * width + x])
+    return bytes(raw)
+
+
+def write_png(path, pixels, width, height):
+    """Encode an 8-bit RGBA PNG from a row-major pixel list (stdlib only)."""
     body = (
         b"\x89PNG\r\n\x1a\n"
         + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
-        + _png_chunk(b"IDAT", zlib.compress(bytes(raw), 9))
+        + _png_chunk(b"IDAT", zlib.compress(_raw_scanlines(pixels, width, height), 9))
         + _png_chunk(b"IEND", b"")
     )
     Path(path).write_bytes(body)
+
+
+def write_apng(path, frames_px, width, height, frametime):
+    """Encode an animated PNG from equal-size RGBA frames (stdlib only).
+
+    Full 8-bit RGBA with true alpha — a faithful moving preview of the sprite,
+    no palette quantization or checkerboard compositing. Each frame fully
+    replaces the canvas (dispose 0 / blend 0 SOURCE). Old viewers that don't
+    understand APNG fall back to the first frame, which is a valid PNG.
+    """
+    delay_num = max(1, frametime)
+    delay_den = 20  # Minecraft runs at 20 ticks/second
+    chunks = [
+        b"\x89PNG\r\n\x1a\n",
+        _png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)),
+        _png_chunk(b"acTL", struct.pack(">II", len(frames_px), 0)),  # 0 plays = loop forever
+    ]
+    seq = 0
+    for i, px in enumerate(frames_px):
+        # fcTL: seq, w, h, x, y, delay_num, delay_den, dispose_op, blend_op
+        chunks.append(_png_chunk(
+            b"fcTL",
+            struct.pack(">IIIIIHHBB", seq, width, height, 0, 0, delay_num, delay_den, 0, 0),
+        ))
+        seq += 1
+        data = zlib.compress(_raw_scanlines(px, width, height), 9)
+        if i == 0:
+            chunks.append(_png_chunk(b"IDAT", data))  # frame 0 is also the default image
+        else:
+            chunks.append(_png_chunk(b"fdAT", struct.pack(">I", seq) + data))
+            seq += 1
+    chunks.append(_png_chunk(b"IEND", b""))
+    Path(path).write_bytes(b"".join(chunks))
 
 
 def write_mcmeta(path, anim):
@@ -340,6 +385,12 @@ def main(argv=None):
     ap.add_argument("-o", "--out", help="output PNG path (default: SPEC with .png)")
     ap.add_argument("--preview-scale", type=int, default=16,
                     help="nearest-neighbor preview factor (default 16 → 256px for a 16px glyph)")
+    ap.add_argument("--scale-to", type=int, metavar="N",
+                    help="write a real master upscaled to N×N by nearest-neighbor "
+                         "(N must be an integer multiple of the native grid size). "
+                         "Use this to mint the high-res tiers of a size ladder from a "
+                         "native master — unlike --preview-scale this output IS the master, "
+                         "not a '@Nx' preview")
     ap.add_argument("--no-preview", action="store_true", help="skip the scaled preview PNG")
     ap.add_argument("--list-colors", action="store_true", help="print the named palette and exit")
     args = ap.parse_args(argv)
@@ -372,6 +423,32 @@ def main(argv=None):
     out.parent.mkdir(parents=True, exist_ok=True)
     nframes = len(frames_px)
 
+    # --scale-to mints a true high-res master by nearest-neighbor upscale, the
+    # honest way to fill the large tiers of a size ladder from a native master.
+    # Works for both static glyphs and animated sprite strips.
+    if args.scale_to is not None:
+        target = args.scale_to
+        if target < size or target % size != 0:
+            print(
+                f"glyph: --scale-to {target} must be a positive integer multiple "
+                f"of the native size {size} (e.g. {size*2}, {size*4}, {size*8})",
+                file=sys.stderr,
+            )
+            return 1
+        factor = target // size
+        scaled = [scale_nearest(px, size, size, factor)[0] for px in frames_px]
+        if nframes == 1:
+            write_png(out, scaled[0], target, target)
+            print(f"  wrote {out}  ({target}×{target} master, nearest-neighbor ×{factor} from {size}px)")
+        else:
+            strip_px, sw, sh = stack_vertical(scaled, target)
+            write_png(out, strip_px, sw, sh)
+            mcmeta = out.with_name(out.name + ".mcmeta")
+            write_mcmeta(mcmeta, anim)
+            print(f"  wrote {out}  ({sw}×{sh} strip master, ×{factor} from {size}px, {nframes} frames)")
+            print(f"  wrote {mcmeta}")
+        return 0
+
     if nframes == 1:
         write_png(out, frames_px[0], size, size)
         print(render_ascii(frames_px[0], size, size))
@@ -398,11 +475,20 @@ def main(argv=None):
     print(f"  wrote {mcmeta}  (frametime {ft}, interpolate {anim.get('interpolate', False)})")
 
     if not args.no_preview and args.preview_scale > 1:
+        # Filmstrip of stills — every frame side-by-side, for frame-by-frame review.
         film_px, fw, fh = make_filmstrip(frames_px, size)
         spx, psw, psh = scale_nearest(film_px, fw, fh, args.preview_scale)
         preview = out.with_name(f"{out.stem}@{args.preview_scale}x{out.suffix}")
         write_png(preview, spx, psw, psh)
         print(f"  wrote {preview}  ({psw}×{psh} filmstrip preview)")
+
+        # Animated APNG — the real motion, full alpha, for watching the loop.
+        scale = args.preview_scale
+        scaled = [scale_nearest(px, size, size, scale)[0] for px in frames_px]
+        ssz = size * scale
+        anim_preview = out.with_name(f"{out.stem}@{scale}x-anim{out.suffix}")
+        write_apng(anim_preview, scaled, ssz, ssz, ft)
+        print(f"  wrote {anim_preview}  ({ssz}×{ssz} animated preview, {nframes} frames @ {ft} ticks)")
 
     return 0
 
