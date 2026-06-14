@@ -139,7 +139,7 @@ Generation prompts (Gemini/PixelLab) live next to their outputs in `exploration/
 Every pipeline-generated master ships its **`.glyph` source beside it**, same basename
 (`hud-icon-16.png` ↔ `hud-icon-16.glyph`), so the texture is re-renderable for minor edits
 — the spec is the source of truth (concord `design/DESIGN-SYSTEM.md` §8, the `mc-textures`
-skill). Custom textures are encouraged, not a fallback to vanilla sprites.
+skill). Custom, high-quality textures are encouraged.
 
 ### `site/` — website content, not website output
 The mod repo holds only structured content: `site.json` (identity, nav order, the

@@ -71,8 +71,8 @@ The formula, the spec for every **new** member logo:
 |---|---|
 | Meridian | Stone arch + eight-pointed compass rose, crescent moon |
 | Tribulation | Hourglass, heart above, skulls below |
-| Prosperity | Overflowing chalice, ornate key crowning the frame |
-| Mercantile | Market stall with hanging scales, in a circular emerald-rimmed medallion on green brickwork — shipped logo, **ratified as-is 2026-06-12** (predates the formula; the earlier bell-over-emeralds proposal is retired — see [`../VISION.md`](../VISION.md) §3.2) |
+| Prosperity | Overflowing treasure chest, ornate key crowning the frame |
+| Mercantile | Market stall with hanging scales, in a circular emerald-rimmed medallion on green brickwork |
 
 One motif object per mod; the motif may recur in headers and flavor art but never in
 another mod's assets.
@@ -109,10 +109,9 @@ unchanged; and the logo follows the §4 formula with a single new motif object.
 ## 8. Textures
 
 **The stance.** Custom, high-quality textures are encouraged across the suite — icons,
-HUD glyphs, item and block sprites, and retextured vanilla mobs where they earn it. The
-old "reach for the vanilla sprite first" reflex is retired: we have a clean pathway to
-good art (below), so the bar is *quality and coherence*, not vanilla purity. The only
-hard cosmetic rule is the vanilla **font** (§3); textures are open.
+HUD glyphs, item and block sprites, and retextured vanilla mobs where they earn it. There
+is a clean pathway to good art (below), so the bar is *quality and coherence*, not vanilla
+purity. The only hard cosmetic rule is the vanilla **font** (§3); textures are open.
 
 **What "good" means here.** A texture is conformant when it:
 
@@ -142,5 +141,4 @@ the mod's `art/` — `art/hud-icon-16.png` ↔ `art/hud-icon-16.glyph`; a size l
 one `.glyph` per natively-authored tier. The `.glyph` is the source of truth: minor edits
 re-render in seconds instead of hand-patching pixels, and the master is reproducible from
 the spec alone (the renderer lives in concord's `scripts/`; check it out as a sibling to
-re-render a member's art). PNG masters that predate the pipeline are grandfathered, but
-any *re-touch* recreates them through a `.glyph`.
+re-render a member's art). Re-touching a texture recreates it through its `.glyph`.

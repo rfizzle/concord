@@ -1,8 +1,7 @@
 # Concord HUD Standard — v1
 
 > Normative for every Concord member mod that renders a persistent HUD element.
-> Elevated from Tribulation's DESIGN.md "Shared HUD Element Standard"; Tribulation's
-> `TribulationHudOverlay` is the reference implementation.
+> Tribulation's `TribulationHudOverlay` is the reference implementation.
 
 ## 1. Whether a mod gets a slot at all
 

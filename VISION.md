@@ -6,10 +6,11 @@
 > (`../meridian`, `../mercantile`, `../tribulation`, `../prosperity`); originating
 > handoff archived at `design/handoffs/suite-vision-handoff.md`.
 >
-> §3.3 and §5.1 have been promoted to normative standards: see
-> [`HUD-STANDARD.md`](HUD-STANDARD.md), [`API-STANDARD.md`](API-STANDARD.md), and
-> [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) + [`docs/tokens.css`](docs/tokens.css).
-> Where this document and a standard disagree, the standard wins.
+> The normative standards are [`HUD-STANDARD.md`](HUD-STANDARD.md),
+> [`API-STANDARD.md`](API-STANDARD.md), and
+> [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) + [`docs/tokens.css`](docs/tokens.css);
+> §3.3 and §5.1 below summarize them. Where this document and a standard disagree, the
+> standard wins.
 
 ---
 
@@ -27,9 +28,8 @@ every player who finds it. Each mod completes a vanilla *system* rather than bol
 new one — none adds a dimension, a skill tree, or a wiki dependency. The discipline is
 mechanical, not cosmetic: a mod is free to ship its own high-quality textures wherever
 they raise the bar (icons, HUD glyphs, items, blocks — even retextured vanilla mobs), as
-long as the result still reads as Minecraft. The standing pathway for that art is the
-design system's texture pipeline (see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md)
-§8); custom textures are encouraged, not merely tolerated.
+long as the result still reads as Minecraft. The pathway for that art is the design
+system's texture pipeline (see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8).
 
 The unified promise the four make *together* — that none makes alone — is a **complete
 risk/reward loop layered over unmodified vanilla survival**. Tribulation supplies the
@@ -90,14 +90,12 @@ Apothecary, Tempest, Stratum).
 
 The four taglines follow a codified pattern: **a short declarative or imperative
 sentence about the player's relationship to the system** — "Survive what comes
-next," "Chart your enchantments," "Every chest, yours to discover." Mercantile's
-former line ("Turn villagers from disposable trade machines into mobile, named,
-persistent characters") was a feature description, not a tagline; it was replaced
-with **"Every villager remembers."** (adopted 2026-06-12) — it states the
-reputation thesis in three words and mirrors Prosperity's "Every chest…"
-construction, giving the Trade and Discover mods a deliberate echo. The
-descriptive copy survives as the supporting line under the tagline (README
-masthead, site hero) and in SEO metadata.
+next," "Chart your enchantments," "Every chest, yours to discover," "Every
+villager remembers." Mercantile's line states the reputation thesis in three
+words and mirrors Prosperity's "Every chest…" construction, giving the Trade and
+Discover mods a deliberate echo. A feature-description line ("villager and trade
+overhaul…") serves as the supporting copy under the tagline (README masthead,
+site hero) and in SEO metadata.
 
 ### Voice & tone
 
@@ -123,7 +121,7 @@ Shared across all marketing, docs, and in-game text:
 ### 3.1 Color: shared tokens + per-mod signature pairs
 
 All four mods already converge on identical neutral/surface tokens — this is the design
-system's foundation, now canonicalized in this repo as
+system's foundation, canonicalized in this repo as
 [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) + [`docs/tokens.css`](docs/tokens.css)
 (hot-linked by the mod sites, never copied):
 
@@ -169,33 +167,29 @@ Rules for coexistence when multiple mods are installed:
   mod's accent gradient and the existing 4s ease-in-out brightness pulse (1.0→1.15),
   already implemented identically on the Meridian and Tribulation sites. In-game: vanilla
   Minecraft font only, ever.
-- **Logos:** the established formula is strong and must be the spec — **pixel-art,
-  dark stone brickwork frame, one central glowing motif object, mod name in blocky pixel
-  type below**. Meridian: arch + compass rose. Tribulation: hourglass + heart/skulls.
-  Prosperity: chalice + key. Mercantile shipped its own full logo — a pixel-art
-  market stall with hanging scales inside a circular emerald-rimmed medallion on
-  green brickwork (`mercantile/art/logo.png`, described in its `design/DESIGN.md`).
-  It predates this formula and is **ratified as-is** (2026-06-12); the earlier
-  bell-over-emeralds arch proposal is retired. The stone-frame formula remains
-  the spec for new logos.
+- **Logos:** the formula is the spec for new logos — **pixel-art, dark stone brickwork
+  frame, one central glowing motif object, mod name in blocky pixel type below**.
+  Meridian: arch + compass rose. Tribulation: hourglass + heart/skulls. Prosperity:
+  treasure chest + key. Mercantile: a pixel-art market stall with hanging scales inside a
+  circular emerald-rimmed medallion on green brickwork (`mercantile/art/logo.png`,
+  described in its `design/DESIGN.md`).
 - **Icons:** two sizes per mod, both pixel art — a 128×128 mod icon (`fabric.mod.json` /
   store listings) and a 16×16 HUD/UI glyph. Existing 16×16 glyphs: Tribulation skull,
   Prosperity chest; Mercantile needs one (bell or emerald), Meridian has none and needs
   none (no HUD slot, §3.3) but should keep a 16×16 for Jade/recipe-viewer contexts
   (open book).
-- **Textures more broadly:** custom item/block/UI textures are first-class, not a
-  fallback to "use the vanilla sprite." The house style is pixel art in the design-system
-  palette, produced through the texture pipeline (the `/glyph` command over
-  `scripts/glyph.py`, plus the `mc-textures` skill), and every committed texture ships its
-  `.glyph` source beside it so it stays re-renderable. Full spec in
-  [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
+- **Textures more broadly:** custom item/block/UI textures are first-class. The house
+  style is pixel art in the design-system palette, produced through the texture pipeline
+  (the `/glyph` command over `scripts/glyph.py`, plus the `mc-textures` skill), and every
+  committed texture ships its `.glyph` source beside it so it stays re-renderable. Full
+  spec in [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
 
-### 3.3 Shared HUD Standard (collection-wide spec, elevated from Tribulation)
+### 3.3 Shared HUD Standard (collection-wide spec)
 
-Tribulation's DESIGN.md already contained the right spec; it is now elevated to the
-normative collection-level document [`HUD-STANDARD.md`](HUD-STANDARD.md) in this repo
-(mod repos link to it, never copy it). The one place reality diverges from it is
-Mercantile's hardcoded offset — see below.
+The normative collection-level document is [`HUD-STANDARD.md`](HUD-STANDARD.md) in this
+repo (mod repos link to it, never copy it); Tribulation's `TribulationHudOverlay` is the
+reference implementation. The one place reality diverges from it is Mercantile's hardcoded
+offset — see below.
 
 **Visual:** semi-transparent black box (50–60% opacity, 2px rounded corners) containing a
 16×16 mod glyph, optional text label in vanilla font (white, drop shadow), optional 2px
@@ -551,15 +545,14 @@ Priorities are build phases; each phase is shippable.
 
 Ordered; each step's dependency noted.
 
-1. **API Standard v1 (now).** ~~Write the conventions doc (§5.1)~~ *Done —
-   [`API-STANDARD.md`](API-STANDARD.md).* Complete Tribulation's API additions (it's
-   the reference and is nearly done); then Meridian and Mercantile `api` packages in
-   parallel.
+1. **API Standard v1.** The conventions doc is [`API-STANDARD.md`](API-STANDARD.md).
+   Complete Tribulation's API additions (it's the reference and is nearly done); then
+   Meridian and Mercantile `api` packages in parallel.
    *Dependency: nothing — Tribulation's existing API is already stable enough for
    Prosperity to target.*
-2. **HUD Convention v1 (with step 1).** ~~Publish `HUD-STANDARD.md`~~ *Done —
-   [`HUD-STANDARD.md`](HUD-STANDARD.md).* Tribulation + Mercantile implement the
-   accessor pattern; Mercantile deletes its hardcoded offset.
+2. **HUD Convention v1 (with step 1).** The convention is [`HUD-STANDARD.md`](HUD-STANDARD.md).
+   Tribulation + Mercantile implement the accessor pattern; Mercantile deletes its
+   hardcoded offset.
    *Dependency: the api packages from step 1 (accessors live there).*
 3. **Prosperity to parity (the long pole — start immediately after 1).** Phases 1–3 of
    its roadmap. *Dependency: Tribulation tier API stable (it is; the additions in step 1
@@ -568,13 +561,11 @@ Ordered; each step's dependency noted.
    phase 3; #4/#5 ship when Mercantile's conditional trades land; #3 when Meridian's
    `EnchantmentInfo` is in its api package. Each integration gets one gametest in the
    *consumer's* repo with the provider on the gametest classpath.
-5. **Design system & website rollout (parallel track, low risk).** ~~Extract the
-   design tokens~~ *Done — [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) +
-   [`docs/tokens.css`](docs/tokens.css).* Finish the Tribulation site punch list;
-   propagate the template;
-   add the cross-mod footer to all four; build the collection landing page; create the
-   Modrinth Collection; Mercantile surface tint (its full logo shipped and is
-   ratified, §3.2).
+5. **Design system & website rollout (parallel track, low risk).** The design tokens are
+   [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) + [`docs/tokens.css`](docs/tokens.css).
+   Finish the Tribulation site punch list; propagate the template; add the cross-mod
+   footer to all four; build the collection landing page; create the Modrinth Collection;
+   Mercantile surface tint.
    *Dependency: none on code — start anytime; footer links want all four sites
    template-consistent first.*
 6. **MP-fairness pass (after parity).** Tribulation shared-progression mode, Mercantile

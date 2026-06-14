@@ -3,21 +3,20 @@ name: mc-textures
 description: What a good Concord texture looks like and how to produce one through the .glyph pixel-art pipeline — the quality bar for icons, HUD glyphs, item/block sprites, and retextured mobs. TRIGGER when creating or editing any in-game texture or UI sprite (anything under assets/<mod>/textures/, art/*.png, a HUD/Jade glyph, a mod/store icon), when authoring or editing a .glyph spec, or when deciding whether to ship custom art versus a vanilla sprite.
 ---
 
-You are making (or judging) a texture for a Concord mod. The suite's stance changed:
-**custom, high-quality textures are encouraged**, not a last resort. The reflex to "reach
-for the vanilla sprite first" is retired — we have a clean pipeline to good art, so the
-bar is *quality and coherence*, not vanilla purity. The one hard cosmetic rule that
-remains is the vanilla **font** (never a custom font in any GUI/HUD/tooltip); textures are
-open. The normative spec is **concord's `design/DESIGN-SYSTEM.md` §8** (this skill is
-vendored into member repos; that doc lives in the concord repo) — this skill is the craft
-reference behind it.
+You are making (or judging) a texture for a Concord mod. **Custom, high-quality textures
+are encouraged** across the suite — there is a clean pipeline to good art (below), so the
+bar is *quality and coherence*, not vanilla purity. The one hard cosmetic rule is the
+vanilla **font** (never a custom font in any GUI/HUD/tooltip); textures are open. The
+normative spec is **concord's `design/DESIGN-SYSTEM.md` §8** (this skill is vendored into
+member repos; that doc lives in the concord repo) — this skill is the craft reference
+behind it.
 
 ## When to ship custom art vs. a vanilla sprite
 
 Default to **custom**. Ship a vanilla sprite only when it is genuinely already the right
-image (e.g. a trade UI literally showing an emerald). The moment you're tempted to
-*downscale* a vanilla item into a 16px slot — stop: vanilla item renders go muddy at 16px.
-Author a purpose-built glyph instead.
+image (e.g. a trade UI literally showing an emerald). Never *downscale* a vanilla item
+into a 16px slot — vanilla item renders go muddy at that size; author a purpose-built
+glyph instead.
 
 ## What "good" means
 
@@ -70,8 +69,7 @@ Every committed texture master ships its `.glyph` source **beside it**, same bas
 natively-authored tier). The `.glyph` is the source of truth — minor edits re-render in
 seconds instead of hand-patching pixels, and the master is reproducible from the spec
 alone. Masters live in the mod's `art/`; `assets/` and web `docs/` hold derived copies.
-PNG masters that predate the pipeline are grandfathered, but any *re-touch* recreates them
-through a `.glyph`.
+Re-touching a texture recreates it through its `.glyph`.
 
 ## Quick checklist
 
