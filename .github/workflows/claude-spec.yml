@@ -34,14 +34,17 @@ on:
       label:
         type: string
         default: needs-spec
+      model:
+        type: string
+        default: claude-sonnet-4-6
       max-budget-usd:
         type: string
-        default: "2.00"
+        default: "5.00"
       max-turns:
         type: string
         # Headroom for the alignment step: list .ai/skills/, read the triggered
         # SKILL.md files, then write the spec.
-        default: "12"
+        default: "40"
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true
@@ -101,6 +104,24 @@ jobs:
         run: |
           ATTEMPT=0
           MAX_ATTEMPTS=3
+          # Accumulated across attempts so the reported figure is the whole
+          # job's spend, not just the winning attempt.
+          TOTAL_COST=0
+          TOTAL_TURNS=0
+
+          # Report dollar spend to the Actions run summary (and the log).
+          report_cost() {
+            echo "💲 Spec writer: \$${TOTAL_COST} over ${TOTAL_TURNS} turn(s) in ${ATTEMPT} attempt(s) on ${{ inputs.model }}"
+            if [ -n "$GITHUB_STEP_SUMMARY" ]; then
+              {
+                echo "### 💲 Spec writer cost"
+                echo ""
+                echo "| Model | Cost (USD) | Turns | Attempts |"
+                echo "|---|---|---|---|"
+                echo "| ${{ inputs.model }} | \$${TOTAL_COST} | ${TOTAL_TURNS} | ${ATTEMPT} |"
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          }
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             ATTEMPT=$((ATTEMPT + 1))
@@ -108,15 +129,22 @@ jobs:
 
             RESULT="$(~/.local/bin/claude -p \
               --output-format json \
+              --model ${{ inputs.model }} \
               --max-turns ${{ inputs.max-turns }} \
               --max-budget-usd ${{ inputs.max-budget-usd }} \
               < /tmp/spec-prompt.txt 2>/tmp/spec-stderr.txt)" || true
+
+            COST="$(echo "$RESULT" | jq -r '.total_cost_usd // 0' 2>/dev/null)" || COST=0
+            TURNS="$(echo "$RESULT" | jq -r '.num_turns // 0' 2>/dev/null)" || TURNS=0
+            TOTAL_COST="$(awk "BEGIN{printf \"%.4f\", ${TOTAL_COST:-0} + ${COST:-0}}")"
+            TOTAL_TURNS=$((TOTAL_TURNS + ${TURNS:-0}))
 
             COMMENT="$(echo "$RESULT" | jq -r '.result // empty' 2>/dev/null)" || true
 
             if [ -n "$COMMENT" ] && echo "$COMMENT" | grep -q "## Implementation Spec"; then
               echo "Spec produced successfully on attempt ${ATTEMPT}"
               echo "$COMMENT" > /tmp/spec-comment.md
+              report_cost
               break
             fi
 
@@ -127,6 +155,7 @@ jobs:
             echo "$RESULT" | head -c 2000
             echo "---"
             if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              report_cost
               echo "::error::All ${MAX_ATTEMPTS} spec attempts failed to produce valid output"
               exit 1
             fi
