@@ -11,3 +11,6 @@ scripts/examples/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# IDE
+.idea/
