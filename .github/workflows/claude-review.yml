@@ -120,6 +120,17 @@ jobs:
             --json comments \
             --jq '[.comments[] | select(.body | startswith("<!-- concord-code-review -->"))] | last | .body // ""')"
 
+          # Issue(s) this PR closes — their bodies carry the implementation spec
+          # the change was built from. closingIssuesReferences captures both
+          # closing keywords (Closes #N) and issues linked via the PR sidebar.
+          # Reviewing against the spec catches drift the PR description misses.
+          OWNER="${GITHUB_REPOSITORY%/*}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          LINKED_ISSUES="$(gh api graphql \
+            -f query='query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){closingIssuesReferences(first:10){nodes{number title body}}}}}' \
+            -F owner="$OWNER" -F repo="$REPO" -F pr=${{ github.event.pull_request.number }} \
+            --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[] | "Issue #\(.number): \(.title)\n\n\(.body)\n"' 2>/dev/null)" || LINKED_ISSUES=""
+
           PROMPT="$(cat "$PROMPT_FILE")
 
           ---
@@ -137,6 +148,12 @@ jobs:
 
           PR description:
           ${PR_BODY}
+
+          ---
+          Linked issue(s) this PR closes — the implementation spec and intent
+          the change was built from. Review the diff against this, not just the
+          PR description; flag where the implementation drifts from the spec:
+          ${LINKED_ISSUES:-(none referenced)}
 
           ---
           Previous review (if any) — do not repeat findings this push has
