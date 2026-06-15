@@ -102,6 +102,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Surface the exact prompt sent to the model — download from the run's
+      # Artifacts to confirm the issue body and AGENTS.md are present. The
+      # prompt holds no secrets (the token is passed via env).
+      - name: Upload spec prompt
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-prompt
+          path: /tmp/spec-prompt.txt
+          if-no-files-found: warn
+
       - name: Run spec writer
         run: |
           ATTEMPT=0

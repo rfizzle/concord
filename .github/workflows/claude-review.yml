@@ -131,6 +131,14 @@ jobs:
             -F owner="$OWNER" -F repo="$REPO" -F pr=${{ github.event.pull_request.number }} \
             --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[] | "Issue #\(.number): \(.title)\n\n\(.body)\n"' 2>/dev/null)" || LINKED_ISSUES=""
 
+          # Quick signal in the log: did we resolve a linked issue (whose body
+          # carries the spec), or is the reviewer running on the PR alone?
+          if [ -n "$LINKED_ISSUES" ]; then
+            echo "Linked issue(s) resolved into review context: ${#LINKED_ISSUES} chars"
+          else
+            echo "::warning::No linked issue resolved — reviewing against the PR description only. Link the source issue with 'Closes #<n>' to feed the spec."
+          fi
+
           PROMPT="$(cat "$PROMPT_FILE")
 
           ---
@@ -174,6 +182,16 @@ jobs:
           echo "$PROMPT" > /tmp/review-prompt.txt
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Surface the exact prompt sent to the model — download from the run's
+      # Artifacts to confirm the linked issue body, diff, and AGENTS.md are
+      # present. The prompt holds no secrets (the token is passed via env).
+      - name: Upload review prompt
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-prompt
+          path: /tmp/review-prompt.txt
+          if-no-files-found: warn
 
       - name: Run review
         run: |
