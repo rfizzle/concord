@@ -6,17 +6,33 @@
 # a hot-path performance note for the mod's busiest handler.
 #
 # Categories are scored on a 3-level scale (pass / warn / fail → rendered as
-# ✓ / ⚠ / ✗) and are informational only — none block merge.
+# ✓ / ⚠ / ✗) for the scorecard. Each finding also carries a severity, which is
+# the action signal:
+#
+#   must_fix — a verified bug, regression, spec violation, or safety break
+#              (correctness, thread/mixin/compat breakage, data loss). One or
+#              more sets the verdict to CHANGES_REQUESTED; these are the items
+#              the fix step addresses.
+#   optional — polish that does not affect correctness: convention nits,
+#              cleanup (unused import, copy-paste), naming, or missing coverage
+#              on trivial / dead code. Never sets CHANGES_REQUESTED; never
+#              drives the fix loop.
+#
+# Verdict = CHANGES_REQUESTED if any must_fix finding exists, else APPROVE.
+# Each category carries a `severity:` that is the *ceiling* for real findings
+# in it: a ✗ is always must_fix; a ⚠ takes the category severity only when it
+# is a genuine latent problem, otherwise it drops to optional. Nothing here
+# gates the GitHub merge button — the verdict guides the author and the fix step.
 #
 # Each category may declare `applies_when` to scope it to specific diffs;
 # omitting it means the category always applies.
 
 scoring: pass_warn_fail
-blocking: false
 
 categories:
   - id: spec_alignment
     name: Spec alignment
+    severity: must_fix
     description: |
       Does the PR implement what the linked issue spec describes?
       Acceptance criteria covered? Anything out-of-scope sneaking in?
@@ -25,6 +41,7 @@ categories:
 
   - id: conventions
     name: Project conventions
+    severity: optional
     description: |
       Mojang mappings (not Yarn). ResourceLocations via the mod's id()
       helper, never hand-built with an inlined mod id. Correct source set
@@ -35,12 +52,14 @@ categories:
 
   - id: correctness
     name: Correctness
+    severity: must_fix
     description: |
       Logic bugs, off-by-ones, null/Optional handling, edge cases, error
       paths. Are loops bounded? Are early returns correct?
 
   - id: thread_safety
     name: Thread safety
+    severity: must_fix
     description: |
       Client/server boundary crossings. Shared mutable state guarded
       (ConcurrentMap, volatile, Atomic, synchronized where appropriate).
@@ -50,6 +69,7 @@ categories:
 
   - id: mixin_safety
     name: Mixin safety
+    severity: must_fix
     description: |
       Injection point correctness. @Inject vs @Redirect vs @ModifyVariable
       choice. CallbackInfo / CallbackInfoReturnable return handling.
@@ -62,6 +82,7 @@ categories:
 
   - id: test_coverage
     name: Test coverage
+    severity: optional
     description: |
       Non-trivial logic has tests. Correct tier chosen: pure JUnit for plain
       logic, fabric-loader-junit for things needing the loader, Fabric
@@ -73,6 +94,7 @@ categories:
 
   - id: performance
     name: Performance (20Hz tick budget)
+    severity: must_fix
     description: |
       Per-tick allocations in hot paths. O(n²) loops over entity lists.
       Unbounded caches. Synchronous I/O on the server thread. New mixins
@@ -80,6 +102,7 @@ categories:
 
   - id: compat
     name: Compat risk
+    severity: must_fix
     description: |
       Changes that could break optional integrations (Mod Menu, Cloth Config,
       Jade/WTHIT, EMI/REI/JEI) or sibling Concord mods consuming this mod's

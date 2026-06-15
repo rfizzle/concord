@@ -1,6 +1,8 @@
 # Concord — reusable Claude code review for member mods.
 #
-# Posts a structured review comment on non-draft PRs.
+# Maintains a single sticky review comment on non-draft PRs: each push edits
+# the same comment in place (anchored by a hidden marker) so the PR shows only
+# the latest review, headed by the commit it reviewed.
 #
 # Prompt/criteria resolution order (first match wins):
 #   1. explicit `prompt-file` / `criteria-file` workflow inputs (paths in
@@ -109,11 +111,11 @@ jobs:
           PR_TITLE="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json title --jq .title)"
           PR_BODY="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json body --jq .body)"
 
-          # Most recent prior review by this bot, so the reviewer doesn't
-          # re-raise findings the latest push already addressed.
+          # The sticky review comment from the previous push, so the reviewer
+          # doesn't re-raise findings the latest push already addressed.
           PREV_REVIEW="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} \
             --json comments \
-            --jq '[.comments[] | select(.body | startswith("## Code Review"))] | last | .body // ""')"
+            --jq '[.comments[] | select(.body | startswith("<!-- concord-code-review -->"))] | last | .body // ""')"
 
           PROMPT="$(cat "$PROMPT_FILE")
 
@@ -196,16 +198,43 @@ jobs:
             echo "No review comment to post"
             exit 0
           fi
-          # Trim any model preamble before the "## Code Review" header so the
-          # next run's previous-review lookup (startswith) can find this one.
+          # Trim any model preamble before the "## Code Review" header.
           sed -n '/^## Code Review/,$p' /tmp/review-comment.md > /tmp/review-trimmed.md
           [ -s /tmp/review-trimmed.md ] || cp /tmp/review-comment.md /tmp/review-trimmed.md
+
+          # Hidden marker anchors the sticky comment: the body must start with
+          # it so the find-and-edit lookup (and next run's PREV_REVIEW) match.
+          MARKER="<!-- concord-code-review -->"
+          SHA="${{ github.event.pull_request.head.sha }}"
+          {
+            echo "$MARKER"
+            echo "_Reviewed at \`${SHA:0:7}\` · $(date -u '+%Y-%m-%d %H:%M UTC')_"
+            echo
+            cat /tmp/review-trimmed.md
+          } > /tmp/review-body.md
+
+          PR=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+
+          # Edit the existing sticky comment in place if one exists, else create
+          # it. --paginate applies --jq per page, so emit one id per match and
+          # take the last rather than relying on jq's `last` across pages.
+          COMMENT_ID="$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | tail -n1)"
+
           # GitHub's API occasionally returns transient 401s — retry with backoff.
           for i in 1 2 3; do
-            if gh pr comment ${{ github.event.pull_request.number }} \
-              --repo ${{ github.repository }} \
-              --body-file /tmp/review-trimmed.md; then
-              exit 0
+            if [ -n "$COMMENT_ID" ]; then
+              if gh api -X PATCH "repos/$REPO/issues/comments/$COMMENT_ID" \
+                -F body=@/tmp/review-body.md >/dev/null; then
+                echo "Updated sticky review comment $COMMENT_ID"
+                exit 0
+              fi
+            else
+              if gh pr comment "$PR" --repo "$REPO" --body-file /tmp/review-body.md; then
+                echo "Created sticky review comment"
+                exit 0
+              fi
             fi
             echo "Post attempt $i failed; retrying in $((i * 10))s"
             sleep $((i * 10))

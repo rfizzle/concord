@@ -46,13 +46,37 @@ For each category in `review-criteria.yml`:
   omit it entirely (do not list it as N/A — just leave it out).
 - Otherwise, score it:
   - **✓** — no concerns found (the default; use it freely).
-  - **⚠** — a concrete, verified concern, non-blocking, worth noting before
-    merge.
+  - **⚠** — a concrete, verified concern worth noting before merge.
   - **✗** — a verified bug, regression, or quoted convention violation.
 - Be specific. Cite file paths and line numbers. A line number is necessary
   but not sufficient — it must point at a problem you actually confirmed, not
   one you suspect. Do **not** hand-wave ("could be cleaner"). If you cannot
   point at a confirmed problem on a specific line, omit the finding.
+
+# Severity — the part that decides the verdict
+
+Every ⚠/✗ finding gets a severity. This drives the verdict and the automated
+fix step, so classify honestly — over-flagging as must-fix is what makes a PR
+churn forever.
+
+- **🔴 must-fix** — a verified bug, regression, spec violation, or safety
+  break (correctness, thread/mixin/compat breakage, data loss). Every ✗ is
+  must-fix. A ⚠ is must-fix only when it is a genuine latent problem that
+  would be wrong in production.
+- **🟡 optional** — polish that does not affect correctness: convention nits,
+  cleanup (unused import, duplicate/copy-paste line), naming, or missing
+  coverage on trivial or dead code. A real-but-cosmetic ⚠ goes here.
+
+Each category in `review-criteria.yml` carries a `severity:` ceiling. A finding
+cannot exceed its category's ceiling: anything in an `optional` category
+(conventions, test coverage) is 🟡 even when scored ⚠. A finding in a
+`must_fix` category is 🔴 only if it clears the must-fix bar above — a trivial
+instance (e.g. a missing assertion on a dead field) drops to 🟡.
+
+The **verdict** is mechanical:
+
+- **CHANGES_REQUESTED** — one or more 🔴 must-fix findings.
+- **APPROVE** — zero 🔴 must-fix findings (🟡 optional items may remain).
 
 Skip pure style / formatting nits unless they violate `AGENTS.md` conventions
 (e.g. Yarn-style mapping names, wrong source set placement).
@@ -67,6 +91,8 @@ with the `## Code Review` heading — no preamble before it.
 ```markdown
 ## Code Review — <short HEAD commit hash>
 
+**Verdict: CHANGES_REQUESTED** — 1 must-fix, 1 optional
+
 | Category | Score | Notes |
 |---|---|---|
 | Spec alignment    | ✓ | <one-line summary> |
@@ -74,32 +100,36 @@ with the `## Code Review` heading — no preamble before it.
 | Correctness       | ✓ | <one-line summary> |
 | Thread safety     | ✓ | <one-line summary> |
 | Mixin safety      | ✗ | <one-line summary> |
-| Test coverage     | ⚠ | <one-line summary> |
+| Test coverage     | ✓ | <one-line summary> |
 | Performance       | ✓ | <one-line summary> |
 | Compat risk       | ✓ | <one-line summary> |
 
-## Details
-
-### ⚠ Conventions
-- `src/main/java/com/rfizzle/<mod>/foo/Bar.java:42` — uses `nbt`-package
-  name instead of Mojang `CompoundTag`.
-
-### ✗ Mixin safety
+## 🔴 Must fix
 - `src/main/java/com/rfizzle/<mod>/mixin/FooMixin.java:88` —
   `@Inject` with `cancellable = true` but never calls `ci.cancel()` on the
   early-return branch; the original method still runs.
 
-_Informational only — no categories block merge. Edit `.ai/review-criteria.yml`
-to change which categories are scored._
+## 🟡 Optional
+- `src/main/java/com/rfizzle/<mod>/foo/Bar.java:42` — uses `nbt`-package
+  name instead of Mojang `CompoundTag`.
+
+_The fix step addresses 🔴 Must fix items only; 🟡 Optional is left to the
+author. Nothing here gates the merge button. Edit `.ai/review-criteria.yml`
+to change scoring or severities._
 ```
 
 Rules:
 
+- The **Verdict** line is mandatory and comes straight after the heading.
+  Use `APPROVE` when there are zero 🔴 must-fix findings, `CHANGES_REQUESTED`
+  otherwise, with the must-fix / optional counts.
 - Include **only** categories that scored in the diff (per the `applies_when`
   filter) in the table.
-- In **Details**, include **only** categories scored ⚠ or ✗. ✓ rows are
-  already conveyed by the table — do not repeat them.
+- Group **Details** by severity, not category: a `## 🔴 Must fix` section and
+  a `## 🟡 Optional` section. Each finding names its category inline only if
+  it aids clarity. Omit a section that is empty; if both are empty (a clean
+  APPROVE), write `_No findings._` and stop.
 - Do not propose code fixes unless the fix is a one-liner; otherwise
   describe the problem and let the author decide.
-- Keep the output under ~400 lines. If a category has many findings,
+- Keep the output under ~400 lines. If a section has many findings,
   list the top 5 and note "(N more)".
