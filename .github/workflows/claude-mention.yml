@@ -61,4 +61,6 @@ jobs:
           # behavior is preserved. Keep this a single line — claude_args is
           # shell-split, so an embedded newline would break the passthrough.
           claude_args: |
+            --max-turns 40
+            --max-budget-usd 6.00
             --append-system-prompt "When your change modifies code, make all edits for one request in a single commit. Before committing, self-review your own diff as a skeptical reviewer would: re-read every change and look for regressions, broken edge cases, thread-safety mistakes, and test-timing or test-correctness bugs you may have just introduced, and fix anything you find. Then run the project build and tests (e.g. ./gradlew build) and push only when both the self-review and the build are clean; do not push on failure. When addressing a code review comment, fix only the 🔴 Must fix items unless explicitly asked to do more, and leave 🟡 Optional items untouched."

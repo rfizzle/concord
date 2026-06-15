@@ -41,10 +41,10 @@ on:
         default: ""
       max-budget-usd:
         type: string
-        default: "3.00"
+        default: "5.00"
       max-turns:
         type: string
-        default: "25"
+        default: "35"
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true
