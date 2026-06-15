@@ -1,7 +1,7 @@
 # Concord — reusable Claude spec writer for member mods.
 #
-# When an issue gets the `needs-spec` label, posts a structured
-# implementation spec as an issue comment.
+# When an issue gets the `needs-spec` label, appends a structured
+# implementation spec to the issue body (Jules reads the body, not comments).
 #
 # Prompt resolution order (first match wins):
 #   1. explicit `prompt-file` workflow input (path in the calling repo)
@@ -134,28 +134,54 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-      - name: Post spec comment
+      - name: Append spec to issue body
         run: |
           if [ ! -s /tmp/spec-comment.md ]; then
-            echo "No spec comment to post"
+            echo "No spec to append"
             exit 0
           fi
           # Trim any model preamble before the spec header.
           sed -n '/^## Implementation Spec/,$p' /tmp/spec-comment.md > /tmp/spec-trimmed.md
           [ -s /tmp/spec-trimmed.md ] || cp /tmp/spec-comment.md /tmp/spec-trimmed.md
-          # Hand off to the coding agent: a trailing @jules mention triggers pickup.
-          printf '\n\n---\n\n@jules — implement to the spec above.\n' >> /tmp/spec-trimmed.md
+
+          # Append the spec to the issue body — Jules reads the body, not comments.
+          # A marker fences the generated section so re-runs replace rather than stack.
+          BEGIN='<!-- claude-spec:begin -->'
+          END='<!-- claude-spec:end -->'
+          ISSUE_BODY="$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json body --jq .body)"
+          # Strip any prior generated section so the spec stays idempotent.
+          ORIGINAL="$(printf '%s' "$ISSUE_BODY" | sed "/$BEGIN/,/$END/d")"
+
+          {
+            printf '%s\n' "$ORIGINAL"
+            printf '\n%s\n' "$BEGIN"
+            printf '\n---\n\n'
+            cat /tmp/spec-trimmed.md
+            printf '\n%s\n' "$END"
+          } > /tmp/issue-body.md
+
           # GitHub's API occasionally returns transient 401s — retry with backoff.
           for i in 1 2 3; do
-            if gh issue comment ${{ github.event.issue.number }} \
+            if gh issue edit ${{ github.event.issue.number }} \
               --repo ${{ github.repository }} \
-              --body-file /tmp/spec-trimmed.md; then
+              --body-file /tmp/issue-body.md; then
               exit 0
             fi
-            echo "Post attempt $i failed; retrying in $((i * 10))s"
+            echo "Edit attempt $i failed; retrying in $((i * 10))s"
             sleep $((i * 10))
           done
-          echo "::error::Failed to post spec comment after 3 attempts"
+          echo "::error::Failed to append spec to issue body after 3 attempts"
           exit 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove trigger label
+        # Only when the spec landed: the label is the work queue, so dropping it
+        # on failure would silently lose the issue.
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --remove-label "${{ inputs.label }}" || \
+            echo "::warning::Could not remove '${{ inputs.label }}' label"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
