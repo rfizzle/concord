@@ -1,7 +1,9 @@
 # Concord — reusable Claude spec writer for member mods.
 #
-# When an issue gets the `needs-spec` label, appends a structured
-# implementation spec to the issue body (Jules reads the body, not comments).
+# When an issue gets the `needs-spec` label, normalizes the issue title to a
+# conventional-commit form and writes a plain-language summary plus a
+# structured implementation spec into the issue body, preserving the
+# reporter's original text in between (Jules reads the body, not comments).
 #
 # Prompt resolution order (first match wins):
 #   1. explicit `prompt-file` workflow input (path in the calling repo)
@@ -163,43 +165,80 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-      - name: Append spec to issue body
+      - name: Apply title, summary, and spec to issue
         run: |
           if [ ! -s /tmp/spec-comment.md ]; then
-            echo "No spec to append"
+            echo "No spec to apply"
             exit 0
           fi
-          # Trim any model preamble before the spec header.
+
+          # The model emits, before the spec, a conventional-commit title and a
+          # plain-language summary in HTML-comment markers (which don't render):
+          #   <!-- spec:title: feat(scope): … -->
+          #   <!-- spec:summary --> … <!-- /spec:summary -->
+          # `|| true`: grep exits non-zero when no title marker is present, and
+          # the step runs under `set -eo pipefail` — degrade to no retitle.
+          NEW_TITLE="$(grep -m1 '<!-- spec:title:' /tmp/spec-comment.md \
+            | sed -E 's/.*<!-- spec:title:[[:space:]]*//; s/[[:space:]]*-->.*//')" || true
+          SUMMARY="$(sed -n '/<!-- spec:summary -->/,/<!-- \/spec:summary -->/p' /tmp/spec-comment.md \
+            | sed '1d;$d')"
+
+          # Trim any model preamble (the markers above) before the spec header.
           sed -n '/^## Implementation Spec/,$p' /tmp/spec-comment.md > /tmp/spec-trimmed.md
           [ -s /tmp/spec-trimmed.md ] || cp /tmp/spec-comment.md /tmp/spec-trimmed.md
 
-          # Append the spec to the issue body — Jules reads the body, not comments.
-          # A marker fences the generated section so re-runs replace rather than stack.
-          BEGIN='<!-- claude-spec:begin -->'
-          END='<!-- claude-spec:end -->'
+          # Two fenced regions keep the body idempotent across re-runs: the
+          # generated summary sits above the reporter's original text, the spec
+          # below it. Re-running strips both fences before regenerating, so the
+          # human-authored middle is preserved and nothing stacks. Jules reads
+          # the body, not comments.
+          SUM_BEGIN='<!-- claude-summary:begin -->'
+          SUM_END='<!-- claude-summary:end -->'
+          SPEC_BEGIN='<!-- claude-spec:begin -->'
+          SPEC_END='<!-- claude-spec:end -->'
           ISSUE_BODY="$(gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json body --jq .body)"
-          # Strip any prior generated section so the spec stays idempotent.
-          ORIGINAL="$(printf '%s' "$ISSUE_BODY" | sed "/$BEGIN/,/$END/d")"
+          # Strip both prior fences, then drop leading blank lines so a blank
+          # leaked just below a removed fence doesn't accrete on each re-run.
+          # ($() already trims trailing newlines, so the tail stays stable.)
+          ORIGINAL="$(printf '%s' "$ISSUE_BODY" \
+            | sed "/$SUM_BEGIN/,/$SUM_END/d; /$SPEC_BEGIN/,/$SPEC_END/d" \
+            | sed '/./,$!d')"
 
           {
+            if [ -n "$SUMMARY" ]; then
+              printf '%s\n' "$SUM_BEGIN"
+              printf '%s\n\n---\n' "$SUMMARY"
+              printf '%s\n\n' "$SUM_END"
+            fi
             printf '%s\n' "$ORIGINAL"
-            printf '\n%s\n' "$BEGIN"
+            printf '\n%s\n' "$SPEC_BEGIN"
             printf '\n---\n\n'
             cat /tmp/spec-trimmed.md
-            printf '\n%s\n' "$END"
+            printf '\n%s\n' "$SPEC_END"
           } > /tmp/issue-body.md
+
+          # Always normalize the title to a conventional-commit form; skip only
+          # if the model failed to produce one.
+          TITLE_ARGS=()
+          if [ -n "$NEW_TITLE" ]; then
+            echo "Normalizing title to: $NEW_TITLE"
+            TITLE_ARGS=(--title "$NEW_TITLE")
+          else
+            echo "::warning::No title marker found; leaving the issue title unchanged"
+          fi
 
           # GitHub's API occasionally returns transient 401s — retry with backoff.
           for i in 1 2 3; do
             if gh issue edit ${{ github.event.issue.number }} \
               --repo ${{ github.repository }} \
+              "${TITLE_ARGS[@]}" \
               --body-file /tmp/issue-body.md; then
               exit 0
             fi
             echo "Edit attempt $i failed; retrying in $((i * 10))s"
             sleep $((i * 10))
           done
-          echo "::error::Failed to append spec to issue body after 3 attempts"
+          echo "::error::Failed to apply spec to issue after 3 attempts"
           exit 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

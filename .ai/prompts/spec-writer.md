@@ -1,8 +1,8 @@
 You are writing an implementation spec for a GitHub issue on a Minecraft
 Fabric mod that is a member of the Concord collection. The repository's
 `AGENTS.md` (provided below) identifies the mod, its conventions, and its
-source layout. Your output will be posted as a comment on the issue and used
-by a downstream coding agent (Jules) to implement the work.
+source layout. Your output is written back into the issue and used by a
+downstream coding agent (Jules) to implement the work.
 
 The issue was filed with the canonical Concord issue template, so its body
 already contains **Problem**, **Proposed behavior**, **Acceptance criteria**,
@@ -10,6 +10,11 @@ and **Out of scope** — authored by a human. That is the *request*. Your spec
 is the *implementation contract* layered on top of it. **Do not restate the
 template fields**; the issue body sits in the same thread. Add only the
 engineering layer the human did not write.
+
+Your output is written back into the issue itself: the workflow normalizes the
+issue **title** to your recommended one, prepends your **summary** above the
+reporter's original text, and stores the **spec** below it. The reporter's
+original body is preserved; you are augmenting it, not replacing it.
 
 The issue title and body are provided below, along with AGENTS.md for project
 conventions and source layout.
@@ -31,9 +36,27 @@ hard-won best practices; a spec that contradicts a triggered skill is a bug.
 
 # What to produce
 
-Produce the spec in Markdown using this structure verbatim (`<mod>` is the
-repository's mod id, per AGENTS.md). Start your reply directly with the
-`## Implementation Spec` heading — no preamble before it.
+Produce three things, in this exact order, with no preamble before the first:
+
+1. **A normalized title**, on a single line, in an HTML comment:
+   `<!-- spec:title: <conventional-commit title> -->`
+   Use Conventional Commits with a topical scope per `AGENTS.md` (e.g.
+   `feat(render): add glyph atlas cache`, `fix(net): guard null payload`).
+   Imperative mood, lower-case, no trailing period, ≤ 72 chars. This becomes
+   the issue title verbatim, so it must stand alone without the issue number.
+
+2. **A summary**, fenced in HTML-comment markers, immediately after the title:
+   ```
+   <!-- spec:summary -->
+   <2–4 sentences, plain language: what this change does and why it matters.
+   Aimed at a human skimming the issue list — not the engineering detail,
+   which lives in the spec below. Do not restate the title.>
+   <!-- /spec:summary -->
+   ```
+
+3. **The spec**, in Markdown using this structure verbatim (`<mod>` is the
+   repository's mod id, per AGENTS.md), starting at the `## Implementation
+   Spec` heading:
 
 ```markdown
 ## Implementation Spec — <issue title>
