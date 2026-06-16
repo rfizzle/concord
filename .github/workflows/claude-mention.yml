@@ -51,6 +51,21 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Mirror mod-ci.yml so @claude can compile, test, and run gametests:
+      # without a JDK + Gradle on the runner, any ./gradlew invocation fails
+      # before Claude's allowlist even matters.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -69,6 +84,7 @@ jobs:
             --model ${{ inputs.model }}
             --max-turns 40
             --max-budget-usd 5.00
+            --allowedTools "Bash(./gradlew:*)"
             --append-system-prompt "When your change modifies code, make all edits for one request in a single commit. Before committing, self-review your own diff as a skeptical reviewer would: re-read every change and look for regressions, broken edge cases, thread-safety mistakes, and test-timing or test-correctness bugs you may have just introduced, and fix anything you find. Then run the project build and tests (e.g. ./gradlew build) and push only when both the self-review and the build are clean; do not push on failure. When addressing a code review comment, fix only the 🔴 Must fix items unless explicitly asked to do more, and leave 🟡 Optional items untouched."
 
       - name: Report cost
