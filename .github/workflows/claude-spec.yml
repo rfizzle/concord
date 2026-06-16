@@ -5,6 +5,11 @@
 # structured implementation spec into the issue body, preserving the
 # reporter's original text in between (Jules reads the body, not comments).
 #
+# Once the spec lands the `needs-spec` label is removed and a status label is
+# added: `ready` when the spec has no open questions, `open-questions` when it
+# does. Both lead to a human applying `jules`; the open-questions path is just
+# answered inline first.
+#
 # Prompt resolution order (first match wins):
 #   1. explicit `prompt-file` workflow input (path in the calling repo)
 #   2. the calling repo's .ai/prompts/spec-writer.md (whole-file override)
@@ -36,6 +41,15 @@ on:
       label:
         type: string
         default: needs-spec
+      ready-label:
+        # Added when the spec lands with no open questions: apply `jules`.
+        type: string
+        default: ready
+      open-questions-label:
+        # Added when the spec raises open questions: answer them inline, then
+        # apply `jules` directly. No spec re-run is required.
+        type: string
+        default: open-questions
       model:
         type: string
         default: claude-sonnet-4-6
@@ -261,5 +275,40 @@ jobs:
             --repo ${{ github.repository }} \
             --remove-label "${{ inputs.label }}" || \
             echo "::warning::Could not remove '${{ inputs.label }}' label"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add status label
+        # Route the issue to its follow-up state. A clean spec gets `ready`
+        # (apply `jules`). A spec that raised open questions gets
+        # `open-questions` — answer them inline, then apply `jules` directly;
+        # the spec is not re-run for that.
+        run: |
+          if [ ! -s /tmp/spec-trimmed.md ]; then
+            echo "No spec produced; leaving status labels unchanged"
+            exit 0
+          fi
+
+          # The spec template makes "### Open questions" the final section and
+          # omits it entirely when there are none. Treat the spec as having
+          # open questions only if that section exists with a real bullet.
+          OPEN_Q="$(sed -n '/^### Open questions/,$p' /tmp/spec-trimmed.md \
+            | sed '1d' \
+            | grep -cE '^[[:space:]]*[-*][[:space:]]+[^[:space:]]')" || OPEN_Q=0
+
+          if [ "${OPEN_Q:-0}" -gt 0 ]; then
+            STATUS_LABEL="${{ inputs.open-questions-label }}"
+            echo "Spec raised ${OPEN_Q} open question(s); labeling '${STATUS_LABEL}'"
+          else
+            STATUS_LABEL="${{ inputs.ready-label }}"
+            echo "Spec has no open questions; labeling '${STATUS_LABEL}'"
+          fi
+
+          # The label must exist in the repo for --add-label to succeed; warn
+          # rather than fail so a missing label never loses the landed spec.
+          gh issue edit ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --add-label "$STATUS_LABEL" || \
+            echo "::warning::Could not add '${STATUS_LABEL}' label (does it exist in the repo?)"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
