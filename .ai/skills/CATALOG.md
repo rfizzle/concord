@@ -3,7 +3,7 @@
 
 The `mc-*` skills under `.ai/skills/` are the suite's shared Minecraft/Fabric
 domain knowledge. They are edited in the [concord repo](https://github.com/rfizzle/concord)
-and vendored into every member repo via `make sync-skills` — this catalog rides
+and vendored into every member repo via `make sync` — this catalog rides
 along, so it is always in step with the skills actually present.
 
 **How each agent consumes them:** Claude Code auto-loads skills via the

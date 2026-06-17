@@ -4,7 +4,7 @@
 The catalog is a tool-agnostic index: one row per skill with a one-sentence
 summary and the situation that should make an agent pull it in. It is the
 single source for "what skills exist and when to read them" — every mod repo
-vendors it verbatim via `make sync-skills`, and each AGENTS.md just points here
+vendors it verbatim via `make sync`, and each AGENTS.md just points here
 instead of carrying its own (drift-prone) copy of the table.
 
 Source of truth is the `description:` field, which by convention reads
@@ -28,7 +28,7 @@ HEADER = """\
 
 The `mc-*` skills under `.ai/skills/` are the suite's shared Minecraft/Fabric
 domain knowledge. They are edited in the [concord repo](https://github.com/rfizzle/concord)
-and vendored into every member repo via `make sync-skills` — this catalog rides
+and vendored into every member repo via `make sync` — this catalog rides
 along, so it is always in step with the skills actually present.
 
 **How each agent consumes them:** Claude Code auto-loads skills via the

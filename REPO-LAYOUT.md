@@ -27,7 +27,7 @@ and Prosperity.
 │
 ├── .ai/                       # AI working area (committed)
 │   ├── README.md              #   what lives here and why
-│   ├── skills/                #   vendored from concord — refresh via `make sync-skills`
+│   ├── skills/                #   vendored from concord — refresh via `make sync`
 │   ├── skills/.concord-rev    #   provenance: concord SHA of the last sync
 │   ├── commands/              #   vendored from concord — slash commands (/glyph, /sfx)
 │   └── prompts/, review-criteria.yml  # OPTIONAL overrides of the concord defaults
@@ -111,7 +111,7 @@ propagate automatically, no new markers needed.
 
 ### `.ai/` — AI working area
 Committed. `skills/` and `commands/` are **vendored from the concord repo** —
-edit them in concord, refresh with `make sync-skills` (both directories are
+edit them in concord, refresh with `make sync` (both directories are
 wholly owned by the sync; `.concord-rev` records the source SHA). Claude Code
 reaches them via `.claude/skills` → `.ai/skills` and `.claude/commands` →
 `.ai/commands` symlinks, so vendored skills and slash commands (like `/glyph`)

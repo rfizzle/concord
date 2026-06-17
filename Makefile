@@ -1,5 +1,5 @@
 # Concord — suite-level maintenance tasks.
-# Member mod repos have their own Makefile (build/test/release + sync-skills);
+# Member mod repos have their own Makefile (build/test/release + sync);
 # this one maintains the concord-owned artifacts that propagate to them.
 
 PY ?= python3
