@@ -1,29 +1,13 @@
 ---
 name: mc-audio
-description: What a good Concord sound effect is and how to produce one through the .sfx procedural-synthesis pipeline — the quality bar for custom UI/alarm/tech audio cues, and when a vanilla sound event is the right call instead. TRIGGER when adding or editing any custom sound (anything under assets/<mod>/sounds/, a sounds.json entry, a registered SoundEvent), when authoring or editing a .sfx spec, or when deciding whether to ship a synthesized sound versus a vanilla sound event.
+description: How to produce a good Concord sound effect through the .sfx procedural-synthesis pipeline — the craft reference and quality bar for custom UI/alarm/tech audio cues. TRIGGER when adding or editing any custom sound (anything under assets/<mod>/sounds/, a sounds.json entry, a registered SoundEvent), or when authoring or editing a .sfx spec.
 ---
 
-You are making (or judging) a sound for a Concord mod. **Custom, high-quality sound is
-encouraged** across the suite — the `.sfx` pipeline below gives a clean, consistent way to
-make it, so the bar is *fitness and coherence*, not vanilla purity. Custom sound comes from
-**procedural synthesis**: no recorded audio, no samples, no DAW, no licensing — just a
-declarative spec and a deterministic synth. The normative policy is **concord's
-`design/DESIGN-SYSTEM.md` §9 (audio)**; this skill is the craft reference behind it.
-
-## When to ship a custom sound vs. a vanilla event
-
-Default to **custom** — a synthesized cue gives a feature its own identity, and the pipeline
-makes good ones cheap. Reach for a **vanilla `SoundEvent`** instead in two cases:
-
-- **The vanilla sound is genuinely already right** — a literal bell on a bell block. Worth
-  knowing: `event.raid.horn`, `block.bell.resonate`, `block.note_block.*`, `block.beacon.*`.
-- **The sound is organic** — a real brass horn, a physical bell, footsteps, animal foley.
-  Pure synthesis sounds obviously fake there; keep those vanilla (or, rarely, a licensed
-  sample — out of scope for this skill).
-
-Synthesis shines on **synthetic** cues — alarm klaxons, UI blips, sci-fi/tech alerts,
-charge-ups, chiptune stings. This isn't license for a wholesale soundscape overhaul: add
-custom cues where they earn their place, not everywhere for its own sake.
+You are making (or judging) a **custom** sound for a Concord mod — this skill is the craft
+reference for making a good one. Custom sound comes from **procedural synthesis**: no
+recorded audio, no samples, no DAW, no licensing — just a declarative spec and a
+deterministic synth. Synthesis shines on synthetic cues — alarm klaxons, UI blips,
+sci-fi/tech alerts, charge-ups, chiptune stings.
 
 ## What "good" means
 
@@ -92,8 +76,6 @@ its `.sfx`.
 
 ## Quick checklist
 
-- [ ] Custom chosen where it adds identity — vanilla used only if it's genuinely already
-      right or the sound is organic; no wholesale soundscape overhaul
 - [ ] Ogg Vorbis, mono, trimmed, peak ≈ −1 dBFS (no clipping), short
 - [ ] Single clear gesture that fits the mod's character
 - [ ] Rendered via `.ai/skills/mc-audio/scripts/sfx.py`; waveform/spectrogram + stats read

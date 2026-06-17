@@ -1,22 +1,12 @@
 ---
 name: mc-textures
-description: What a good Concord texture looks like and how to produce one through the .glyph pixel-art pipeline — the quality bar for icons, HUD glyphs, item/block sprites, and retextured mobs. TRIGGER when creating or editing any in-game texture or UI sprite (anything under assets/<mod>/textures/, art/*.png, a HUD/Jade glyph, a mod/store icon), when authoring or editing a .glyph spec, or when deciding whether to ship custom art versus a vanilla sprite.
+description: What a good Concord texture looks like and how to produce one through the .glyph pixel-art pipeline — the craft reference and quality bar for icons, HUD glyphs, item/block sprites, and retextured mobs. TRIGGER when creating or editing any in-game texture or UI sprite (anything under assets/<mod>/textures/, art/*.png, a HUD/Jade glyph, a mod/store icon), or when authoring or editing a .glyph spec.
 ---
 
-You are making (or judging) a texture for a Concord mod. **Custom, high-quality textures
-are encouraged** across the suite — there is a clean pipeline to good art (below), so the
-bar is *quality and coherence*, not vanilla purity. The one hard cosmetic rule is the
-vanilla **font** (never a custom font in any GUI/HUD/tooltip); textures are open. The
-normative spec is **concord's `design/DESIGN-SYSTEM.md` §8** (this skill is vendored into
-member repos; that doc lives in the concord repo) — this skill is the craft reference
-behind it.
-
-## When to ship custom art vs. a vanilla sprite
-
-Default to **custom**. Ship a vanilla sprite only when it is genuinely already the right
-image (e.g. a trade UI literally showing an emerald). Never *downscale* a vanilla item
-into a 16px slot — vanilla item renders go muddy at that size; author a purpose-built
-glyph instead.
+You are making (or judging) a **custom** texture for a Concord mod — this skill is the craft
+reference for making a good one. One craft rule to carry in: never *downscale* a vanilla
+item render into a small slot — it goes muddy; author a purpose-built glyph at the target
+size instead.
 
 ## What "good" means
 
@@ -27,7 +17,7 @@ A texture is conformant when it:
 - **uses the design-system palette** — reference colors as named tokens, never raw hex
   (`python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors` dumps them: shared neutrals like `ink`,
   `bone`, `gold`, plus per-mod accents like `mercantile.emerald`). A mod's accents never
-  appear in another mod's art (DESIGN-SYSTEM §2 rule 1).
+  appear in another mod's art.
 - **reads as Minecraft** — sits naturally beside vanilla sprites at the same size. Wrap
   the motif in an `ink` (`#0a0a0a`) 1px outline so it reads against any background.
   Silhouette first, detail second.
@@ -97,8 +87,6 @@ Re-touching a texture recreates it through its `.glyph`.
 
 ## Quick checklist
 
-- [ ] Custom art chosen over a downscaled vanilla sprite (unless the vanilla image is
-      literally correct)
 - [ ] Pixel art: hard edges, limited palette, design-system named tokens, no foreign
       mod's accents
 - [ ] `ink` outline, single centered motif, legible at native size
