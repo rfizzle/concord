@@ -18,18 +18,6 @@ the rendered WAV to Ogg Vorbis (Minecraft needs `.ogg`).
 
 $ARGUMENTS
 
-## Step 0 — Custom or vanilla?
-
-Custom sound is **encouraged** (`design/DESIGN-SYSTEM.md` §9) — default to a
-synthesized cue where it gives the feature its own identity. Reach for a vanilla
-`SoundEvent` instead when it is genuinely already the right sound (a literal bell
-on a bell block — worth knowing: `event.raid.horn`, `block.bell.resonate`,
-`block.note_block.*`, `block.beacon.*`), or when the sound is **organic** (a real
-horn, a physical bell, footsteps, foley) — synthesis sounds obviously fake there.
-Synthesis shines on synthetic cues (alarm, UI blip, tech alert, charge-up,
-chiptune). Don't overhaul the whole soundscape; add custom cues where they earn
-it. If a vanilla event is genuinely the right call, say so and use it.
-
 ## Step 1 — Pin the character
 
 If no mod is named, ask which mod the sound is for — its identity decides the

@@ -23,16 +23,15 @@ or animation.
 
 ## Step 1 — Pin the palette
 
-Read `design/DESIGN-SYSTEM.md` §2 (per-mod accents) and §5 (glyph spec). The
-renderer knows the design-system colors as named tokens — run
+The renderer knows the design-system colors as named tokens — run
 `python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors` to see them. Use the **named tokens**
 in your legend (e.g. `mercantile.emerald`, `ink`, `gold`), not raw hex, so the
 glyph stays tied to the system. A mod's accents never appear in another mod's
-glyph (§2 coexistence rule 1).
+glyph.
 
 ## Step 2 — Design the grid
 
-Honor the design-system glyph conventions (§4 logo formula scaled to a glyph; §5):
+Honor the design-system glyph conventions:
 
 - **One motif object**, centered and readable at native size. A HUD glyph is
   tiny — silhouette first, detail second. If you can't tell what it is at 16px,
@@ -43,8 +42,7 @@ Honor the design-system glyph conventions (§4 logo formula scaled to a glyph; �
   `gold`, `ember`) sparingly for highlights; the base accent for the body.
 - **Pixel-art discipline.** Limited palette (≈3–5 colors), hard pixels, no
   anti-aliasing or gradients — the script renders exactly the cells you write. Aim for a
-  high-quality custom sprite that reads as Minecraft, not a deference to vanilla art
-  (`design/DESIGN-SYSTEM.md` §8).
+  high-quality custom sprite that reads as Minecraft, not a deference to vanilla art.
 - `.` is transparent. Keep at least a 1px transparent margin unless the motif
   intentionally bleeds to the edge.
 
@@ -122,14 +120,14 @@ the whole strip + mcmeta), so an animated motif can ride the size ladder too.
 ## Step 4 — Place the master
 
 The design system masters a HUD glyph at `art/hud-icon-16.png` and a mod icon at
-`art/icon-128.png` in the *mod's* repo (§3, §5), with derived copies in
+`art/icon-128.png` in the *mod's* repo, with derived copies in
 `docs/`/`assets/`. This concord repo is the design hub, not a mod — generate here
 under `scripts/examples/` for review; when the user approves, the final PNGs
 belong in the target mod's `art/`. Confirm each destination with the user rather
 than assuming.
 
-**Commit the `.glyph` beside each master.** Per DESIGN-SYSTEM §8 every committed texture
-ships its source: the `.glyph` lands next to its PNG with the same basename
+**Commit the `.glyph` beside each master.** Every committed texture ships its source: the
+`.glyph` lands next to its PNG with the same basename
 (`art/hud-icon-16.png` ↔ `art/hud-icon-16.glyph`; one `.glyph` per natively-authored
 ladder tier), so the master stays re-renderable for minor edits.
 
