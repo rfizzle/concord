@@ -13,6 +13,11 @@ scripts/examples/
 .ai/skills/mc-audio/examples/**/*.wav
 .ai/skills/mc-audio/examples/**/*.report.png
 
+# mc-textures: example renders are reproducible from the .glyph specs (kept local)
+.ai/skills/mc-textures/examples/**/*.png
+.ai/skills/mc-textures/examples/**/*.gif
+.ai/skills/mc-textures/examples/**/*.mcmeta
+
 # OS junk
 .DS_Store
 Thumbs.db

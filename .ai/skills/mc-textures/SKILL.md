@@ -33,8 +33,28 @@ A texture is conformant when it:
   Silhouette first, detail second.
 - **is legible at its target size** — design the 16px glyph *for* 16px. If you can't tell
   what it is at native size, simplify. Don't shrink a large drawing into a small slot.
-- **stays on one motif** — one object per glyph, centered, with a 1px transparent margin
-  unless it intentionally bleeds to the edge.
+- **stays on one motif (sprites)** — one object per glyph, centered, with a 1px transparent
+  margin unless it intentionally bleeds to the edge. *Block* textures are the exception —
+  they bleed to all four edges and tile (see below).
+
+## Block textures: tiling and faces
+
+A block texture isn't a free-standing motif — it repeats across a surface and wraps a cube,
+so the centered-motif and transparent-margin rules above are *sprite* rules. A block
+**bleeds to all four edges** and must tile.
+
+- **Side faces tile and join at the corners.** Design the sides as one texture whose **right
+  edge continues into its left edge** and **top into bottom** with no visible seam when
+  copies sit adjacent. Going around the block, each side's right edge meets the next side's
+  left edge — so a side that tiles cleanly left-to-right also corners cleanly. Verify by
+  eye: replicate the tile in a 2×2 grid and check the seams and the shared corner.
+- **Top and bottom are separate textures**, not the side repeated. Design them to agree with
+  the **top and bottom edges of the side faces** so the seam where a side meets the cap
+  reads continuously — the side's top trim lines up with the top face's perimeter, and
+  likewise at the bottom.
+
+`examples/block-stone-bricks.glyph` is a tileable **side** reference (running-bond brick:
+the offset courses carry the bond across the left/right seam and corners).
 
 ## The pipeline
 
@@ -51,8 +71,10 @@ sprite; multiple `frame:` blocks + a `frametime:` = an animated texture (vertica
 `.mcmeta` sidecar, exactly vanilla packaging). `--scale-to N` mints a true high-res master
 by integer nearest-neighbor upscale — the honest way to fill the large tiers (128/256) of
 a size ladder from a small native master. Full format + worked example: the `SPEC FORMAT`
-header of `.ai/skills/mc-textures/scripts/glyph.py`, and the `/glyph` command. Existing
-specs to copy from live under the concord repo's `scripts/examples/`.
+header of `.ai/skills/mc-textures/scripts/glyph.py`, and the `/glyph` command. Reference
+specs ship beside this skill under `.ai/skills/mc-textures/examples/` — a `sprite-coin`
+(centered motif, `ink` outline, transparent margin) and a `block-stone-bricks` (tileable
+full-bleed side face). The concord repo's `scripts/examples/` holds more, mod-specific ones.
 
 ```bash
 G=.ai/skills/mc-textures/scripts/glyph.py
