@@ -92,6 +92,25 @@ categories:
       - .ai/skills/mc-mod-testing/SKILL.md (if present)
       - .ai/skills/mc-testing-mock/SKILL.md (if present)
 
+  - id: site_docs
+    name: Site docs
+    severity: optional
+    description: |
+      Player-facing changes should reach the mod's published site. A new
+      feature, a new or changed config option or command, or altered gameplay
+      needs the matching `site/pages/<slug>.json` page updated (a features
+      card, a config row, a commands/faq entry). Score ⚠ when such a change
+      ships with no `site/` update — especially when the linked issue spec's
+      Docs impact section called for one. Do not flag internal-only changes
+      (fixes, refactors, chores, perf) that players never observe.
+    look_at:
+      - site/pages/*.json (block schema in concord's template/README.md)
+      - linked issue spec's "Docs impact" section
+    applies_when: |
+      PR introduces or changes player-facing behavior — a feat-typed change, a
+      new/changed config option or command, or altered gameplay. Omit for
+      fix / chore / refactor / perf / internal diffs players never see.
+
   - id: performance
     name: Performance (20Hz tick budget)
     severity: must_fix

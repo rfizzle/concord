@@ -101,6 +101,7 @@ with the `## Code Review` heading — no preamble before it.
 | Thread safety     | ✓ | <one-line summary> |
 | Mixin safety      | ✗ | <one-line summary> |
 | Test coverage     | ✓ | <one-line summary> |
+| Site docs         | ✓ | <one-line summary> |
 | Performance       | ✓ | <one-line summary> |
 | Compat risk       | ✓ | <one-line summary> |
 

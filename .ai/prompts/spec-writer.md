@@ -86,6 +86,14 @@ on THIS change — not "consult it", but what it forces you to do:
 - **Gametest (`src/gametest/java/...`):** <scenarios that need a live world.>
 - **Manual:** <anything that can only be confirmed by running the client.>
 
+### Docs impact
+For a player-facing change — a new feature, a new or changed config option or
+command, or altered gameplay — name the `site/pages/<slug>.json` page(s) to
+update and what to add (e.g. a feature card on `features`, a row on `config`,
+an entry on `commands` or `faq`). Site content schema lives in concord's
+`template/README.md`. **Omit this section entirely** for internal-only work
+(fixes, refactors, chores, performance) that players never observe.
+
 ### Open questions
 - <Anything a human must decide before implementation starts. Omit this
   section entirely if there are none.>
@@ -104,6 +112,11 @@ on THIS change — not "consult it", but what it forces you to do:
 - **Don't restate the issue.** Problem, Proposed behavior, Acceptance criteria,
   and Out of scope already live in the body. Repeating them is the redundancy
   this spec exists to avoid.
+- **Document player-facing work.** If the change adds or alters behavior a
+  player sees — a feature, config option, command, or gameplay rule — the spec
+  must carry a Docs impact section naming the `site/` page(s) to update. A
+  fix, refactor, chore, or performance change that players never observe omits
+  it; do not manufacture a docs task for internal work.
 - **Don't over-spec.** Avoid prescribing every method signature; leave room
   for the implementer to make small judgment calls. The spec is a contract on
   *behavior and structure*, not on *exact code shape*.
