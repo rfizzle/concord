@@ -1,15 +1,15 @@
 ---
 description: Design a Concord pixel-art glyph as an ASCII grid and render it to a PNG — single sprite, a 16/32/64/128/256 size ladder, or an animated strip.
 argument-hint: <motif description> [mod: meridian|mercantile|tribulation|prosperity] [sizes: 16,32,…] [animated]
-allowed-tools: Read, Write, Bash(python3 scripts/glyph.py:*)
+allowed-tools: Read, Write, Bash(python3 .ai/skills/mc-textures/scripts/glyph.py:*)
 ---
 
 You are designing a **pixel-art glyph** for a Concord Minecraft mod, then
-rendering it to a PNG with `scripts/glyph.py`. The pattern: *you* lay out the
+rendering it to a PNG with `.ai/skills/mc-textures/scripts/glyph.py`. The pattern: *you* lay out the
 sprite as a character grid (which you do reliably); the script deterministically
 rasterizes it (which you don't). The whole craft is in the grid.
 
-`scripts/glyph.py` is the single, zero-dependency renderer — stdlib only, runs
+`.ai/skills/mc-textures/scripts/glyph.py` is the single, zero-dependency renderer — stdlib only, runs
 anywhere Python 3 does. It handles all three modes below.
 
 ## Request
@@ -25,7 +25,7 @@ or animation.
 
 Read `design/DESIGN-SYSTEM.md` §2 (per-mod accents) and §5 (glyph spec). The
 renderer knows the design-system colors as named tokens — run
-`python3 scripts/glyph.py --list-colors` to see them. Use the **named tokens**
+`python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors` to see them. Use the **named tokens**
 in your legend (e.g. `mercantile.emerald`, `ink`, `gold`), not raw hex, so the
 glyph stays tied to the system. A mod's accents never appear in another mod's
 glyph (§2 coexistence rule 1).
@@ -52,12 +52,12 @@ Write the spec to `scripts/examples/<mod>-<motif>.glyph` (or a path the user
 gives). Format — a `legend:` mapping single chars to colors, then a `frame:` (or
 `grid:`) of exactly N rows × N chars. `#` begins a comment anywhere; don't use it
 as a legend key. The full format (with a worked example) is documented in the
-`SPEC FORMAT` header of `scripts/glyph.py`.
+`SPEC FORMAT` header of `.ai/skills/mc-textures/scripts/glyph.py`.
 
 ## Step 3 — Render and review
 
 ```bash
-python3 scripts/glyph.py scripts/examples/<name>.glyph
+python3 .ai/skills/mc-textures/scripts/glyph.py scripts/examples/<name>.glyph
 ```
 
 This writes `<name>.png` (the true master) and `<name>@16x.png` (a 256px
@@ -93,9 +93,9 @@ render each, then mint the high tiers with `--scale-to` (a real master, **not** 
 `@Nx` preview):
 
 ```bash
-python3 scripts/glyph.py scripts/examples/<mod>/<motif>-32.glyph             # native 32 master
-python3 scripts/glyph.py scripts/examples/<mod>/<motif>-32.glyph --scale-to 128 -o scripts/examples/<mod>/<motif>-128.png
-python3 scripts/glyph.py scripts/examples/<mod>/<motif>-32.glyph --scale-to 256 -o scripts/examples/<mod>/<motif>-256.png
+python3 .ai/skills/mc-textures/scripts/glyph.py scripts/examples/<mod>/<motif>-32.glyph             # native 32 master
+python3 .ai/skills/mc-textures/scripts/glyph.py scripts/examples/<mod>/<motif>-32.glyph --scale-to 128 -o scripts/examples/<mod>/<motif>-128.png
+python3 .ai/skills/mc-textures/scripts/glyph.py scripts/examples/<mod>/<motif>-32.glyph --scale-to 256 -o scripts/examples/<mod>/<motif>-256.png
 ```
 
 `--scale-to N` refuses any N that isn't an integer multiple of the source grid —

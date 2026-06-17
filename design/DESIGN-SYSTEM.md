@@ -118,7 +118,7 @@ purity. The only hard cosmetic rule is the vanilla **font** (§3); textures are 
 - is **pixel art** — hard pixels, no anti-aliasing or smooth gradients (dither instead),
   a limited palette (≈3–5 colors for a glyph);
 - uses the **design-system colors** as named tokens (`mercantile.emerald`, `ink`, `gold`
-  — run `python3 scripts/glyph.py --list-colors`), and a mod's accents never appear in
+  — run `python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors`), and a mod's accents never appear in
   another mod's art (§2 rule 1);
 - **reads as Minecraft** — sits naturally beside vanilla sprites at the same size; an
   `ink` (`#0a0a0a`) 1px outline so it reads against any background, silhouette before
@@ -127,7 +127,7 @@ purity. The only hard cosmetic rule is the vanilla **font** (§3); textures are 
   large drawing into the slot.
 
 **The pipeline.** Author textures as ASCII-grid `.glyph` specs and rasterize them
-deterministically with `scripts/glyph.py` — you lay out the grid (reliable), the script
+deterministically with `.ai/skills/mc-textures/scripts/glyph.py` — you lay out the grid (reliable), the script
 renders the exact cells (no drift). Three entry points:
 
 | Tool | Use it for |

@@ -37,6 +37,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`.github/workflows/`](.github/workflows) | Reusable CI for all members: `mod-ci`, `mod-release`, `mod-build-artifact`, `claude-review`, `claude-spec`, `claude-mention`, `build-site` — mod repos carry only thin trigger stubs |
 | [`.ai/`](.ai) | Suite-default Claude prompts (`code-reviewer`, `spec-writer`) and `review-criteria.yml` — generic, mod identity comes from each repo's AGENTS.md. Resolution: explicit `prompt-file`/`criteria-file` workflow input → repo-local `.ai/` file (whole-file override) → these defaults |
 | [`.ai/skills/`](.ai/skills) | Canonical `mc-*` domain skills for all member repos. Mod repos keep vendored copies (so Claude Code, Jules, and bare clones all work) and refresh them with `make sync-skills` — edit skills HERE, never in a mod repo. The generated [`CATALOG.md`](.ai/skills/CATALOG.md) (`make catalog`) indexes them — one row per skill, summary + when to read it — and rides the same sync, so each `AGENTS.md` points at it instead of carrying its own table |
+| [`.ai/commands/`](.ai/commands) | Canonical slash commands (currently `/glyph`) for all member repos — vendored by the same `make sync-skills` target, surfaced to Claude Code via a `.claude/commands` → `.ai/commands` symlink. Edit HERE, never in a mod repo |
 
 ### The CI contract
 
@@ -60,14 +61,17 @@ CONCORD_DIR ?= ../concord
 sync-skills:
 	@test -d $(CONCORD_DIR)/.ai/skills || { echo "concord checkout not found at $(CONCORD_DIR) (set CONCORD_DIR=...)"; exit 1; }
 	rsync -a --delete $(CONCORD_DIR)/.ai/skills/ .ai/skills/
+	rsync -a --delete $(CONCORD_DIR)/.ai/commands/ .ai/commands/
 	@git -C $(CONCORD_DIR) rev-parse HEAD > .ai/skills/.concord-rev
-	@echo "synced .ai/skills from concord @ $$(git -C $(CONCORD_DIR) rev-parse --short HEAD)"
+	@echo "synced .ai/skills + .ai/commands from concord @ $$(git -C $(CONCORD_DIR) rev-parse --short HEAD)"
 ```
 
-`.ai/skills/` in a mod repo is wholly owned by the sync (`--delete` propagates
-removals); `.concord-rev` records provenance. A repo needing a repo-local
-skill puts it outside the synced directory and wires `.claude/skills`
-accordingly.
+`.ai/skills/` and `.ai/commands/` in a mod repo are wholly owned by the sync
+(`--delete` propagates removals); `.concord-rev` records provenance. Claude Code
+loads them through `.claude/skills` → `.ai/skills` and `.claude/commands` →
+`.ai/commands` symlinks, so the vendored skills and slash commands (like
+`/glyph`) work in every member repo. A repo needing a repo-local skill or
+command puts it outside the synced directory and wires the symlink accordingly.
 
 ## How mod repos reference Concord
 

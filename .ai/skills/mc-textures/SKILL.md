@@ -25,7 +25,7 @@ A texture is conformant when it:
 - **is pixel art** — hard pixels, no anti-aliasing and no smooth gradients (dither for
   shading), a limited palette (≈3–5 colors for a glyph).
 - **uses the design-system palette** — reference colors as named tokens, never raw hex
-  (`python3 scripts/glyph.py --list-colors` dumps them: shared neutrals like `ink`,
+  (`python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors` dumps them: shared neutrals like `ink`,
   `bone`, `gold`, plus per-mod accents like `mercantile.emerald`). A mod's accents never
   appear in another mod's art (DESIGN-SYSTEM §2 rule 1).
 - **reads as Minecraft** — sits naturally beside vanilla sprites at the same size. Wrap
@@ -38,11 +38,12 @@ A texture is conformant when it:
 
 ## The pipeline
 
-Author textures as ASCII-grid **`.glyph` specs** and let `scripts/glyph.py` rasterize
-them deterministically — you lay out the character grid (which a model does reliably), the
-script renders exactly those cells (no drift, no hallucinated pixels). The renderer is
-stdlib-only (zero dependencies) and lives in the **concord repo**; the `/glyph` slash
-command drives it end to end. In a member repo, check concord out as a sibling to run it.
+Author textures as ASCII-grid **`.glyph` specs** and let
+`.ai/skills/mc-textures/scripts/glyph.py` rasterize them deterministically — you lay out
+the character grid (which a model does reliably), the script renders exactly those cells
+(no drift, no hallucinated pixels). The renderer is stdlib-only (zero dependencies) and
+ships beside this skill, so it runs anywhere the skill is vendored; the `/glyph` slash
+command drives it end to end.
 
 Spec shape — a `legend:` mapping single chars to colors, then one or more `frame:` grids
 of N×N legend chars (`.` = transparent, `#` starts a comment). One `frame:` = a static
@@ -50,13 +51,14 @@ sprite; multiple `frame:` blocks + a `frametime:` = an animated texture (vertica
 `.mcmeta` sidecar, exactly vanilla packaging). `--scale-to N` mints a true high-res master
 by integer nearest-neighbor upscale — the honest way to fill the large tiers (128/256) of
 a size ladder from a small native master. Full format + worked example: the `SPEC FORMAT`
-header of `scripts/glyph.py`, and the `/glyph` command. Existing specs to copy from live
-under `scripts/examples/`.
+header of `.ai/skills/mc-textures/scripts/glyph.py`, and the `/glyph` command. Existing
+specs to copy from live under the concord repo's `scripts/examples/`.
 
 ```bash
-python3 scripts/glyph.py scripts/examples/<mod>/<motif>.glyph        # render + preview
-python3 scripts/glyph.py --list-colors                               # named palette
-python3 scripts/glyph.py SPEC.glyph --scale-to 128 -o out-128.png    # upscaled master
+G=.ai/skills/mc-textures/scripts/glyph.py
+python3 $G SPEC.glyph                  # render + preview
+python3 $G --list-colors              # named palette
+python3 $G SPEC.glyph --scale-to 128 -o out-128.png   # upscaled master
 ```
 
 Always **read the rendered `@Nx` preview back** and judge it honestly against the motif,
@@ -78,6 +80,6 @@ Re-touching a texture recreates it through its `.glyph`.
 - [ ] Pixel art: hard edges, limited palette, design-system named tokens, no foreign
       mod's accents
 - [ ] `ink` outline, single centered motif, legible at native size
-- [ ] Rendered via `scripts/glyph.py`; preview read back and judged
+- [ ] Rendered via `.ai/skills/mc-textures/scripts/glyph.py`; preview read back and judged
 - [ ] `.glyph` source committed beside the master (same basename) in `art/`
 - [ ] Master in `art/`, derived copies refreshed in `assets/`/`docs/`

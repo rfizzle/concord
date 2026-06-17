@@ -29,10 +29,12 @@ and Prosperity.
 │   ├── README.md              #   what lives here and why
 │   ├── skills/                #   vendored from concord — refresh via `make sync-skills`
 │   ├── skills/.concord-rev    #   provenance: concord SHA of the last sync
+│   ├── commands/              #   vendored from concord — slash commands (/glyph)
 │   └── prompts/, review-criteria.yml  # OPTIONAL overrides of the concord defaults
 │
 ├── .claude/                   # Claude Code local state (mostly gitignored)
-│   ├── skills/                #   committed if repo-specific
+│   ├── skills/                #   symlink → ../.ai/skills (vendored skills)
+│   ├── commands/              #   symlink → ../.ai/commands (vendored slash commands)
 │   └── settings.local.json    #   gitignored
 │
 ├── .plan/                     # local planning scratchpad (gitignored, never committed)
@@ -107,9 +109,12 @@ hard-coded a skill count). A new repo opts in by pasting the marker pairs around
 those three sections once.
 
 ### `.ai/` — AI working area
-Committed. `skills/` is **vendored from the concord repo** — edit skills in
-concord, refresh with `make sync-skills` (the directory is wholly owned by the
-sync; `.concord-rev` records the source SHA). The generated `skills/CATALOG.md`
+Committed. `skills/` and `commands/` are **vendored from the concord repo** —
+edit them in concord, refresh with `make sync-skills` (both directories are
+wholly owned by the sync; `.concord-rev` records the source SHA). Claude Code
+reaches them via `.claude/skills` → `.ai/skills` and `.claude/commands` →
+`.ai/commands` symlinks, so vendored skills and slash commands (like `/glyph`)
+work here. The generated `skills/CATALOG.md`
 (concord's `make catalog`) indexes the skills and rides the same sync, so
 `AGENTS.md` points at it rather than repeating the list. CI prompts and review criteria
 default to concord's `.ai/`; a repo-local `prompts/*.md` or

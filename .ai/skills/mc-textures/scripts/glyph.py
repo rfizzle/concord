@@ -53,11 +53,11 @@ or a named token from NAMED_COLORS (the Concord design-system palette).
 
 USAGE
 -----
-    python3 scripts/glyph.py SPEC.glyph                 # -> SPEC.png (+ .mcmeta if animated) + preview
-    python3 scripts/glyph.py SPEC.glyph -o art/marker.png
-    python3 scripts/glyph.py - < SPEC.glyph             # spec on stdin
-    python3 scripts/glyph.py SPEC.glyph --preview-scale 24 --no-preview
-    python3 scripts/glyph.py --list-colors              # dump the named palette
+    python3 .ai/skills/mc-textures/scripts/glyph.py SPEC.glyph                 # -> SPEC.png (+ .mcmeta if animated) + preview
+    python3 .ai/skills/mc-textures/scripts/glyph.py SPEC.glyph -o art/marker.png
+    python3 .ai/skills/mc-textures/scripts/glyph.py - < SPEC.glyph             # spec on stdin
+    python3 .ai/skills/mc-textures/scripts/glyph.py SPEC.glyph --preview-scale 24 --no-preview
+    python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors              # dump the named palette
 """
 
 import argparse

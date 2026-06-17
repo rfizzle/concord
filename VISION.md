@@ -180,7 +180,7 @@ Rules for coexistence when multiple mods are installed:
   (open book).
 - **Textures more broadly:** custom item/block/UI textures are first-class. The house
   style is pixel art in the design-system palette, produced through the texture pipeline
-  (the `/glyph` command over `scripts/glyph.py`, plus the `mc-textures` skill), and every
+  (the `/glyph` command over `.ai/skills/mc-textures/scripts/glyph.py`, plus the `mc-textures` skill), and every
   committed texture ships its `.glyph` source beside it so it stays re-renderable. Full
   spec in [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
 
