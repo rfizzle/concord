@@ -1,19 +1,19 @@
-# AGENTS.md — shared regions (Concord-owned)
+# AGENTS.md — shared region (Concord-owned)
 
-> Canonical source for the **invariant regions** of every member mod's
-> `AGENTS.md`. The text between each `<!-- concord:NAME:start -->` /
-> `<!-- concord:NAME:end -->` pair below is synced verbatim into the matching
-> region of each member's `AGENTS.md` by [`propagate.yml`](.github/workflows/propagate.yml)
+> Canonical source for the **Concord-owned region** of every member mod's
+> `AGENTS.md`. Everything between the single `<!-- concord:managed:start -->` /
+> `<!-- concord:managed:end -->` pair below is synced verbatim into the matching
+> block of each member's `AGENTS.md` by [`propagate.yml`](.github/workflows/propagate.yml)
 > (job `sync-agents-regions`, via [`scripts/inject-agents-regions.py`](scripts/inject-agents-regions.py)).
 >
-> **Edit the shared lifecycle / version / skills guidance HERE, never in a mod
-> repo.** Everything *outside* these regions in a member `AGENTS.md` (project
-> overview, mod id, entrypoints, assets, compat, commit-scope examples) is
-> repo-owned and never touched by the sync. A member only receives a region if
-> it already carries the matching marker pair — seeding the markers once is the
-> per-repo opt-in (see [`REPO-LAYOUT.md`](REPO-LAYOUT.md) §AGENTS.md).
+> **Edit the shared guidance HERE, never in a mod repo.** Everything *outside*
+> the managed block in a member `AGENTS.md` (project overview, mod id,
+> entrypoints, assets, compat, commit-scope examples) is repo-owned and never
+> touched by the sync. A member opts in once by carrying the marker pair; new
+> sections added inside the block then propagate automatically, no per-section
+> markers needed (see [`REPO-LAYOUT.md`](REPO-LAYOUT.md) §AGENTS.md).
 
-<!-- concord:skills:start -->
+<!-- concord:managed:start -->
 ## Working with domain skills
 
 The suite's `mc-*` domain skills live under `.ai/skills/`, vendored from concord
@@ -26,9 +26,7 @@ table.
 Claude Code auto-loads these via the `.claude/skills` symlink; Google Jules,
 OpenCode, and any other agent should read the relevant `SKILL.md` directly
 **before** working in its subject area.
-<!-- concord:skills:end -->
 
-<!-- concord:custom-assets:start -->
 ## Custom art & audio
 
 Custom, high-quality assets are encouraged across the suite — there are clean,
@@ -52,9 +50,7 @@ Decide *whether* to make a custom asset here, before reaching for a skill:
 Once the decision is made, the `mc-textures` / `mc-audio` skills are the craft
 reference for producing a good one. The normative spec is concord's
 `design/DESIGN-SYSTEM.md` §8 (textures) and §9 (audio).
-<!-- concord:custom-assets:end -->
 
-<!-- concord:lifecycle:start -->
 ## Development lifecycle
 
 1. **Issue opened** using the feature or bug template under `.github/ISSUE_TEMPLATE/`.
@@ -85,9 +81,7 @@ reference for producing a good one. The normative spec is concord's
 
 `@claude <message>` in any issue or PR comment also invokes Claude for ad-hoc
 help via `.github/workflows/claude.yml`.
-<!-- concord:lifecycle:end -->
 
-<!-- concord:pr-conventions:start -->
 ## Pull requests & commits
 
 When you open a pull request for an issue:
@@ -103,13 +97,11 @@ When you open a pull request for an issue:
   edits for one logical change together rather than scattering fixup commits.
 - Run the project's build and tests before opening the PR, and open it only
   once the build is green.
-<!-- concord:pr-conventions:end -->
 
-<!-- concord:version-scheme:start -->
 ## Version scheme
 
 Version is computed from git tags at build time (`build.gradle`,
 `computeModVersion()`). Base version is in `gradle.properties` as
 `mod_version`. Tagged commits produce clean versions; post-tag commits append
 `+<commits>.g<sha>`.
-<!-- concord:version-scheme:end -->
+<!-- concord:managed:end -->

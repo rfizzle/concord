@@ -97,16 +97,18 @@ Tribulation skeleton: project overview → build commands → source layout →
 conventions (Mojang mappings, `<Mod>.id()` helper, conventional commits) →
 development lifecycle.
 
-The invariant tail sections — **Working with domain skills**, **Development
-lifecycle**, and **Version scheme** — are Concord-owned: each is wrapped in
-`<!-- concord:NAME:start -->` / `<!-- concord:NAME:end -->` markers and kept in
-sync from concord's [`AGENTS-COMMON.md`](AGENTS-COMMON.md) by `propagate.yml`,
-which proposes the update as a `concord-sync` PR (the default branch is protected).
-Don't hand-edit between those markers; edit the canonical copy in concord. The
-skills section is just a pointer to the generated `.ai/skills/CATALOG.md` — the
-old per-repo "when you're touching X, read Y" table is retired (it drifted: it
-hard-coded a skill count). A new repo opts in by pasting the marker pairs around
-those three sections once.
+The invariant tail sections — **Working with domain skills**, **Custom art &
+audio**, **Development lifecycle**, **Pull requests & commits**, and **Version
+scheme** — are Concord-owned: they sit together inside one
+`<!-- concord:managed:start -->` / `<!-- concord:managed:end -->` block and are
+kept in sync from concord's [`AGENTS-COMMON.md`](AGENTS-COMMON.md) by
+`propagate.yml`, which proposes the update as a `concord-sync` PR (the default
+branch is protected). Don't hand-edit between those markers; edit the canonical
+copy in concord. The skills section is just a pointer to the generated
+`.ai/skills/CATALOG.md` — the old per-repo "when you're touching X, read Y" table
+is retired (it drifted: it hard-coded a skill count). A new repo opts in once by
+pasting the single marker pair; sections added inside the block thereafter
+propagate automatically, no new markers needed.
 
 ### `.ai/` — AI working area
 Committed. `skills/` and `commands/` are **vendored from the concord repo** —
