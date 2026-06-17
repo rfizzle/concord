@@ -42,9 +42,7 @@ and Prosperity.
 ├── design/                    # the "why & what" — pre-implementation truth
 │   ├── DESIGN.md              #   vision, brand, palette, motifs, HUD slot
 │   ├── SPEC.md                #   full behavioral spec (the Prosperity model)
-│   ├── ASSETS.md              #   asset manifest: .glyph source → final path, MISSING where none
-│   ├── REVIEW.md              #   spec review findings, when one exists
-│   └── handoffs/              #   one-shot agent handoff briefs (archived after use)
+│   └── ASSETS.md              #   asset manifest: .glyph source → final path, MISSING where none
 │
 ├── art/                       # art masters & working files (web copies live in docs/)
 │   ├── logo.png               #   full logo master (stone-frame formula)
@@ -122,8 +120,7 @@ work here. The generated `skills/CATALOG.md`
 `AGENTS.md` points at it rather than repeating the list. CI prompts and review criteria
 default to concord's `.ai/`; a repo-local `prompts/*.md` or
 `review-criteria.yml` here is a whole-file override (see the resolution order
-in concord's README). One-shot handoff briefs belong in `design/handoffs/`;
-reusable role prompts belong in concord.
+in concord's README). Reusable role prompts belong in concord.
 
 ### `.plan/` — planning (local only)
 A local dev scratchpad, **never committed** — the whole directory is gitignored
@@ -137,8 +134,7 @@ The **why and what**, kept out of the published site (Tribulation currently
 publishes its DESIGN.md inside `docs/` — that moves out). Fixed names: `DESIGN.md`
 (brand, palette, motif, HUD slot decision), `SPEC.md` (behavioral spec), `ASSETS.md`
 (asset manifest — each asset's `.glyph` source under `art/`, its final resource/site
-path, and `MISSING` where no glyph source exists yet), `REVIEW.md`
-(spec review). Specs are written *before* implementation (the Prosperity model) and
+path, and `MISSING` where no glyph source exists yet). Specs are written *before* implementation (the Prosperity model) and
 updated when behavior changes — `README.md`/`docs/` describe what *is*; `design/`
 records what was *intended* and why.
 
@@ -171,7 +167,7 @@ an agent or human runs by hand. Makefile targets wrap these.
 - Directories: lowercase, singular (`design/`, `art/`, not `designs/`)
 - Canonical docs: UPPERCASE fixed names (`DESIGN.md`, `SPEC.md`, `BACKLOG.md`) —
   greppable across all repos at the same path
-- Everything else kebab-case (`feature-review-handoff.md`, `listing-modrinth.md`)
+- Everything else kebab-case (`listing-modrinth.md`, `listing-curseforge.md`)
 - Suite-level documents (this file, `VISION.md`, `API-STANDARD.md`,
   `HUD-STANDARD.md`, `design/DESIGN-SYSTEM.md`) live in the **concord repo**
   (`../concord/` in the local workspace), never duplicated into mod repos; each
@@ -245,8 +241,8 @@ hs_err_pid*.log
 
 ### Mercantile (migrated 2026-06-12)
 - [x] `spec/` → `design/` ; `design/DESIGN.md` written (brand seeded from
-      `VISION.md` §2–3 + the live site palette). Bonus: `SPEC.md`/`REVIEW.md`
-      were gitignored before — they are now actually tracked
+      `VISION.md` §2–3 + the live site palette). Bonus: `SPEC.md` was
+      gitignored before — it is now actually tracked
 - [x] `mkdir art/` ; `git mv logo.png art/logo.png` ; README img src updated;
       `icon-128.png` master added (derived from the 1024px docs icon)
 - [x] **Delete `replay_pid391.log`**; standard `.gitignore` adopted; the log
@@ -262,8 +258,7 @@ hs_err_pid*.log
       Actions Pages source and legacy `docs/` removed (PR #2)
 
 ### Tribulation (reference repo — one move)
-- [ ] `mkdir design/` ; `git mv docs/design/DESIGN.md design/DESIGN.md` ;
-      `git mv docs/design/feature-review-handoff.md design/handoffs/` ; remove the
+- [ ] `mkdir design/` ; `git mv docs/design/DESIGN.md design/DESIGN.md` ; remove the
       now-empty `docs/design/` (design docs no longer published with the site)
 - [ ] `mkdir art/` ; `git mv logo.png art/logo.png` ; update README img src; copy
       icon master in
