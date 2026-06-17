@@ -42,6 +42,7 @@ and Prosperity.
 ├── design/                    # the "why & what" — pre-implementation truth
 │   ├── DESIGN.md              #   vision, brand, palette, motifs, HUD slot
 │   ├── SPEC.md                #   full behavioral spec (the Prosperity model)
+│   ├── ASSETS.md              #   asset manifest: .glyph source → final path, MISSING where none
 │   ├── REVIEW.md              #   spec review findings, when one exists
 │   └── handoffs/              #   one-shot agent handoff briefs (archived after use)
 │
@@ -134,7 +135,9 @@ untrack them as part of their migration.
 ### `design/` — pre-implementation truth
 The **why and what**, kept out of the published site (Tribulation currently
 publishes its DESIGN.md inside `docs/` — that moves out). Fixed names: `DESIGN.md`
-(brand, palette, motif, HUD slot decision), `SPEC.md` (behavioral spec), `REVIEW.md`
+(brand, palette, motif, HUD slot decision), `SPEC.md` (behavioral spec), `ASSETS.md`
+(asset manifest — each asset's `.glyph` source under `art/`, its final resource/site
+path, and `MISSING` where no glyph source exists yet), `REVIEW.md`
 (spec review). Specs are written *before* implementation (the Prosperity model) and
 updated when behavior changes — `README.md`/`docs/` describe what *is*; `design/`
 records what was *intended* and why.
