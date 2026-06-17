@@ -33,18 +33,51 @@ glyph.
 
 Honor the design-system glyph conventions:
 
-- **One motif object**, centered and readable at native size. A HUD glyph is
-  tiny — silhouette first, detail second. If you can't tell what it is at 16px,
-  simplify.
-- **Dark-stone outline.** Wrap the motif in an `ink` (`#0a0a0a`) 1px outline so
-  it reads against any HUD background, the way vanilla item sprites do.
+- **One motif object**, centered and readable at native size. Silhouette first:
+  the shape must read before any shading. At the smallest size you author, if you
+  can't tell what it is, simplify the *shape* — never the shading.
+- **Shade the form — don't flat-fill.** This is what separates a crafted sprite
+  from a flat cartoon sticker. Hard pixels (no blur), but render volume: pick a
+  light direction and give every surface a tonal **ramp** of 3–5 steps from one
+  base hue — highlight → midtone → core shadow → occlusion — plus a rim/edge light
+  where forms turn away. "Limited palette" caps the base *hues* (≈3–5), **not** the
+  tones: a shaded 32px sprite legitimately runs 20–50 colors, almost all of them
+  ramp steps. A flat single-tone fill inside the outline is the cartoony failure
+  mode — avoid it on any surface big enough to hold a ramp.
+- **Match detail to the size you authored.** 16px: silhouette plus one shading
+  step — keep it tight. 32px: a full 3-step ramp per surface, selective interior
+  anti-aliasing on curves, dithering only where a ramp step is too coarse. 64px+:
+  full form rendering, 4–5 step ramps, contact/cast shadow.
+- **Outline selectively.** Wrap the silhouette in `ink` (`#0a0a0a`) so it reads
+  against any HUD background. *Inside* the motif, separate forms with a dark tone
+  of the material itself, not more pure black — a uniform black box around every
+  interior edge flattens the volume back into a sticker.
 - **One glowing accent**, the mod's signature. The brighter accent (`*-bright`,
   `gold`, `ember`) sparingly for highlights; the base accent for the body.
-- **Pixel-art discipline.** Limited palette (≈3–5 colors), hard pixels, no
-  anti-aliasing or gradients — the script renders exactly the cells you write. Aim for a
-  high-quality custom sprite that reads as Minecraft, not a deference to vanilla art.
 - `.` is transparent. Keep at least a 1px transparent margin unless the motif
   intentionally bleeds to the edge.
+
+### Canvas size by asset role
+
+The native size you author *is* the detail budget — bigger canvas, more room for
+ramps. Pick it from what the asset is, not from the slot it ends up in:
+
+| Asset role | Author native | Detail target | Notes |
+|---|---|---|---|
+| HUD / status glyph | **32** | shaded form — ramps + rim light | the richest of the small slots; it carries the mod's identity. The game blits the 32 master at ~16 (`hud_icon.png` is 32×32). |
+| Block texture | **32** (16 only for a plain repeating pattern) | shaded, tiling | bleeds to all four edges and tiles; more surface area earns more shading. |
+| Decorated / hero item | **32** | shaded form | author at 32 and let the slot display it small. |
+| Plain inventory item | 16 (32 if it rewards detail) | midtone + 1–2 steps | simple tools, ingredients. |
+| Tiny pip / indicator | 16 | silhouette + 1 step | Jade dots, charge ticks. |
+| Mod icon / store / hero art | **32 native → upscale** to 128/256 | richest hand-draw | rides the size ladder (below). |
+
+Rule: **default to authoring at 32 whenever detail reads** (HUD, blocks,
+hero/decorated items) and ship that 32 master directly — Minecraft renders
+higher-resolution HUD/item/block textures and displays them at slot size.
+"Downsizing" here means *displayed* small, **not** pixel-downscaled into a 16px
+file (resampling a 32px drawing down to 16px goes muddy — don't). Reserve native
+16 for motifs that must read as crisp 16px blocks, or that gain nothing from the
+extra detail.
 
 Write the spec to `art/glyphs/<name>.glyph` (or a path the user gives). The
 `.glyph` is the committed source — `art/glyphs/` holds `.glyph` files only (PNGs
@@ -82,8 +115,8 @@ source pixel becomes an N×N block), and hand-authoring past ~64px is impractica
 
 | Tier  | How                            | Why |
 |-------|--------------------------------|-----|
-| 16px  | author native (16×16)          | HUD/Jade silhouette — vanilla item size |
-| 32px  | author native (32×32)          | favicon/recipe — room for a 2nd shading step |
+| 16px  | author native (16×16)          | smallest readable slot — tiny pips, plain symbols |
+| 32px  | author native (32×32)          | the default authoring size for HUD glyphs, blocks, and detailed items — room for full shading ramps |
 | 64px  | author native (64×64), *optional* | richest hand-drawn master; upscale from 32 if the motif doesn't reward it |
 | 128px | **upscale** the richest native | mod-icon size |
 | 256px | **upscale** the richest native | store/hero size |
