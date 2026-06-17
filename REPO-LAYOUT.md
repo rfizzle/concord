@@ -29,7 +29,7 @@ and Prosperity.
 │   ├── README.md              #   what lives here and why
 │   ├── skills/                #   vendored from concord — refresh via `make sync-skills`
 │   ├── skills/.concord-rev    #   provenance: concord SHA of the last sync
-│   ├── commands/              #   vendored from concord — slash commands (/glyph)
+│   ├── commands/              #   vendored from concord — slash commands (/glyph, /sfx)
 │   └── prompts/, review-criteria.yml  # OPTIONAL overrides of the concord defaults
 │
 ├── .claude/                   # Claude Code local state (mostly gitignored)

@@ -140,5 +140,53 @@ renders the exact cells (no drift). Three entry points:
 the mod's `art/` — `art/hud-icon-16.png` ↔ `art/hud-icon-16.glyph`; a size ladder commits
 one `.glyph` per natively-authored tier. The `.glyph` is the source of truth: minor edits
 re-render in seconds instead of hand-patching pixels, and the master is reproducible from
-the spec alone (the renderer lives in concord's `scripts/`; check it out as a sibling to
-re-render a member's art). Re-touching a texture recreates it through its `.glyph`.
+the spec alone (the renderer ships with the `mc-textures` skill at
+`.ai/skills/mc-textures/scripts/glyph.py`, vendored into every repo, so re-rendering needs
+no sibling checkout). Re-touching a texture recreates it through its `.glyph`.
+
+## 9. Audio
+
+**The stance.** Custom sound is encouraged across the suite — the `.sfx` pipeline gives a
+clean, consistent way to make it, so the bar is *fitness and coherence*, not vanilla purity.
+Custom audio comes from **procedural synthesis** (no recorded audio, samples, or licensing),
+through the `.sfx` pipeline below. This is the audio analogue of §8.
+
+**Custom vs. vanilla.** Default to **custom** where a cue benefits from its own identity.
+Use a vanilla `SoundEvent` when it is genuinely already the right sound (worth knowing:
+`event.raid.horn`, `block.bell.resonate`, `block.note_block.*`, `block.beacon.*`), or when
+the sound is **organic** — a real horn, a physical bell, footsteps, foley — which pure
+synthesis renders obviously fake. This is not license for a wholesale soundscape overhaul:
+add custom cues where they earn their place, not everywhere for its own sake.
+
+**What "good" means here.** A sound is conformant when it:
+
+- is **Ogg Vorbis, mono** (mono is required for 3D distance attenuation; stereo is only for
+  music/ambient/UI), 44.1 or 48 kHz;
+- is **short and trimmed** — an SFX cue, not a track; no dead air, most cues well under ~2 s;
+- sits at **vanilla loudness** — normalized with headroom (peak ≈ −1 dBFS, no clipping);
+- reads as **one gesture** — a single recognizable cue (rise, fall, two-tone, pulse),
+  silhouette first, like a glyph;
+- **belongs to its mod** — matches the feature's character;
+- ships its **companions** — a registered `SoundEvent`, a `sounds.json` entry, and a
+  **subtitle** (accessibility, non-negotiable).
+
+**The pipeline.** Author sounds as declarative `.sfx` specs (JSON) and synthesize them
+deterministically with `.ai/skills/mc-audio/scripts/sfx.py` — you describe the layers
+(oscillators, envelopes, pitch sweeps), the script renders exactly that (seeded noise, no
+drift). Stdlib-only synthesis; its one external tool is **ffmpeg** (the WAV→Ogg encode).
+
+| Tool | Use it for |
+|---|---|
+| `/sfx` | any synthesized cue — a UI blip, an alarm klaxon, a tech alert, a charge-up, a chiptune sting |
+| `mc-audio` skill | the craft reference `/sfx` leans on — read before designing |
+
+Because the renderer can't be heard, every run emits objective feedback — a waveform +
+spectrogram PNG and stats (duration, peak dBFS, RMS, spectral centroid) — to iterate
+against; the final ear-check is a human's.
+
+**Companion `.sfx` files (repeatability).** Every committed sound master carries its `.sfx`
+source at the same path with the `.sfx` extension, committed beside the `.ogg` in the mod's
+`art/audio/` — `art/audio/pylon-alarm.ogg` ↔ `art/audio/pylon-alarm.sfx`. The `.sfx` is the
+source of truth: edits re-render in seconds and the master is reproducible from the spec
+alone. The derived `.ogg` is copied into `assets/<mod>/sounds/`. Re-touching a sound
+recreates it through its `.sfx`.

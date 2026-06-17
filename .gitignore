@@ -8,6 +8,11 @@ __pycache__/
 # generated glyph scratch / outputs (kept local)
 scripts/examples/
 
+# mc-audio: example renders are reproducible from the .sfx specs (kept local)
+.ai/skills/mc-audio/examples/**/*.ogg
+.ai/skills/mc-audio/examples/**/*.wav
+.ai/skills/mc-audio/examples/**/*.report.png
+
 # OS junk
 .DS_Store
 Thumbs.db
