@@ -28,6 +28,32 @@ OpenCode, and any other agent should read the relevant `SKILL.md` directly
 **before** working in its subject area.
 <!-- concord:skills:end -->
 
+<!-- concord:custom-assets:start -->
+## Custom art & audio
+
+Custom, high-quality assets are encouraged across the suite — there are clean,
+consistent pipelines for both (the `mc-textures` skill → `/glyph`, the `mc-audio`
+skill → `/sfx`), so the bar is *fitness and coherence*, not vanilla purity. The
+one hard cosmetic rule is the vanilla **font** (never a custom font in any
+GUI/HUD/tooltip).
+
+Decide *whether* to make a custom asset here, before reaching for a skill:
+
+- **Default to custom where it serves a valid purpose** — identity, clarity, or a
+  slot vanilla can't fill. This is not license for a blanket retexture or a
+  wholesale soundscape overhaul; add assets where they earn their place, not for
+  their own sake.
+- **Use a vanilla asset when it is genuinely already right** — a trade UI literally
+  showing an emerald, a literal bell on a bell block.
+- **Audio also stays vanilla when the sound is organic** — a real horn, a physical
+  bell, footsteps, foley — which pure synthesis renders obviously fake. Synthesis
+  is for synthetic cues (alarms, UI blips, tech alerts, charge-ups, chiptune).
+
+Once the decision is made, the `mc-textures` / `mc-audio` skills are the craft
+reference for producing a good one. The normative spec is concord's
+`design/DESIGN-SYSTEM.md` §8 (textures) and §9 (audio).
+<!-- concord:custom-assets:end -->
+
 <!-- concord:lifecycle:start -->
 ## Development lifecycle
 
