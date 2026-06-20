@@ -21,10 +21,19 @@
 #      concord's desired changes; with nothing to change, no PR is opened. Logic
 #      lives in scripts/open-sync-pr.sh.
 #
-# Requires a repo secret CONCORD_DISPATCH_TOKEN: a fine-grained PAT scoped to all
-# member repos with "Contents: read & write", "Pull requests: read & write", and
-# "Actions: write" (or classic `repo` scope). Without it the workflow fails
+# Requires a repo secret CONCORD_DISPATCH_TOKEN. Without it the workflow fails
 # gracefully per-repo.
+#
+# Use the LEAST-PRIVILEGED credential that works — this token can write to every
+# member repo, so its blast radius if leaked is the whole suite:
+#   1. Preferred: a GitHub App installed on the member repos, minting a
+#      short-lived installation token per run (Contents RW, Pull requests RW,
+#      Actions write). Short TTL + per-repo scoping beats a standing secret.
+#   2. Otherwise: a FINE-GRAINED PAT scoped to exactly the member repos with
+#      Contents RW, Pull requests RW, Actions write, AND an expiry set (rotate
+#      on schedule).
+# Do NOT use a classic `repo`-scoped PAT: it grants far more than needed across
+# every repo the owner can touch and never expires.
 name: Propagate template to member sites
 
 on:
@@ -45,7 +54,7 @@ jobs:
     outputs:
       repos: ${{ steps.list.outputs.repos }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - id: list
         run: echo "repos=$(jq -c '[.members[].id]' members.json)" >> "$GITHUB_OUTPUT"
 
@@ -73,7 +82,7 @@ jobs:
       matrix:
         repo: ${{ fromJson(needs.members.outputs.repos) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Propose concord-owned files to rfizzle/${{ matrix.repo }}
         env:
           GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}

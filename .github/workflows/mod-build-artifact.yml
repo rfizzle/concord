@@ -105,27 +105,30 @@ jobs:
         if: steps.dedup.outputs.already_built == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.pr.outputs.sha }}
         run: |
-          gh pr comment "${{ github.event.issue.number }}" \
-            --repo "${{ github.repository }}" \
-            --body "Artifact for commit \`${{ steps.pr.outputs.sha }}\` was already built — see earlier comment above."
+          gh pr comment "$PR_NUMBER" \
+            --repo "$REPO" \
+            --body "Artifact for commit \`$SHA\` was already built — see earlier comment above."
 
       - name: Checkout
         if: steps.dedup.outputs.already_built != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ steps.pr.outputs.sha }}
 
       - name: Set up JDK 21
         if: steps.dedup.outputs.already_built != 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: 21
 
       - name: Set up Gradle
         if: steps.dedup.outputs.already_built != 'true'
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
 
       - name: Make gradlew executable
         if: steps.dedup.outputs.already_built != 'true'
@@ -138,11 +141,15 @@ jobs:
       - name: Get mod version
         if: steps.dedup.outputs.already_built != 'true'
         id: version
-        run: echo "mod_version=$(./gradlew -q printVersion --no-daemon)" >> "$GITHUB_OUTPUT"
+        run: |
+          # printVersion runs the PR's gradle; constrain to a single line so a
+          # malicious multiline value can't inject additional step outputs.
+          VER="$(./gradlew -q printVersion --no-daemon | head -n1)"
+          echo "mod_version=$VER" >> "$GITHUB_OUTPUT"
 
       - name: Upload JAR
         if: steps.dedup.outputs.already_built != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.MOD_ID }}-${{ steps.version.outputs.mod_version }}-pr${{ github.event.issue.number }}
           path: |
@@ -154,22 +161,32 @@ jobs:
 
       - name: Comment with artifact link
         if: steps.dedup.outputs.already_built != 'true'
+        # Pass user-influenced values (the PR branch name and the gradle-derived
+        # version, both controllable by the PR author) through env, never inline
+        # ${{ }} in the script: an inline expression is substituted before the
+        # shell parses the line, so a branch named `$(...)`/with backticks would
+        # execute. Referencing "$BRANCH" keeps it inert data.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.mod_version }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          gh pr comment "${{ github.event.issue.number }}" \
-            --repo "${{ github.repository }}" \
+          gh pr comment "$PR_NUMBER" \
+            --repo "$REPO" \
             --body "**Build artifact ready** :package:
 
           | | |
           |---|---|
-          | **Version** | \`${{ steps.version.outputs.mod_version }}\` |
-          | **Commit** | \`${{ steps.pr.outputs.sha }}\` |
-          | **Branch** | \`${{ steps.pr.outputs.branch }}\` |
+          | **Version** | \`$VERSION\` |
+          | **Commit** | \`$SHA\` |
+          | **Branch** | \`$BRANCH\` |
           | **Download** | [Workflow Run]($RUN_URL) |
 
-          Artifact: \`${MOD_ID}-${{ steps.version.outputs.mod_version }}-pr${{ github.event.issue.number }}\` (retained 7 days)"
+          Artifact: \`${MOD_ID}-${VERSION}-pr${PR_NUMBER}\` (retained 7 days)"
 
       - name: React with rocket on success
         if: steps.dedup.outputs.already_built != 'true' && success()
@@ -184,12 +201,15 @@ jobs:
         if: failure() && steps.validate.outcome == 'success' && steps.dedup.outputs.already_built != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          gh pr comment "${{ github.event.issue.number }}" \
-            --repo "${{ github.repository }}" \
+          gh pr comment "$PR_NUMBER" \
+            --repo "$REPO" \
             --body "**Build failed** :x:
 
           [View build logs]($RUN_URL)
 
-          Commit: \`${{ steps.pr.outputs.sha }}\`"
+          Commit: \`$SHA\`"

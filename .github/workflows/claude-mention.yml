@@ -36,18 +36,25 @@ on:
 
 jobs:
   claude:
+    # Gate on author association as well as @claude: this job runs with
+    # contents/issues/pull-requests write and the Claude OAuth token, so only
+    # users with write access (OWNER/MEMBER/COLLABORATOR) may invoke it.
+    # Without this any GitHub user could trigger a write-capable agent and burn
+    # the budget. The association field differs per event, so each branch checks
+    # its own. (claude-code-action also checks actor permissions; this is
+    # defense in depth at the workflow boundary.)
     if: |
       github.event.sender.type != 'Bot' &&
       (
-        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
+        (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
       )
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 1
 
@@ -55,20 +62,20 @@ jobs:
       # without a JDK + Gradle on the runner, any ./gradlew invocation fails
       # before Claude's allowlist even matters.
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: 21
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@51705da45eecce209d4700538bf8377d5b5fc695 # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Standing guidance so review fixes converge instead of spawning a

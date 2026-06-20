@@ -71,19 +71,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 1
 
       - name: Checkout concord (prompt defaults)
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           repository: rfizzle/concord
           ref: master
           path: .concord
 
       - name: Install Claude Code
-        run: curl -fsSL https://claude.ai/install.sh | bash
+        run: |
+          # Fetch the installer to disk rather than piping the network stream
+          # straight into bash: this captures the exact bytes (a truncated/MITM'd
+          # response can't partially execute) and logs their digest for audit.
+          curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh
+          echo "claude install.sh sha256: $(sha256sum /tmp/claude-install.sh | cut -d' ' -f1)"
+          # To pin against supply-chain tampering, set EXPECTED_SHA256 to the
+          # logged digest once reviewed — install then fails closed on any change.
+          EXPECTED_SHA256=""
+          if [ -n "$EXPECTED_SHA256" ]; then
+            echo "${EXPECTED_SHA256}  /tmp/claude-install.sh" | sha256sum -c - \
+              || { echo "::error::claude install.sh checksum mismatch"; exit 1; }
+          fi
+          bash /tmp/claude-install.sh
 
       - name: Build spec prompt
         run: |
@@ -120,7 +133,7 @@ jobs:
       # Artifacts to confirm the issue body and AGENTS.md are present. The
       # prompt holds no secrets (the token is passed via env).
       - name: Upload spec prompt
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: spec-prompt
           path: /tmp/spec-prompt.txt
