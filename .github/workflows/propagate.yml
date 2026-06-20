@@ -54,7 +54,7 @@ jobs:
     outputs:
       repos: ${{ steps.list.outputs.repos }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - id: list
         run: echo "repos=$(jq -c '[.members[].id]' members.json)" >> "$GITHUB_OUTPUT"
 
@@ -82,7 +82,7 @@ jobs:
       matrix:
         repo: ${{ fromJson(needs.members.outputs.repos) }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Propose concord-owned files to rfizzle/${{ matrix.repo }}
         env:
           GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
