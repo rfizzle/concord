@@ -1,0 +1,16 @@
+# Keep the SHA-pinned GitHub Actions current: Dependabot bumps the pinned
+# commit (and the trailing # vN comment) via PR when a new release lands, so
+# pinning for supply-chain safety doesn't mean drifting out of date.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    # One PR for all action bumps per week instead of one per action.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
