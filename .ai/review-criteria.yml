@@ -111,6 +111,35 @@ categories:
       new/changed config option or command, or altered gameplay. Omit for
       fix / chore / refactor / perf / internal diffs players never see.
 
+  - id: feature_completeness
+    name: Feature completeness
+    severity: optional
+    description: |
+      A new player-facing surface owes every paired surface, not just the ones
+      the diff happened to touch. This is an absence check keyed on the *kind*
+      of change: when a PR adds a new config option (a new public field on the
+      config class), a new command, or a new player-facing feature, verify ALL
+      of these surfaces and score ⚠ for each one skipped:
+        - Config GUI: the option appears in the mod's config-screen integration
+          (Mod Menu / Cloth Config builder), with default and min/max matching
+          the config class field's default and validation.
+        - Lang strings: every new Component.translatable(...) key — config
+          labels, tooltips, command feedback — has an
+          assets/<modid>/lang/en_us.json entry (a missing key renders the raw
+          translation id in-game).
+        - Site docs: delegated to the `site_docs` category; do not re-score it
+          here.
+        - README config-section list, if the mod maintains one.
+    look_at:
+      - the mod's compat Mod Menu / Cloth Config integration class
+      - assets/<modid>/lang/en_us.json
+      - the mod's config class (for new public fields)
+    applies_when: |
+      PR introduces a new config option, command, or player-facing feature —
+      typically a feat-typed change that adds a public field to the config class
+      or a new translatable key. Omit for internal-only fix / chore / refactor /
+      perf diffs players never observe.
+
   - id: performance
     name: Performance (20Hz tick budget)
     severity: must_fix
@@ -125,7 +154,9 @@ categories:
     description: |
       Changes that could break optional integrations (Mod Menu, Cloth Config,
       Jade/WTHIT, EMI/REI/JEI) or sibling Concord mods consuming this mod's
-      public api package. Any new public API used by compat classes.
+      public api package. Any new public API used by compat classes. Scope is
+      breakage of an EXISTING integration; omitting a NEW surface for a new
+      feature is `feature_completeness`'s job, not this one.
     applies_when: |
       PR touches a compat.* package, the mod's public api package, public
       APIs that compat classes import, or fabric.mod.json depends/recommends
