@@ -24,8 +24,8 @@ $ARGUMENTS
 
 Resolve the mode: **release** if the args contain `release` (or a version like
 `1.0.0`), else **quality**. In release mode, parse an optional target version
-(default: the next version implied by `./gradlew printVersion` + git tags — confirm
-it) and a publish target (`modrinth` | `curseforge` | `both`, default `both`).
+(default: the next version after the latest `v*` git tag — confirm it) and a publish
+target (`modrinth` | `curseforge` | `both`, default `both`).
 State the resolved mode (and version/target in release mode) in one line before
 starting.
 
@@ -46,10 +46,10 @@ Suite standards live at `../concord/` in the workspace — `REPO-LAYOUT.md`,
 one per dimension when present; if `../concord/` is absent (a bare clone), fall back
 to `AGENTS.md`'s conformance claims and note the gap.
 
-**Release mode also:** read `gradle.properties`'s base `mod_version`, run
-`git tag --list` + `git log --oneline -15` (what's landed since the last tag), and
-identify the store-listing files (`site/listing-modrinth.md`,
-`site/listing-curseforge.md`).
+**Release mode also:** run `git tag --list` + `git log --oneline -15` (what's landed
+since the last tag) to ground the target version — the released version is the tag you
+push, not `gradle.properties` (which holds the `0.0.0` dev base) — and identify the
+store-listing files (`site/listing-modrinth.md`, `site/listing-curseforge.md`).
 
 ## Step 1 — Launch the grading agents in parallel
 
@@ -107,17 +107,21 @@ output is captured fully and reruns aren't wasted. Run the build the way CI does
 `./gradlew printVersion` (use `Makefile` targets if present). Report: clean build vs
 failures; compiler warnings and deprecations; unit + gametest pass counts and any
 `@Disabled`/ignored or flaky tests; the JaCoCo coverage % from
-`build/reports/jacoco/test/jacocoTestReport.xml`; and that the version computes to a
-clean tagged form (not a `+<n>.g<sha>` dev string) for the intended tag. A red build
-or failing gametest is a release blocker, full stop.
+`build/reports/jacoco/test/jacocoTestReport.xml`; and that `printVersion` resolves to
+the expected `0.0.0+g<sha>` dev string — local builds are tag-less by design, so the
+released version comes from the pushed tag (injected by the release workflow), not from
+`gradle.properties`; do not treat the local dev version as a blocker. A red build or
+failing gametest is a release blocker, full stop.
 
 **Release packaging & store metadata.** Validate the artifact a user installs.
 `fabric.mod.json`: name, description, authors, contact, `license`, `icon` (and the
 file exists at that path), environment, entrypoints resolve, mixins config
 referenced, `depends`/`recommends`/`breaks` versions sane and pinned to the right
 MC/loader/API range. `LICENSE` at root. The built jar
-(`build/libs/<mod>-<version>.jar`) carries the expected resources and no debug/secret
-leakage. Version scheme produces a clean tag. Changelog/release-notes readiness. For
+(`build/libs/<mod>-0.0.0+g<sha>.jar`) carries the expected resources and no debug/secret
+leakage — the `0.0.0+g<sha>` jar name is the expected local dev version, and the released
+jar takes the pushed tag's version via CI, so don't flag the local name as unclean.
+Changelog/release-notes readiness. For
 the publish target(s), the store listing copy exists and is current
 (`site/listing-modrinth.md` / `site/listing-curseforge.md`) — correct MC version,
 loader, and dependency callouts.
