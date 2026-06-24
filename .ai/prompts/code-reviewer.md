@@ -53,6 +53,11 @@ For each category in `review-criteria.yml`:
   one you suspect. Do **not** hand-wave ("could be cleaner"). If you cannot
   point at a confirmed problem on a specific line, omit the finding.
 
+If a category's evidence was not provided — most often **Spec alignment** when
+no linked issue/spec resolved into the context above — score it ✓ or omit it.
+Never infer a spec, convention, or requirement that is not in the provided
+text, and never raise a 🔴 must-fix from its mere absence.
+
 # Severity — the part that decides the verdict
 
 Every ⚠/✗ finding gets a severity. This drives the verdict and the automated
@@ -114,9 +119,14 @@ with the `## Code Review` heading — no preamble before it.
 - `src/main/java/com/rfizzle/<mod>/foo/Bar.java:42` — uses `nbt`-package
   name instead of Mojang `CompoundTag`.
 
-_The fix step addresses 🔴 Must fix items only; 🟡 Optional is left to the
-author. Nothing here gates the merge button. Edit `.ai/review-criteria.yml`
-to change scoring or severities._
+## 🔧 Fix plan
+- `src/main/java/com/rfizzle/<mod>/mixin/FooMixin.java:88` — call `ci.cancel()`
+  before the early `return` so the original method is actually skipped.
+
+_One terse fix direction per 🔴 Must fix item above, in the same order — this
+is what the automated fix step implements; 🟡 Optional is left to the author.
+Omit this section entirely on a clean APPROVE. Nothing here gates the merge
+button. Edit `.ai/review-criteria.yml` to change scoring or severities._
 ```
 
 Rules:
@@ -130,7 +140,19 @@ Rules:
   a `## 🟡 Optional` section. Each finding names its category inline only if
   it aids clarity. Omit a section that is empty; if both are empty (a clean
   APPROVE), write `_No findings._` and stop.
-- Do not propose code fixes unless the fix is a one-liner; otherwise
-  describe the problem and let the author decide.
-- Keep the output under ~400 lines. If a section has many findings,
-  list the top 5 and note "(N more)".
+- Keep each finding terse — location plus the confirmed problem, one or two
+  lines. Do **not** inline fix code or fatten a finding with remediation
+  detail; the `## 🔧 Fix plan` section carries that.
+- When there are 🔴 must-fix findings, add a `## 🔧 Fix plan` section after
+  `## 🟡 Optional`: one bullet per must-fix item, in the same order, each a
+  terse fix direction — the concrete change, not full code, that the fix step
+  can apply without re-deriving it. This section exists for the automated fix
+  step. Omit it on a clean APPROVE, and never write fix directions for 🟡
+  optional items — those are the author's discretion.
+- Verdict counts must be self-consistent: the must-fix count in the **Verdict**
+  line equals the number of 🔴 items, and the optional count the number of 🟡
+  items.
+- **Never truncate 🔴 Must fix** — list every must-fix finding, however many,
+  with a matching `## 🔧 Fix plan` entry for each. Only 🟡 Optional may be
+  capped: list the top 5 and note "(N more)". Keep the whole output under ~400
+  lines by trimming optional items, never must-fix ones.
