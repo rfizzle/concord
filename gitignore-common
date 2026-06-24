@@ -1,0 +1,63 @@
+# Concord — shared .gitignore region (Concord-owned).
+#
+# The block between the concord:gitignore markers below is synced verbatim into
+# each member repo's .gitignore by propagate.yml (via inject-agents-regions.py).
+# Edit the shared ignores HERE, never in a mod repo. Lines OUTSIDE the markers in
+# a member .gitignore are repo-owned and never touched by the sync; a member opts
+# in by carrying the marker pair once.
+#
+# Defensive anchoring: every ignore whose name could collide with a source,
+# package, or resource directory is anchored with a leading "/" so it only
+# matches at repo root — never a nested dir like src/.../config/. Genuinely
+# global junk (IDE/OS files, JVM crash dumps) stays unanchored so it is caught
+# at any depth.
+
+# concord:gitignore:start
+# Concord-managed — synced from concord; edit there, not here. Root-only build,
+# runtime, and tooling artifacts are anchored with a leading "/" so they can
+# never match a nested package/resource directory of the same name. Put
+# repo-specific ignores OUTSIDE this block.
+
+# Gradle / compile output
+/.gradle/
+/build/
+/out/
+/bin/
+/classes/
+/net/
+
+# Loom dev runtime
+/run/
+/mods/
+/logs/
+/config/
+
+# Generated website (concord template)
+/_site/
+
+# Local AI / planning state
+/.plan/
+.claude/settings.local.json
+.claude/projects/
+.claude/scheduled_tasks.lock
+
+# IDE / editor (global — these names never collide with a source dir)
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+*.iml
+*.ipr
+*.iws
+*.launch
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# JVM crash dumps & loom dev-runtime logs (never source; match anywhere)
+hs_err_pid*.log
+replay_pid*.log
+gametest_output.log
+# concord:gitignore:end

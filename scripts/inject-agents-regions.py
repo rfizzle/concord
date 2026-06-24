@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-"""Sync Concord-owned regions into a member repo's AGENTS.md.
+"""Sync a Concord-owned region from a source file into a target file.
 
-Reads the canonical region bodies from AGENTS-COMMON.md (the text between each
-`<!-- concord:NAME:start -->` / `<!-- concord:NAME:end -->` pair) and replaces
-the matching region in the target AGENTS.md, leaving everything outside the
-markers — and the marker lines themselves — untouched.
+Reads the canonical region bodies from a source (the text between each
+`concord:NAME:start` / `concord:NAME:end` marker pair) and replaces the matching
+region in the target, leaving everything outside the markers — and the marker
+lines themselves — untouched.
+
+Markers may be written in either comment style, so one script serves both
+Markdown (AGENTS.md) and hash-comment files (.gitignore, YAML):
+
+    <!-- concord:NAME:start -->   |   # concord:NAME:start
+    ...                           |   ...
+    <!-- concord:NAME:end -->     |   # concord:NAME:end
 
 A region is only written if the target already carries BOTH markers, so this is
 inert on a repo that hasn't opted in; seeding the markers once is the per-repo
 opt-in. Idempotent: re-running with no upstream change rewrites nothing.
 
-    python3 scripts/inject-agents-regions.py <regions-source> <target-agents-md>
+    python3 scripts/inject-agents-regions.py <regions-source> <target-file>
 
 Exit status: 0 and prints "changed" if the target was modified, "unchanged"
 otherwise; 2 on a malformed region source. Used by propagate.yml and for the
@@ -22,17 +29,26 @@ from __future__ import annotations
 import re
 import sys
 
+# A start/end marker in either comment style. The `<!--`/`-->` wrappers are
+# optional so the same pattern matches both Markdown and hash-comment files.
+_OPEN = r"(?:<!--[ \t]*|#[ \t]*)"
+_CLOSE = r"(?:[ \t]*-->)?"
 
-def _markers(name: str) -> tuple[str, str]:
-    return f"<!-- concord:{name}:start -->", f"<!-- concord:{name}:end -->"
+
+def _start(name: str) -> str:
+    return _OPEN + r"concord:" + name + r":start" + _CLOSE
+
+
+def _end(name: str) -> str:
+    return _OPEN + r"concord:" + name + r":end" + _CLOSE
 
 
 def parse_regions(source: str) -> dict[str, str]:
     """Map region name -> inner body (exclusive of the marker lines)."""
     pattern = re.compile(
-        r"<!-- concord:(?P<name>[a-z0-9-]+):start -->\n"
+        _OPEN + r"concord:(?P<name>[a-z0-9-]+):start" + _CLOSE + r"\n"
         r"(?P<body>.*?)"
-        r"\n<!-- concord:(?P=name):end -->",
+        r"\n" + _OPEN + r"concord:(?P=name):end" + _CLOSE,
         re.DOTALL,
     )
     regions = {m.group("name"): m.group("body") for m in pattern.finditer(source)}
@@ -47,16 +63,19 @@ def inject(target: str, regions: dict[str, str]) -> tuple[str, list[str], list[s
     applied, skipped = [], []
     out = target
     for name, body in regions.items():
-        start, end = _markers(name)
-        if start not in out or end not in out:
+        # Match the marker pair in the target and capture the actual marker lines
+        # (whatever comment style they use) so they are preserved verbatim.
+        block = re.compile(
+            r"(?P<start>" + _start(re.escape(name)) + r")\n"
+            r".*?\n"
+            r"(?P<end>" + _end(re.escape(name)) + r")",
+            re.DOTALL,
+        )
+        m = block.search(out)
+        if m is None:
             skipped.append(name)
             continue
-        # Replace whatever sits between the marker lines with the canonical body,
-        # preserving the markers and a single blank-free newline boundary.
-        block = re.compile(
-            re.escape(start) + r"\n.*?\n" + re.escape(end), re.DOTALL
-        )
-        out = block.sub(f"{start}\n{body}\n{end}", out, count=1)
+        out = out[: m.start()] + f"{m.group('start')}\n{body}\n{m.group('end')}" + out[m.end() :]
         applied.append(name)
     return out, applied, skipped
 

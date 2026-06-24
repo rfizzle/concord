@@ -44,6 +44,7 @@ on:
       - "members.json"
       - "propagate/**"
       - "AGENTS-COMMON.md"
+      - "gitignore-common"
       - "scripts/inject-agents-regions.py"
       - "scripts/open-sync-pr.sh"
   workflow_dispatch:

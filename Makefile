@@ -4,13 +4,15 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check help
+.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
 	@echo "catalog-check  fail if CATALOG.md is stale (CI guard)"
-	@echo "agents-sync    inject concord-owned AGENTS.md regions into sibling repos (../<member>)"
-	@echo "agents-check   show which sibling AGENTS.md regions would change (no writes)"
+	@echo "agents-sync      inject concord-owned AGENTS.md regions into sibling repos (../<member>)"
+	@echo "agents-check     show which sibling AGENTS.md regions would change (no writes)"
+	@echo "gitignore-sync   inject the concord-owned .gitignore region into sibling repos (../<member>)"
+	@echo "gitignore-check  show which sibling .gitignore regions would change (no writes)"
 
 catalog:
 	@$(PY) scripts/gen-skills-catalog.py
@@ -30,4 +32,14 @@ agents-sync:
 agents-check:
 	@for m in $(MEMBERS); do \
 		test -f ../$$m/AGENTS.md && { cp ../$$m/AGENTS.md /tmp/$$m.agents.bak; $(PY) scripts/inject-agents-regions.py AGENTS-COMMON.md ../$$m/AGENTS.md >/dev/null; diff -u /tmp/$$m.agents.bak ../$$m/AGENTS.md && echo "up to date: $$m" || true; mv /tmp/$$m.agents.bak ../$$m/AGENTS.md; } || echo "skip: ../$$m/AGENTS.md not found"; \
+	done
+
+gitignore-sync:
+	@for m in $(MEMBERS); do \
+		test -f ../$$m/.gitignore && $(PY) scripts/inject-agents-regions.py gitignore-common ../$$m/.gitignore || echo "skip: ../$$m/.gitignore not found"; \
+	done
+
+gitignore-check:
+	@for m in $(MEMBERS); do \
+		test -f ../$$m/.gitignore && { cp ../$$m/.gitignore /tmp/$$m.gitignore.bak; $(PY) scripts/inject-agents-regions.py gitignore-common ../$$m/.gitignore >/dev/null; diff -u /tmp/$$m.gitignore.bak ../$$m/.gitignore && echo "up to date: $$m" || true; mv /tmp/$$m.gitignore.bak ../$$m/.gitignore; } || echo "skip: ../$$m/.gitignore not found"; \
 	done

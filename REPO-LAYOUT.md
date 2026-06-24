@@ -178,46 +178,21 @@ an agent or human runs by hand. Makefile targets wrap these.
 
 ## 4. Standard `.gitignore`
 
-Tribulation's is the baseline; add the planning/AI local-state entries:
+The common ignores are a Concord-owned managed region, synced from concord's
+[`gitignore-common`](gitignore-common) into each member's `.gitignore` (between
+`# concord:gitignore:start` / `# concord:gitignore:end`) by `propagate.yml` — the
+same mechanism as the `AGENTS.md` regions. Edit the shared list in
+`gitignore-common`, never in a mod repo; put repo-specific ignores **outside** the
+marker block, where the sync never touches them. A member opts in by carrying the
+marker pair once (`make gitignore-sync` from concord seeds and refreshes siblings
+checked out as `../<member>`).
 
-```gitignore
-# gradle
-.gradle/
-build/
-out/
-classes/
-
-# loom dev runtime
-run/
-mods/
-logs/
-config/
-
-# IDE
-.idea/
-*.iml
-*.ipr
-*.iws
-.settings/
-.vscode/
-.classpath
-.project
-*.launch
-
-# local AI / planning state
-.claude/settings.local.json
-.claude/projects/
-.claude/scheduled_tasks.lock
-.plan/
-
-# OS junk
-.DS_Store
-Thumbs.db
-
-# stray runtime artifacts
-replay_pid*.log
-hs_err_pid*.log
-```
+**Defensive anchoring.** Every ignore whose name could collide with a source,
+package, or resource directory — `build out bin classes net .gradle run mods logs
+config _site .plan` — is anchored with a leading `/` so it matches only at repo
+root, never a nested dir like `src/.../config/`. An unanchored `config/` silently
+swallows a Java package of that name. Genuinely global junk (IDE/OS files,
+`*.iml`, JVM crash dumps) stays unanchored so it is caught at any depth.
 
 ---
 
