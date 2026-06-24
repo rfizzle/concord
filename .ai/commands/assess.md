@@ -121,7 +121,10 @@ MC/loader/API range. `LICENSE` at root. The built jar
 (`build/libs/<mod>-0.0.0+g<sha>.jar`) carries the expected resources and no debug/secret
 leakage — the `0.0.0+g<sha>` jar name is the expected local dev version, and the released
 jar takes the pushed tag's version via CI, so don't flag the local name as unclean.
-Changelog/release-notes readiness. For
+Release-notes readiness — the notes are generated in CI from the merged PRs since the
+last tag, so there's no manual changelog to check; instead confirm that raw material is
+clean: PR subjects since the last tag are player-meaningful conventional-commit titles,
+not `wip`/`fixup` noise that would muddy the generated notes. For
 the publish target(s), the store listing copy exists and is current
 (`site/listing-modrinth.md` / `site/listing-curseforge.md`) — correct MC version,
 loader, and dependency callouts.
