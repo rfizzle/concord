@@ -73,7 +73,11 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build
-        run: ./gradlew build
+        # The pushed tag is the single source of version truth: inject it as the
+        # gradle mod_version so the built jar's version is exactly the tag. Mods
+        # keep mod_version=0.0.0 in gradle.properties as the local/dev base,
+        # which surfaces as 0.0.0+g<sha> off git when no tag is injected.
+        run: ./gradlew build -Pmod_version="${GITHUB_REF_NAME#v}"
 
       - name: Derive release metadata
         id: meta
