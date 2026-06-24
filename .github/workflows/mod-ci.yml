@@ -1,8 +1,8 @@
 # Concord — reusable CI for member mods.
 #
 # Replaces the per-repo ci.yml + test.yml pair: one gradle build (which
-# compiles, runs unit tests, and jars) with JaCoCo coverage + Codecov
-# uploads, plus a gametest job. Caller stub:
+# compiles, runs unit tests, and jars) with JaCoCo coverage, plus a
+# gametest job. Caller stub:
 #
 #   name: CI
 #   on:
@@ -25,9 +25,6 @@ name: Mod CI
 
 on:
   workflow_call:
-    secrets:
-      CODECOV_TOKEN:
-        required: false
 
 jobs:
   build:
@@ -51,24 +48,7 @@ jobs:
       - name: Build (compile + unit tests + jar) with coverage
         run: ./gradlew build jacocoTestReport --no-daemon --stacktrace
 
-      - name: Upload coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: build/reports/jacoco/test/jacocoTestReport.xml
-          flags: unit
-          fail_ci_if_error: false
-
-      - name: Upload unit test results to Codecov
-        if: always()
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: build/test-results/test/**/*.xml
-          flags: unit
-
-      - name: Upload unit test report (fallback)
+      - name: Upload unit test report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -98,15 +78,7 @@ jobs:
       - name: Run gametests
         run: ./gradlew runGametest --no-daemon --stacktrace
 
-      - name: Upload gametest results to Codecov
-        if: always()
-        uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: build/junit-gametest.xml
-          flags: gametest
-
-      - name: Upload gametest report (fallback)
+      - name: Upload gametest report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

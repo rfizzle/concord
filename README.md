@@ -46,7 +46,7 @@ jar prefix (`build/libs/<mod>-<version>.jar`), and gradle tasks `build` (compile
 unit tests + jar), `jacocoTestReport` (XML at
 `build/reports/jacoco/test/jacocoTestReport.xml`), `runGametest` (JUnit XML at
 `build/junit-gametest.xml`), and `printVersion`. Secrets per repo:
-`CODECOV_TOKEN` (optional), `CLAUDE_CODE_OAUTH_TOKEN` (for the Claude workflows).
+`CLAUDE_CODE_OAUTH_TOKEN` (for the Claude workflows).
 Each mod repo's stubs declare only triggers, concurrency, and permissions — the
 stub bodies are documented at the top of each reusable workflow.
 

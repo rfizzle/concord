@@ -21,7 +21,6 @@ and Prosperity.
 ├── AGENTS.md                  # AI agent guidance: conventions, layout, lifecycle
 ├── CLAUDE.md                  # symlink → AGENTS.md (Tribulation pattern)
 ├── Makefile                   # task shortcuts wrapping gradle
-├── codecov.yml
 ├── build.gradle / settings.gradle / gradle.properties
 ├── gradlew / gradlew.bat / gradle/
 │
@@ -208,8 +207,7 @@ swallows a Java package of that name. Genuinely global junk (IDE/OS files,
       `art/logo.png`; add `icon-128.png` master (copy of the in-jar icon)
 - [x] **Delete stray `net/` directory** (compiled `.class` files at repo root) and
       gitignore the pattern
-- [x] Adopt the standard `.gitignore`; add `codecov.yml` (JaCoCo wired in CI;
-      `CODECOV_TOKEN` secret still unset — upload is optional until added)
+- [x] Adopt the standard `.gitignore`
 - [x] Migrate `docs/` to `site/` content + `site.yml`; `docs/curseforge.md` →
       `site/listing-curseforge.md`; `listing-modrinth.md` added; legacy `docs/`
       deleted after verifying meridian.rfizzle.com live (Pages source: Actions)
@@ -253,7 +251,7 @@ swallows a Java package of that name. Genuinely global junk (IDE/OS files,
 - [ ] `docs/` stays empty until the site is built; add `CNAME`
       (`prosperity.rfizzle.com`) when Pages is enabled
 - [ ] Gradle scaffold, `Makefile`, `scripts/release.sh`, `src/` split source sets,
-      `README.md`, `LICENSE`, `codecov.yml` arrive with Phase 1 of the build plan
+      `README.md`, `LICENSE` arrive with Phase 1 of the build plan
 
 ---
 
