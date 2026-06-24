@@ -44,10 +44,10 @@ on:
         default: claude-opus-4-8
       max-budget-usd:
         type: string
-        default: "5.00"
+        default: "8.00"
       max-turns:
         type: string
-        default: "40"
+        default: "100"
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true

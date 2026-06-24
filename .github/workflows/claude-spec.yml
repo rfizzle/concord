@@ -59,8 +59,9 @@ on:
       max-turns:
         type: string
         # Headroom for the alignment step: list .ai/skills/, read the triggered
-        # SKILL.md files, then write the spec.
-        default: "40"
+        # SKILL.md files, then write the spec. Generous on purpose — the budget
+        # cap is the real ceiling; turns just guard against a runaway loop.
+        default: "100"
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true
