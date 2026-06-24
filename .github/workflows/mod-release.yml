@@ -1,8 +1,11 @@
 # Concord — reusable release workflow for member mods.
 #
 # Builds on a v* tag push and creates a GitHub Release with the mod jar
-# (sources/dev jars excluded). Mod id defaults to the repository name —
-# the suite convention is repo name == mod id == jar prefix. Caller stub:
+# (sources/dev jars excluded). The release is assembled as a draft, the jar
+# is attached, then the draft is published — this is the only order that works
+# on repositories with immutable releases enabled, where assets must be
+# uploaded before a release is published. Mod id defaults to the repository
+# name — the suite convention is repo name == mod id == jar prefix. Caller stub:
 #
 #   name: Release
 #   on:
@@ -62,14 +65,42 @@ jobs:
           fi
           echo "title=${MOD_ID^} v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release
+      - name: Stage distributable jar
+        # action-gh-release treats each files: line as an independent glob; a
+        # leading ! is not a negation, so build/libs/<mod>-*.jar would also match
+        # the sources and dev jars. Copy only the distributable jar into a clean
+        # dir and upload from there instead.
+        run: |
+          mkdir -p dist
+          shopt -s nullglob
+          found=0
+          for f in build/libs/${MOD_ID}-*.jar; do
+            case "$f" in
+              *-sources.jar|*-dev.jar) continue ;;
+            esac
+            cp "$f" dist/
+            found=1
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No distributable jar found in build/libs for ${MOD_ID}"
+            exit 1
+          fi
+          ls -l dist/
+
+      - name: Create draft GitHub Release
+        # Created as a draft so the jar can be attached: repositories with
+        # immutable releases enabled reject asset uploads after publish. The
+        # Publish step below flips the draft to published once the jar is on it.
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           name: ${{ steps.meta.outputs.title }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
+          draft: true
           prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
-          files: |
-            build/libs/${{ env.MOD_ID }}-*.jar
-            !build/libs/${{ env.MOD_ID }}-*-sources.jar
-            !build/libs/${{ env.MOD_ID }}-*-dev.jar
+          files: dist/${{ env.MOD_ID }}-*.jar
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
