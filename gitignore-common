@@ -60,4 +60,13 @@ Thumbs.db
 hs_err_pid*.log
 replay_pid*.log
 gametest_output.log
+
+# Glyph & SFX pipeline byproducts (mc-textures /glyph, mc-audio /sfx). The
+# .glyph/.sfx specs and their committed masters live in art/; only derived
+# render byproducts are throwaway — glyph PNG/mcmeta previews under art/glyphs/,
+# and audio waveform/spectrogram reports. The .ogg/.png masters committed beside
+# their specs are NOT ignored (see the mc-audio / mc-textures skills).
+art/glyphs/**/*.png
+art/glyphs/**/*.png.mcmeta
+art/audio/**/*.report.png
 # concord:gitignore:end
