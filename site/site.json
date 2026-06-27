@@ -1,0 +1,20 @@
+{
+  "id": "concord",
+  "name": "Concord",
+  "domain": "concord.rfizzle.com",
+  "url": "https://concord.rfizzle.com",
+  "description": "A modular collection of Minecraft system overhauls — enchanting, villagers, difficulty, and loot. Independent mods, optional interop, no hard dependencies.",
+  "metaKeywords": "Minecraft, Fabric, mods, modular overhauls, Meridian, Mercantile, Tribulation, Prosperity, 1.21.1",
+  "github": "https://github.com/rfizzle/concord",
+  "defaultBranch": "master",
+  "copyright": "© 2025-2026 rfizzle. Concord is not affiliated with Mojang Studios or Microsoft.",
+  "footerMeta": "Minecraft 1.21.1 · Fabric",
+  "nav": ["index", "about"],
+  "theme": {
+    "accent": "#C9B79A",
+    "accentDark": "#A89578",
+    "accent2": "#E8E0D4",
+    "accent2Bright": "#F4EEE2",
+    "glowRgb": "201, 183, 154"
+  }
+}

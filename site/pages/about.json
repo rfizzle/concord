@@ -1,0 +1,80 @@
+{
+  "nav": "Vision",
+  "metaTitle": "The Vision — Concord",
+  "metaDescription": "Concord's thesis: four independent mods, each overhauling one vanilla Minecraft system, forming a single risk-and-reward loop over unmodified survival.",
+  "ogTitle": "The Vision — Concord",
+  "ogDescription": "Why Concord is four independent overhauls instead of one big mod — and the survival loop they form together.",
+  "title": "The Vision",
+  "lede": "Four independent overhauls of the vanilla systems Minecraft shipped shallow — and the loop they form together.",
+  "sections": [
+    {
+      "title": "One session, four verbs",
+      "blocks": [
+        {
+          "type": "prose",
+          "html": [
+            "Survive, enchant, trade, discover are the four verbs of a single survival session, in the order a player actually lives them. The world threatens you — <strong class='text-bone'>Tribulation</strong>. You grow stronger to meet it — <strong class='text-bone'>Meridian</strong>. You convert your surplus into what you lack — <strong class='text-bone'>Mercantile</strong>. You push outward for more — <strong class='text-bone'>Prosperity</strong> — which raises the threat, and closes the loop.",
+            "Install all four and survival Minecraft gains the escalation arc of a roguelike, laid over unmodified vanilla. Install any one and it stands entirely on its own."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Overhaul, not add-on",
+      "blocks": [
+        {
+          "type": "prose",
+          "html": [
+            "Each mod takes one vanilla system the game left shallow and overhauls it — going as deep as that domain needs, whether that means deepening a mechanic, replacing it, or running a new system in parallel with vanilla's. What a mod does <em>not</em> do is wander: one domain per mod, no new dimension, and nothing another member has to load."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "À-la-carte by principle",
+      "blocks": [
+        {
+          "type": "prose",
+          "html": [
+            "The collection is independently installable mods, not a modpack — and that shape is deliberate. A modpack can hide a weak member inside the bundle; a suite where every mod is its own download cannot. Each one has to justify itself alone, which keeps all of them honest."
+          ]
+        },
+        {
+          "type": "cards",
+          "mdColumns": 3,
+          "lgColumns": 3,
+          "leftAccent": true,
+          "items": [
+            {
+              "title": "No shared library",
+              "titleTone": "bone",
+              "html": ["Convention over dependency: shared standards and design tokens, zero shared runtime jars. No mod inherits another's release cadence."]
+            },
+            {
+              "title": "Optional integration",
+              "titleTone": "bone",
+              "html": ["Siblings light up together through guarded, read-only APIs — and degrade gracefully to working solo the moment one is absent."]
+            },
+            {
+              "title": "Open to anyone",
+              "titleTone": "bone",
+              "html": ["The integration pattern is public. Any third-party mod can plug into a member the same way the siblings do."]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "The cast",
+      "blocks": [
+        {
+          "type": "prose",
+          "html": [
+            "Concord — <em>agreement and harmony between independent parties</em> — is the architecture thesis as a name. Its members share the register: one weighty abstract noun apiece, naming the system each one finishes.",
+            "Meet them on the <a class='text-accent hover:text-accent2 underline' href='/'>home page</a>."
+          ]
+        }
+      ]
+    }
+  ]
+}

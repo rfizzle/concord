@@ -1,0 +1,31 @@
+# Builds the Concord landing site from site/ content using the shared template
+# in this repo (template/) and deploys it to GitHub Pages.
+#
+# Pages source must be set to "GitHub Actions" in this repo's settings.
+# Rebuilds fire on content changes, on template/members.json changes (which
+# also affect this site's footer), and on demand.
+name: Site
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "site/**"
+      - "template/**"
+      - "members.json"
+      - ".github/workflows/site.yml"
+      - ".github/workflows/build-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  site:
+    uses: ./.github/workflows/build-site.yml

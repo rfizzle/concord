@@ -1,0 +1,142 @@
+{
+  "type": "home",
+  "nav": "Home",
+  "metaTitle": "Concord — Modular Overhauls for Minecraft",
+  "metaDescription": "Concord is a collection of four independent Minecraft 1.21.1 Fabric mods, each overhauling one vanilla system — enchanting, villagers, difficulty, and loot. Install one or all; they stand alone and light up together.",
+  "ogTitle": "Concord — Modular Overhauls for Minecraft",
+  "ogDescription": "Four independent Fabric mods, one escalating survival loop. Enchanting, villagers, difficulty, and loot — each overhauled, none required.",
+  "hero": {
+    "lede": "Four independent Minecraft mods. One escalating survival loop.",
+    "sub": "Concord takes the vanilla systems the game shipped shallow — enchanting, villagers, difficulty, loot — and gives each its own mod to overhaul it. Install one. Install all. Every mod stands alone, and together they light each other up — never a hard dependency.",
+    "buttons": [
+      { "label": "Meet the mods", "href": "#mods", "primary": true },
+      { "label": "The vision", "href": "/about.html" },
+      { "label": "GitHub", "href": "https://github.com/rfizzle/concord", "external": true }
+    ]
+  },
+  "sections": [
+    {
+      "title": "One loop, four verbs",
+      "band": true,
+      "lede": "Survive, enchant, trade, discover — the four verbs of a single survival session, each owned by one mod, in the order a player actually lives them.",
+      "blocks": [
+        {
+          "type": "cards",
+          "mdColumns": 2,
+          "lgColumns": 4,
+          "leftAccent": true,
+          "items": [
+            {
+              "title": "Survive",
+              "titleTone": "bone",
+              "html": ["The world pushes back the longer and farther you survive. <span class='text-ash'>— Tribulation</span>"]
+            },
+            {
+              "title": "Enchant",
+              "titleTone": "bone",
+              "html": ["Enchanting becomes a system you build toward, not a slot machine. <span class='text-ash'>— Meridian</span>"]
+            },
+            {
+              "title": "Trade",
+              "titleTone": "bone",
+              "html": ["Villagers become people you have a history with. <span class='text-ash'>— Mercantile</span>"]
+            },
+            {
+              "title": "Discover",
+              "titleTone": "bone",
+              "html": ["Every chest is worth opening, for every player who finds it. <span class='text-ash'>— Prosperity</span>"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mods",
+      "title": "The four mods",
+      "lede": "Each completes one vanilla system. Each ships and updates on its own.",
+      "blocks": [
+        {
+          "type": "cards",
+          "mdColumns": 2,
+          "lgColumns": 4,
+          "hoverAccent": true,
+          "items": [
+            {
+              "title": "Tribulation",
+              "html": [
+                "<em>Survive what comes next.</em>",
+                "A difficulty overhaul: mobs grow stronger as you play longer, venture farther, and descend deeper.",
+                "<a class='text-accent hover:text-accent2 underline' href='https://tribulation.rfizzle.com' target='_blank' rel='noopener noreferrer'>tribulation.rfizzle.com →</a>"
+              ]
+            },
+            {
+              "title": "Meridian",
+              "html": [
+                "<em>Chart your enchantments.</em>",
+                "An enchanting overhaul: a deep, buildable progression in place of the vanilla slot machine.",
+                "<a class='text-accent hover:text-accent2 underline' href='https://meridian.rfizzle.com' target='_blank' rel='noopener noreferrer'>meridian.rfizzle.com →</a>"
+              ]
+            },
+            {
+              "title": "Mercantile",
+              "html": [
+                "<em>Every villager remembers.</em>",
+                "A villager &amp; trade overhaul: reputation, named traders, and trades worth returning for.",
+                "<a class='text-accent hover:text-accent2 underline' href='https://mercantile.rfizzle.com' target='_blank' rel='noopener noreferrer'>mercantile.rfizzle.com →</a>"
+              ]
+            },
+            {
+              "title": "Prosperity",
+              "badge": "In design",
+              "html": [
+                "<em>Every chest, yours to discover.</em>",
+                "A loot overhaul: per-player instanced loot scaled by how far you roam.",
+                "<a class='text-accent hover:text-accent2 underline' href='https://prosperity.rfizzle.com' target='_blank' rel='noopener noreferrer'>prosperity.rfizzle.com →</a>"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Built to be modular",
+      "band": true,
+      "lede": "À-la-carte is the whole point. A modpack can paper over a weak mod; a suite of independently installable ones cannot — so every mod has to earn its place alone.",
+      "blocks": [
+        {
+          "type": "cards",
+          "mdColumns": 3,
+          "lgColumns": 3,
+          "hoverAccent": true,
+          "items": [
+            {
+              "title": "Independent",
+              "html": ["Every mod is fully functional on its own. Remove one and you lose exactly its features — nothing else breaks. A server can adopt the collection one mod at a time."]
+            },
+            {
+              "title": "Interoperable",
+              "html": ["Installed together, siblings detect each other and light up extra integration through read-only public APIs and Fabric events — never a hard dependency, never a shared jar."]
+            },
+            {
+              "title": "No bloat",
+              "html": ["Each mod overhauls one domain and stays in its lane: no new dimension, nothing another mod must load, and multiplayer-fair by design."]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "For developers",
+      "width": "4xl",
+      "blocks": [
+        {
+          "type": "prose",
+          "html": [
+            "Every member publishes a small, stable, read-only <code class='text-accent2'>com.rfizzle.&lt;mod&gt;.api</code> package plus a Fabric event surface. Integration is soft-dependency only — <code class='text-accent2'>modCompileOnly</code> + <code class='text-accent2'>isModLoaded</code> guards — so a third-party mod can integrate with any member using the exact pattern the siblings use. There are no private handshakes.",
+            "The shared API and HUD standards, the design system, and the build tooling all live in the <a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/concord' target='_blank' rel='noopener noreferrer'>concord repository</a>."
+          ]
+        }
+      ]
+    }
+  ]
+}
