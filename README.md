@@ -1,6 +1,6 @@
 # Concord
 
-*A Vanilla+ collection — the depth vanilla deserved.*
+*Modular overhauls for Minecraft's core systems.*
 
 Concord is a collection of independent Minecraft 1.21.1 Fabric mods, each overhauling
 exactly one vanilla system. Every mod is fully functional standalone; when siblings are
@@ -80,7 +80,7 @@ Each mod's `AGENTS.md` carries this section (and nothing more — content lives 
 ```markdown
 ## Suite standards (Concord)
 
-This mod is a member of Concord, the Vanilla+ collection. Suite-wide standards live in
+This mod is a member of Concord, a modular collection of system overhauls. Suite-wide standards live in
 the [concord repo](https://github.com/rfizzle/concord) — checked out at `../concord/`
 in the local workspace. Normative for this repo:
 
@@ -120,5 +120,7 @@ the `api` package code itself. Concord rejects a shared runtime library on princ
 2. **Siloed functionality** — each mod owns exactly one vanilla system; no scope bleed.
 3. **Exposed public APIs** — each mod publishes a stable, read-only-by-default
    `com.rfizzle.<mod>.api` package and event surface (see `API-STANDARD.md`).
-4. **Vanilla+ throughout** — everything could plausibly have shipped in vanilla;
-   server-friendly and multiplayer-fair.
+4. **Bounded by structure, not by purity** — a mod overhauls its domain as deeply as
+   that domain needs, free to deepen, replace, or run a system parallel to vanilla's;
+   what it must not do is add a new dimension, require another mod to load, or break
+   multiplayer fairness.

@@ -96,7 +96,7 @@ Masters live in each repo's `art/`; `docs/` and `assets/` hold derived copies
 - OG image: full logo on Ink, 1200×630
 - `<title>`: `Mod — Tagline`; meta description: tagline + one mechanical sentence
 - Favicon set: `favicon.ico`, `favicon-32.png`, `apple-touch-icon.png` (180×180)
-- Cross-mod footer on every mod site: "Part of **Concord** — a Vanilla+ collection",
+- Cross-mod footer on every mod site: "Part of **Concord** — a modular collection of system overhauls",
   four 16×16 glyphs + names + taglines, current mod highlighted
 
 ## 7. Admitting a new palette

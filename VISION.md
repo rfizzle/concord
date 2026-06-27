@@ -1,6 +1,6 @@
 # Concord — Collective Vision & Roadmap
 
-*A Vanilla+ collection — the depth vanilla deserved.*
+*Modular overhauls for Minecraft's core systems.*
 
 > Synthesized 2026-06-10 from source-grounded profiles of all four mod repos
 > (`../meridian`, `../mercantile`, `../tribulation`, `../prosperity`); originating
@@ -20,15 +20,16 @@
 
 Concord is a collection of four independent Fabric mods for Minecraft 1.21.1 that
 each take one vanilla system the game shipped shallow — enchanting, villagers, difficulty,
-loot — and finish it. Not replace it: finish it. Meridian makes enchanting a system you
+loot — and overhaul it. Meridian makes enchanting a system you
 build toward instead of a slot machine. Mercantile makes villagers people you have a
 history with instead of lever-operated vending machines. Tribulation makes the world push
 back the longer and farther you survive. Prosperity makes every chest worth opening for
-every player who finds it. Each mod completes a vanilla *system* rather than bolting on a
-new one — none adds a dimension, a skill tree, or a wiki dependency. The discipline is
-mechanical, not cosmetic: a mod is free to ship its own high-quality textures wherever
-they raise the bar (icons, HUD glyphs, items, blocks — even retextured vanilla mobs), as
-long as the result still reads as Minecraft. The pathway for that art is the design
+every player who finds it. Each mod owns a single domain and goes as deep as that domain
+needs — deepening, replacing, or running a system in parallel with vanilla's — but it stays
+in its lane: one domain per mod, no new dimension, and nothing another member must load.
+The discipline is structural, not cosmetic: a mod is free to ship its own high-quality
+textures wherever they raise the bar (icons, HUD glyphs, items, blocks — even retextured
+vanilla mobs), as long as the result stays visually coherent with Minecraft. The pathway for that art is the design
 system's texture pipeline (see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8).
 
 The unified promise the four make *together* — that none makes alone — is a **complete
@@ -43,7 +44,7 @@ it stands entirely on its own.
 À-la-carte plus optional integration is the right shape because it is the only shape that
 keeps each mod honest. A modpack can paper over a weak member; a suite of independently
 installable mods cannot — every mod must justify itself solo, which is exactly the
-Vanilla+ discipline. The integration layer (read-only public APIs, Fabric events,
+modular discipline. The integration layer (read-only public APIs, Fabric events,
 `modCompileOnly` + `isModLoaded` guards, pioneered by Tribulation) means siblings *light
 up* together without ever leaning on each other. A player who removes one mod loses that
 mod's features and nothing else. A server admin can adopt the collection one mod at a
@@ -70,8 +71,8 @@ in the order a player actually lives them: the world threatens you (**Tribulatio
 you grow stronger to meet it (**Meridian**), you convert surplus into what you lack
 (**Mercantile**), and you push outward for more (**Prosperity**) — which raises the
 threat, closing the loop. Marketing copy for any one mod should gesture at this loop in
-exactly one sentence ("Part of **Concord** — a Vanilla+ collection. Install any,
-combine all.") and no more; each mod's page sells that mod.
+exactly one sentence ("Part of **Concord** — a modular collection of system overhauls.
+Install any, combine all.") and no more; each mod's page sells that mod.
 
 ### Collection name & positioning
 
@@ -80,8 +81,8 @@ parties* — which is the architecture thesis itself: independent gates, optiona
 integration, no hard dependencies. It keeps the established register (a single weighty
 Latinate abstract noun, alongside Tribulation, Meridian, Mercantile, Prosperity) while
 naming what the members share rather than competing with what each owns. Positioning
-always pairs the name with the descriptor for searchability: "**Concord** — a Vanilla+
-collection." The name is deliberately not username-derived; the maintainer's identity
+always pairs the name with the descriptor for searchability: "**Concord** — a modular
+collection of system overhauls." The name is deliberately not username-derived; the maintainer's identity
 spans more than these mods. Future members must keep the naming register: one weighty
 abstract noun, no compounds, no "Craft"/"Plus" suffixes (see §9 candidates: Husbandry,
 Apothecary, Tempest, Stratum).
@@ -246,8 +247,8 @@ tokens, `<mod>.rfizzle.com`. Standard page set:
 Tribulation's missing specced pages (changelog, mob reference, apple-touch icon) are the
 template's punch list — finish them there first since it's the reference site.
 
-**Cross-mod footer (new, all four sites):** a "Part of **Concord** — a Vanilla+
-collection" strip — four 16×16 glyphs + names + one-line taglines, current mod
+**Cross-mod footer (new, all four sites):** a "Part of **Concord** — a modular
+collection of system overhauls" strip — four 16×16 glyphs + names + one-line taglines, current mod
 highlighted, linking to the sibling sites and the Concord landing page. This is the entire cross-promotion surface;
 no banners, no popups.
 
@@ -394,19 +395,19 @@ designated escape hatch for inter-mod context the APIs don't model.
 
 ## 6. Per-Mod Roadmap
 
-Format per item: **pitch** — why Vanilla+ — silo note — sketch.
+Format per item: **pitch** — why it fits — silo note — sketch.
 
 ### Meridian
 
 **High**
 
-1. **Formal `api` package** — promote the existing de-facto surface (§5.3). Vanilla+:
+1. **Formal `api` package** — promote the existing de-facto surface (§5.3). Fit:
    invisible to players. Silo: pure packaging. Sketch: move/wrap
    `EnchantingStatRegistry`, `StatCollection`, `EnchantmentInfo`, the four provider
    interfaces; add `MeridianReloadCallback`; `@ApiStatus` annotations; README dev section
    modeled on Tribulation's.
 2. **Library ↔ Fabric Transfer API** — hoppers work today; make libraries first-class
-   storage participants so automation mods and pipes interact predictably. Vanilla+:
+   storage participants so automation mods and pipes interact predictably. Fit:
    hopper-era expectations, no new blocks. Silo: enchantment storage is Meridian's.
    Sketch: expose a `Storage<ItemVariant>` view over `LibraryStorageAdapter` honoring the
    existing `ioRateLimitTicks` throttle.
@@ -437,7 +438,7 @@ Format per item: **pitch** — why Vanilla+ — silo note — sketch.
 **High**
 
 1. **Formal `api` package + events** (§5.3) — reputation/tier accessors,
-   `ReputationChangedCallback`, `TradeExecutedCallback`, `isSentryGolem`. Vanilla+:
+   `ReputationChangedCallback`, `TradeExecutedCallback`, `isSentryGolem`. Fit:
    invisible. Silo: packaging. Sketch: wrap the attachments; never expose mutation.
 2. **Resource-conditioned exclusive trades** — datapack entries that load per
    `isModLoaded`. This is the keystone for matrix #4/#5 and useful to every third-party
@@ -445,17 +446,17 @@ Format per item: **pitch** — why Vanilla+ — silo note — sketch.
    (Fabric resource conditions), plus hot-reload on `/mercantile reload`.
 3. **Sibling trade packs** — ship the matrix #4 (librarian ↔ Meridian tomes/shelf mats)
    and #5 (cleric ↔ Shatter Shards/Heart Fragments) datapacks in-jar, condition-gated.
-   Vanilla+: uses the vanilla professions' existing identities. Silo: trade content is
+   Fit: uses the vanilla professions' existing identities. Silo: trade content is
    exactly Mercantile's.
 
 **Med**
 
 4. **Wandering trader overhaul** — the one villager explicitly excluded from v0.1; make
    his inventory worth a look (rotating rep-blind exclusive stock, rarer goods at higher
-   prices). Vanilla+: he exists to be interesting and isn't. Silo: squarely trade.
+   prices). Fit: he exists to be interesting and isn't. Silo: squarely trade.
    Sketch: trade-pool datapack + spawn-announce toggle; no new entity.
 5. **Villager happiness** (deferred from v0.1) — workstation proximity, bed quality, and
-   recent-hit memory nudge prices ±5%. Vanilla+: extends gossip's existing spirit.
+   recent-hit memory nudge prices ±5%. Fit: extends gossip's existing spirit.
    Sketch: villager attachment + price modifier in the existing demand-pricing pipeline;
    surfaces in the info panel, no new HUD.
 6. **HUD accessor compliance** (§3.3) — replace `TRIBULATION_RESERVED_HEIGHT = 22` with
@@ -475,7 +476,7 @@ Format per item: **pitch** — why Vanilla+ — silo note — sketch.
    `getMobScalingSummary`, HUD accessors. Silo: packaging. Sketch: thin reads over
    existing state; gametest each in `APIGameTest`.
 2. **Shared vs. per-player progression mode** — the suite's biggest MP-fairness gap.
-   A config enum `progression: PER_PLAYER | SHARED_MAX | SHARED_AVERAGE`. Vanilla+:
+   A config enum `progression: PER_PLAYER | SHARED_MAX | SHARED_AVERAGE`. Fit:
    mirrors how `keepInventory`-style gamerules let servers pick their social contract.
    Sketch: `PlayerDifficultyState` grows a server-level aggregate; `getEffectiveLevel`
    resolves through the mode; HUD unchanged.
@@ -580,7 +581,10 @@ Everything else is parallelizable.
 
 ## 8. Explicitly Out of Scope
 
-Rejected with reasons — protecting the thesis:
+Rejected with reasons — protecting the modular thesis. These are **structural** lines —
+they keep mods à-la-carte, single-domain, and multiplayer-fair — not purity lines: a mod
+may deepen, replace, or run a system parallel to vanilla's *within its own domain*. A few
+former purity bans are now conventions, marked *(convention)*. What stays out:
 
 1. **A shared required library mod (`rfizzle-core`).** The single most tempting and most
    dangerous idea. The moment two mods share a runtime dependency, à-la-carte dies and
@@ -595,14 +599,16 @@ Rejected with reasons — protecting the thesis:
 3. **Prosperity distance tier → Meridian table quality (matrix #12).** Meridian's whole
    design is that enchanting power is *built* (shelves) not *found*; a location bonus
    undercuts its own progression. Wrong silo, self-defeating.
-4. **New villager professions (Enchanter, Lootmonger…).** Not Vanilla+ — vanilla's
-   profession roster is a fixed, recognizable cast. Sibling integration uses the
-   *existing* professions' trade pools (librarian, cleric, cartographer).
-5. **A currency/coin economy.** Emeralds are the vanilla currency; coins are modpack
-   flavor, not Vanilla+.
-6. **Skill trees / XP-spend progression UI.** Tribulation's level is ambient world state,
-   not a build system. Any "spend points" mechanic is RPG creep and was the explicit
-   anti-goal of the HUD-minimal design.
+4. **New villager professions (Enchanter, Lootmonger…).** *(Convention.)* Mercantile keeps
+   the vanilla profession roster so sibling trade integration keys off a stable,
+   recognizable cast — sibling content uses the *existing* professions' trade pools
+   (librarian, cleric, cartographer). Not forbidden; just unnecessary.
+5. **A new currency/coin economy.** *(Convention.)* The suite standardizes on emeralds so
+   cross-mod value stays coherent. Not forbidden; just unnecessary.
+6. **A heavy, always-on progression UI (skill trees, XP-spend screens).** *(Convention.)*
+   Not banned as a mechanic, but it collides with the HUD-minimal design — a small,
+   opt-out icon strip (see `design/DESIGN-SYSTEM.md`). Tribulation's level stays ambient
+   world state by choice.
 7. **New dimensions or custom structures for loot.** Prosperity's discipline is *vanilla
    containers in vanilla structures*. New destinations are a different (non-member) kind
    of mod.
@@ -627,7 +633,7 @@ Rejected with reasons — protecting the thesis:
 
 ## 9. Additional Areas for Overhaul Evaluation
 
-Survey of remaining vanilla systems, filtered against the four tests (Vanilla+,
+Survey of remaining vanilla systems, filtered against the four tests (domain fit,
 independence, MP-fairness, silo cleanliness). Rejected outright: redstone, building/
 decoration, Nether/End, exploration/structures, fishing-as-standalone (Prosperity's spec
 already lists fishing loot as its own future consideration) — reasons in §8. Survivors,
@@ -640,13 +646,13 @@ ranked:
   (Tribulation's spider ability), loot-table food (Prosperity), and no Tinkers-style
   cuisine sprawl.
 - **Vanilla pain point:** food is solved at iron-farm tier (golden carrots forever),
-  farming is AFK-able and flavorless, animal breeding is click-spam. The Vanilla+ thesis:
+  farming is AFK-able and flavorless, animal breeding is click-spam. The thesis:
   make *what you eat and raise* matter the way Mercantile made *who you trade with*
   matter — crop quality tiers from soil/care, meals worth cooking from existing
   ingredients, animals with lineage worth breeding — all with vanilla blocks, items, and
   the composter/smoker/campfire cast that vanilla shipped and forgot.
 - **Narrative & motif:** working name **Husbandry** — it is literally a vanilla
-  advancement tab, the strongest possible Vanilla+ naming claim, and fits the abstract-
+  advancement tab, the strongest possible domain-fit naming claim, and fits the abstract-
   noun register. Tagline candidate: *"Worth growing."* Color signature: **Wheat Amber
   (`#D9A441`) / Leaf Green (`#7CB342`)** — amber-with-leaf is distinct from
   Prosperity's gold-with-cyan and Mercantile's emerald-with-emerald under the §3.1
@@ -657,8 +663,8 @@ ranked:
   (consumer reads food-quality API); Prosperity injects rare seeds/breeds at high tiers;
   Meridian's Furrow/Bounty enchants get first-class targets. Exposes:
   `getCropQuality(pos)`, `getAnimalLineage(entity)`, a `FoodValueCallback`.
-- **Verdict: High.** Big untouched silo, four natural integrations, zero overlap, deeply
-  Vanilla+. The strongest "what comes after Prosperity" candidate.
+- **Verdict: High.** Big untouched silo, four natural integrations, zero overlap, a clean
+  single-domain overhaul. The strongest "what comes after Prosperity" candidate.
 
 ### 2. Apothecary — brewing & status effects. **Priority: High (close second).**
 
@@ -687,8 +693,8 @@ ranked:
 ### 3. Tempest — weather & sky. **Priority: Med.**
 
 - **Silo & boundary:** owns weather event variety, weather gameplay consequences, and the
-  day/night/moon axis. Does NOT touch: seasons (changes vanilla's core rhythm — fails
-  Vanilla+; explicitly out), mob spawn *scaling* (Tribulation), crop growth rules (would
+  day/night/moon axis. Does NOT touch: seasons (changes vanilla's core rhythm — cross-cuts
+  every silo; explicitly out), mob spawn *scaling* (Tribulation), crop growth rules (would
   collide with Husbandry — if both exist, Tempest exposes weather state and Husbandry
   consumes it).
 - **Vanilla pain point:** weather is a screen filter. Rain means nothing, thunder means
