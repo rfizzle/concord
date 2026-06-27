@@ -333,7 +333,7 @@ provider only exposes API). Value = player-facing payoff vs. cost.
 | 3 | Meridian → Prosperity | Static form: loot injections add Meridian enchanted books at Outlands/Depths. Dynamic form: distance tier maps to enchant power and rolls Meridian-consistent enchants on found loot | **High** | `EnchantmentInfo` lookup *(exists)*; a stable loot-roll function + actual `maxLootLevel` enforcement on loot *(new — the field is readable today but Meridian does not clamp loot to it)*; item IDs | Conditional `loot_injections` datapack (static, ships today) + a distance→power enchant listener (dynamic) |
 | 4 | Meridian → Mercantile | Reputation-gated librarian exclusive trades sell Meridian salvage tomes & shelf materials — an economic road into the enchanting endgame | **High** | Item IDs only | Conditional exclusive-trades datapack entries (needs resource-condition support, §5.3) |
 | 5 | Tribulation → Mercantile | Cleric exclusive trades sell Shatter Shards / Heart Fragments at high reputation — emeralds buy relief from the difficulty curve | **Med-High** | Item IDs only | Conditional exclusive-trades datapack entries |
-| 6 | Tribulation → Meridian | `tribulation:soulbound` becomes rollable on Meridian's table at high Eterna and storable in libraries when both installed | **Med** | Enchantment ID + an `enchantable` tag | Tag entry + treasure-pool inclusion guard |
+| 6 | Meridian → Tribulation | Keep-on-death convergence: `meridian:tether` and `tribulation:soulbound` are the same mechanic, so when both load they collapse to one acquirable enchant (Tether) via the shared `#c:soulbound` tag, with Tribulation's soul-inventory as the single behavior owner | **Med** | `meridian:tether` + the `#c:soulbound` convention tag | Soul-inventory reads the tag, suppresses its own enchant when Meridian is present, shared exclusive-set; Meridian's handler stands down |
 | 7 | Meridian → Tribulation | Tier 4–5 scaled-mob equipment enchant pool includes Meridian combat enchants (Sharpness-class swaps) via a `meridian:mob_equipment` tag | **Med** | The `meridian:mob_equipment` tag *(new — no such tag exists yet)* | A tag-aware enchanter hook in the equipment scaling engine *(new engine work — gear enchanting is config-driven today, not tag/loot-driven)* |
 | 8 | Tribulation → Mercantile | Sentry Pylon scales golem count / detection with local effective level — defense keeps pace with raids Tribulation already hardens (Pillager/Vindicator/Witch/Ravager are scaled mobs) | **Med** | `getEffectiveLevel(Entity)` *(exists)* | Pylon spawn logic reads tier when present |
 | 9 | Prosperity → Mercantile | Cartographer exploration maps biased toward structures in the player's next-higher loot tier | **Low** | `getDistanceTier` | Map-offer tweak — nice flavor, low payoff |
@@ -347,6 +347,16 @@ spawn** (one axis among playtime and depth), Prosperity from **world origin (0,0
 Keeping the risk and reward curves aligned despite the two anchors is a deliberate balance
 point; both halves are anticipated in Prosperity's spec. Items 4+5 make Mercantile the
 suite's economic connective tissue, which is exactly its silo.
+
+**Duplicate-mechanic convergence (the pattern behind #6).** When two members ship
+near-identical mechanics — as Meridian's Tether and Tribulation's Soulbound both keep an
+item through death — they must not delete or hard-reference each other. The resolution is
+convention, not dependency: each mod contributes *its own* enchant to a shared `c:` tag
+(`#c:soulbound`), each triggers its behavior off the **tag** rather than a specific id, and
+when both are installed one mod stands down so a single owner runs (here Tribulation's richer
+soul-inventory wins and Tether is the lone acquirable enchant). Remove either mod and the
+other still works off its own copy. This is the canonical way to resolve any overlap between
+members, present or future.
 
 ### 5.3 API surface per mod — shipped and remaining
 
