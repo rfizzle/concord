@@ -330,55 +330,72 @@ provider only exposes API). Value = player-facing payoff vs. cost.
 |---|---|---|---|---|---|
 | 1 | Tribulation → Prosperity | Difficulty tier adds loot luck/stack bonus on top of distance tier — harder world, richer chests | **High** | `getEffectiveLevel` / `getTier` *(exists)* | A `LootModifierCallback` listener mapping tier → `addLuck` |
 | 2 | Prosperity → Tribulation | Scaled mobs' tier equipment drops more often in high distance tiers | **High** | `getDistanceTier(pos)` *(new, §5.3)* | A provider registered via `TribulationAPI.setArmor/WeaponDropChanceProvider` *(exists)* |
-| 3 | Meridian → Prosperity | Loot injections add Meridian enchanted books at Outlands/Depths; loot enchanting respects Meridian's `maxLootLevel` overrides | **High** | `EnchantmentInfo` lookup in api package *(new)*; item IDs | Conditional `loot_injections` datapack + an `EnchantmentInfo`-aware enchant function |
+| 3 | Meridian → Prosperity | Static form: loot injections add Meridian enchanted books at Outlands/Depths. Dynamic form: distance tier maps to enchant power and rolls Meridian-consistent enchants on found loot | **High** | `EnchantmentInfo` lookup *(exists)*; a stable loot-roll function + actual `maxLootLevel` enforcement on loot *(new — the field is readable today but Meridian does not clamp loot to it)*; item IDs | Conditional `loot_injections` datapack (static, ships today) + a distance→power enchant listener (dynamic) |
 | 4 | Meridian → Mercantile | Reputation-gated librarian exclusive trades sell Meridian salvage tomes & shelf materials — an economic road into the enchanting endgame | **High** | Item IDs only | Conditional exclusive-trades datapack entries (needs resource-condition support, §5.3) |
 | 5 | Tribulation → Mercantile | Cleric exclusive trades sell Shatter Shards / Heart Fragments at high reputation — emeralds buy relief from the difficulty curve | **Med-High** | Item IDs only | Conditional exclusive-trades datapack entries |
 | 6 | Tribulation → Meridian | `tribulation:soulbound` becomes rollable on Meridian's table at high Eterna and storable in libraries when both installed | **Med** | Enchantment ID + an `enchantable` tag | Tag entry + treasure-pool inclusion guard |
-| 7 | Meridian → Tribulation | Tier 4–5 scaled-mob equipment enchant pool includes Meridian combat enchants (Sharpness-class swaps) via a `meridian:mob_equipment` tag | **Med** | The tag | Tag-aware equipment enchanter in the equipment scaling engine |
+| 7 | Meridian → Tribulation | Tier 4–5 scaled-mob equipment enchant pool includes Meridian combat enchants (Sharpness-class swaps) via a `meridian:mob_equipment` tag | **Med** | The `meridian:mob_equipment` tag *(new — no such tag exists yet)* | A tag-aware enchanter hook in the equipment scaling engine *(new engine work — gear enchanting is config-driven today, not tag/loot-driven)* |
 | 8 | Tribulation → Mercantile | Sentry Pylon scales golem count / detection with local effective level — defense keeps pace with raids Tribulation already hardens (Pillager/Vindicator/Witch/Ravager are scaled mobs) | **Med** | `getEffectiveLevel(Entity)` *(exists)* | Pylon spawn logic reads tier when present |
 | 9 | Prosperity → Mercantile | Cartographer exploration maps biased toward structures in the player's next-higher loot tier | **Low** | `getDistanceTier` | Map-offer tweak — nice flavor, low payoff |
 | 10 | Mercantile → Prosperity | Reputation adds loot luck | **Rejected** → §8 (silo bleed: village standing should not change wilderness chests) |
 | 11 | Mercantile → Meridian | Reputation discounts enchanting costs | **Rejected** → §8 (wrong currency — enchanting spends XP, not standing) |
 | 12 | Prosperity → Meridian | Distance tier biases table enchant quality | **Rejected** → §8 (enchanting is location-built via shelves, not location-found; would undercut Meridian's own progression) |
 
-Items 1+2 form the flagship pairing — Tribulation and Prosperity already share the
-distance-from-origin axis by design, and both halves are anticipated in Prosperity's
-spec. Items 4+5 make Mercantile the suite's economic connective tissue, which is exactly
-its silo.
+Items 1+2 form the flagship pairing — both Tribulation and Prosperity scale with
+remoteness, though they anchor it differently: Tribulation measures distance from **world
+spawn** (one axis among playtime and depth), Prosperity from **world origin (0,0)**.
+Keeping the risk and reward curves aligned despite the two anchors is a deliberate balance
+point; both halves are anticipated in Prosperity's spec. Items 4+5 make Mercantile the
+suite's economic connective tissue, which is exactly its silo.
 
-### 5.3 API surface each mod must add
+### 5.3 API surface per mod — shipped and remaining
 
-**Tribulation** (reference implementation — smallest gap):
-- `isBossScaled(Entity)` — siblings can't currently distinguish boss-formula scaling
-- `getTierThresholds()` — consumers shouldn't hardcode 50/100/150/200/250
-- `getMobScalingSummary(Entity)` — what scaling a (possibly modded) mob actually received
-- Client HUD accessors `isHudVisible()` / `getHudHeight()` (§3.3)
+Marked *(exists)* / *(new)* against the current code. Three of the four `api` packages are
+built; what remains is a small set of targeted additions the integrations need.
 
-**Meridian** (most implemented surface, least formalized — promote, don't invent):
-- Create `com.rfizzle.meridian.api`: read-only wrappers over `EnchantingStatRegistry`
-  (`gatherStats`, `StatCollection`), `EnchantmentInfo` lookup, and promoted interfaces
-  `IEnchantingStatProvider`, `BlacklistSource`, `TreasureFlagSource`, `EnchantableItem`
-  (these already exist as de-facto API — moving them in is the work)
-- `MeridianReloadCallback` — fired on `/meridian reload` so consumers can re-read
-  `EnchantmentInfo` instead of polling
-- Library query API (`getStoredPoints`, read-only) for tooltip/automation consumers
+**Tribulation** (reference implementation — full surface shipped):
+- `getLevel`, `getTier`, `getEffectiveLevel(Entity)`, `getScaledTier`,
+  `wasScaledByTribulation`, `isBossScaled`, `getTierThresholds`, `getMobScalingSummary`,
+  the `setArmorDropChanceProvider` / `setWeaponDropChanceProvider` hooks, the
+  `TribulationLevelCallback` event, and HUD accessors `isHudVisible()` / `getHudHeight()`
+  — all *(exist)*
+- Remaining: `getEffectiveLevel` takes an `Entity`; there is no position-only level
+  accessor, so the Sentry Pylon compat (matrix #8) derives level from the nearest player
+  *(new, only if a `getEffectiveLevel(ServerLevel, BlockPos)` is later wanted)*
 
-**Mercantile** (data exists in attachments; needs an API door):
-- Create `com.rfizzle.mercantile.api`: `getReputation(ServerPlayer)` /
-  `getReputationTier(ServerPlayer)`; `isSentryGolem(Entity)`; `isTradeLocked(Villager)`
-  (wrapping the attachments so they stop being the de-facto API)
-- `ReputationChangedCallback(player, oldScore, newScore)` and
-  `TradeExecutedCallback(player, villager, offer)` events
-- **Resource-condition support for exclusive-trades datapacks** (load entries only when
-  a given mod is present) — this single feature unlocks matrix items 4 and 5
-- Client HUD accessors (§3.3)
+**Meridian** (`api` package shipped):
+- `com.rfizzle.meridian.api`: `MeridianAPI` (`gatherStats`, `getEnchantmentInfo`,
+  `getAllEnchantmentInfo`, `getStoredPoints`), `StatCollection`, `EnchantmentInfo`, the four
+  provider interfaces (`IEnchantingStatProvider`, `BlacklistSource`, `TreasureFlagSource`,
+  `EnchantableItem`), and `MeridianReloadCallback` — all *(exist)*. `EnchantmentInfo` carries
+  level/loot caps and power functions but **not** a treasure flag or weight (those come from
+  the enchant's own data/tags)
+- Remaining *(new)*: `maxLootLevel` is exposed but **not enforced** during loot generation
+  (Meridian only post-filters disabled enchants), and there is no public "roll an
+  appropriate enchant at power N" function. Matrix #3's dynamic form needs both — enforce the
+  loot cap, and promote `RealEnchantmentHelper.selectEnchantment` into a stable call
 
-**Prosperity** (greenfield — design it right the first time):
-- `com.rfizzle.prosperity.api` from day one: `LootModifierCallback` + context (specced),
-  plus `getDistanceTier(ServerLevel, BlockPos)` and `getTierForPlayer(ServerPlayer)`
-  static accessors, `ContainerLootedCallback(player, pos, lootTable)` event
-- Client accessors: `getClientTier()`, HUD accessors (§3.3)
-- `@ApiStatus.Stable` and the full §5.1 conventions applied from the first commit
+**Mercantile** (`api` package shipped):
+- `com.rfizzle.mercantile.api`: `getReputation(ServerPlayer)`,
+  `getReputationTier(ServerPlayer)`, `isSentryGolem(Entity)`, `isProfessionLocked(Villager)`,
+  `isTradeLocked(Villager, MerchantOffer)` (per-offer — there is no single-arg form), the
+  `ReputationChangedCallback` / `TradeExecutedCallback` events, and HUD accessors — all
+  *(exist)*
+- Remaining *(new)*: **resource-condition support for exclusive-trades datapacks** — load
+  entries only when a given mod is present; the single feature that lets matrix #4/#5 ship
+  in-jar instead of leaning on the unknown-item skip
+
+**Prosperity** (`api` package partially shipped):
+- `com.rfizzle.prosperity.api` ships `LootModifierCallback` + `LootModifierContext` and the
+  HUD accessors *(exist)*. The key remaining gap is public tier access:
+  `getDistanceTier(ServerLevel, BlockPos)` and `getTierForPlayer(ServerPlayer)` *(new)* —
+  the reward-axis counterpart to `TribulationAPI.getTier`. Tier resolution currently lives
+  in internal `LootScaling`/`ProsperityConfig`, so siblings cannot read it; this is the
+  highest-leverage addition in the integration set (unblocks the dynamic form of matrix #3).
+- A `ContainerLootedCallback(player, pos, lootTable)` event *(new)* would round out the
+  surface — today only a client-sync packet exists, not a public event.
+- The full §5.1 conventions applied from the first commit (a local `@Stable` marker, not
+  a shared `@ApiStatus.Stable`, per the no-shared-jar rule)
 
 ### 5.4 Third-party integration story
 
@@ -401,81 +418,75 @@ Format per item: **pitch** — why it fits — silo note — sketch.
 
 **High**
 
-1. **Formal `api` package** — promote the existing de-facto surface (§5.3). Fit:
-   invisible to players. Silo: pure packaging. Sketch: move/wrap
-   `EnchantingStatRegistry`, `StatCollection`, `EnchantmentInfo`, the four provider
-   interfaces; add `MeridianReloadCallback`; `@ApiStatus` annotations; README dev section
-   modeled on Tribulation's.
+1. **Loot-cap enforcement + stable enchant-roll API** — the `api` package is in place; the
+   remaining gap is enforcing `maxLootLevel` during loot generation and exposing a stable
+   "roll an appropriate enchant at power N" call (the keystone for matrix #3's dynamic form).
+   Fit: invisible to players. Silo: enchanting math is Meridian's. Sketch: a loot mixin that
+   clamps to `getMaxLootLevel()` + `enabled()`, plus promoting
+   `RealEnchantmentHelper.selectEnchantment` into `MeridianAPI`.
 2. **Library ↔ Fabric Transfer API** — hoppers work today; make libraries first-class
    storage participants so automation mods and pipes interact predictably. Fit:
    hopper-era expectations, no new blocks. Silo: enchantment storage is Meridian's.
    Sketch: expose a `Storage<ItemVariant>` view over `LibraryStorageAdapter` honoring the
    existing `ioRateLimitTicks` throttle.
-3. **Repo hygiene to suite standard** — Meridian is the only repo without
-   CLAUDE.md/AGENTS.md, conventional-commit policy, or split client source set
-   documentation. Sketch: copy Tribulation's AGENTS.md skeleton, adapt.
 
 **Med**
 
-4. **Conditional sibling recipes** — enchanting-table transmutations involving Shatter
+3. **Conditional sibling recipes** — enchanting-table transmutations involving Shatter
    Shards/Heart Fragments load only when Tribulation is present (matrix #6 supporting
    work). Sketch: Fabric resource conditions on `recipe/enchanting/*.json`.
-5. **`meridian:mob_equipment` tag** — curated subset of the 75 enchants safe to appear on
+4. **`meridian:mob_equipment` tag** — curated subset of the 75 enchants safe to appear on
    Tribulation-scaled mob gear (matrix #7). Sketch: data tag + doc note; Tribulation does
    the consuming.
-6. **Shelf registration helper for mods** — block registration can't be datapack-driven;
+5. **Shelf registration helper for mods** — block registration can't be datapack-driven;
    give sibling/third-party mods a one-call `registerShelf(block, statsId)` so the
    stat JSON + `IEnchantingStatProvider` wiring is trivial.
 
 **Low**
 
-7. **Power-function variety** (polynomial/exponential curves in `enchantmentOverrides`) —
+6. **Power-function variety** (polynomial/exponential curves in `enchantmentOverrides`) —
    server-tuner quality of life.
-8. **Library access events** for audit/claims mods on multiplayer.
+7. **Library access events** for audit/claims mods on multiplayer.
 
 ### Mercantile
 
 **High**
 
-1. **Formal `api` package + events** (§5.3) — reputation/tier accessors,
-   `ReputationChangedCallback`, `TradeExecutedCallback`, `isSentryGolem`. Fit:
-   invisible. Silo: packaging. Sketch: wrap the attachments; never expose mutation.
-2. **Resource-conditioned exclusive trades** — datapack entries that load per
-   `isModLoaded`. This is the keystone for matrix #4/#5 and useful to every third-party
-   pack. Sketch: extend `ExclusiveTradesManager` JSON schema with a `conditions` block
-   (Fabric resource conditions), plus hot-reload on `/mercantile reload`.
-3. **Sibling trade packs** — ship the matrix #4 (librarian ↔ Meridian tomes/shelf mats)
+1. **Resource-conditioned exclusive trades** — the `api` package and its
+   `ReputationChangedCallback` / `TradeExecutedCallback` events are in place; the remaining
+   keystone is datapack entries that load per `isModLoaded`. Unlocks matrix #4/#5 and is
+   useful to every third-party pack. Sketch: extend `ExclusiveTradesManager` JSON schema with
+   a `conditions` block (Fabric resource conditions), plus hot-reload on `/mercantile reload`.
+2. **Sibling trade packs** — ship the matrix #4 (librarian ↔ Meridian tomes/shelf mats)
    and #5 (cleric ↔ Shatter Shards/Heart Fragments) datapacks in-jar, condition-gated.
    Fit: uses the vanilla professions' existing identities. Silo: trade content is
    exactly Mercantile's.
 
 **Med**
 
-4. **Wandering trader overhaul** — the one villager explicitly excluded from v0.1; make
+3. **Wandering trader overhaul** — the one villager explicitly excluded from v0.1; make
    his inventory worth a look (rotating rep-blind exclusive stock, rarer goods at higher
    prices). Fit: he exists to be interesting and isn't. Silo: squarely trade.
    Sketch: trade-pool datapack + spawn-announce toggle; no new entity.
-5. **Villager happiness** (deferred from v0.1) — workstation proximity, bed quality, and
+4. **Villager happiness** (deferred from v0.1) — workstation proximity, bed quality, and
    recent-hit memory nudge prices ±5%. Fit: extends gossip's existing spirit.
    Sketch: villager attachment + price modifier in the existing demand-pricing pipeline;
    surfaces in the info panel, no new HUD.
-6. **HUD accessor compliance** (§3.3) — replace `TRIBULATION_RESERVED_HEIGHT = 22` with
-   the accessor pattern; expose Mercantile's own.
+5. **HUD accessor adoption** (§3.3) — the `isHudVisible()` / `getHudHeight()` accessors
+   exist; adopt the accessor pattern for cross-mod stacking in place of any hardcoded
+   sibling offset.
 
 **Low**
 
-7. **Community localization scaffolding** (crowdin or PR templates) — listing reach.
-8. **Troubleshooting/migration docs** ("my villager lost its profession", vanilla-village
+6. **Community localization scaffolding** (crowdin or PR templates) — listing reach.
+7. **Troubleshooting/migration docs** ("my villager lost its profession", vanilla-village
    adoption guide).
 
 ### Tribulation
 
 **High**
 
-1. **API completions** (§5.3): `isBossScaled`, `getTierThresholds`,
-   `getMobScalingSummary`, HUD accessors. Silo: packaging. Sketch: thin reads over
-   existing state; gametest each in `APIGameTest`.
-2. **Shared vs. per-player progression mode** — the suite's biggest MP-fairness gap.
+1. **Shared vs. per-player progression mode** — the suite's biggest MP-fairness gap.
    A config enum `progression: PER_PLAYER | SHARED_MAX | SHARED_AVERAGE`. Fit:
    mirrors how `keepInventory`-style gamerules let servers pick their social contract.
    Sketch: `PlayerDifficultyState` grows a server-level aggregate; `getEffectiveLevel`
@@ -483,61 +494,50 @@ Format per item: **pitch** — why it fits — silo note — sketch.
 
 **Med**
 
-3. **Meridian equipment-enchant consumption** (matrix #7) — at tiers 4–5, roll mob gear
+2. **Meridian equipment-enchant consumption** (matrix #7) — at tiers 4–5, roll mob gear
    enchants from `meridian:mob_equipment` when present. Sketch: guarded pool extension in
    the equipment scaling engine.
-4. **Finish the website punch list** — changelog page, per-mob reference page (rates,
+3. **Finish the website punch list** — changelog page, per-mob reference page (rates,
    caps, abilities per tier), apple-touch icon. The reference site should be complete
    before the template propagates (§7).
-5. **Jade/WTHIT tier detail** — show "Scaled: Tier 4 (boss formula)" using the new API so
+4. **Jade/WTHIT tier detail** — show "Scaled: Tier 4 (boss formula)" using the API so
    players can read the danger they're looking at.
 
 **Low**
 
-6. **Datapack-driven scaling profiles** — per-mob JSON overlays for pack makers.
-7. **Shatter Shard consumption cap** (per-day config) — closes the grinder-stockpile
+5. **Datapack-driven scaling profiles** — per-mob JSON overlays for pack makers.
+6. **Shatter Shard consumption cap** (per-day config) — closes the grinder-stockpile
    exploit noted in the profile.
 
-### Prosperity (build plan — greenfield to parity)
+### Prosperity
 
-Priorities are build phases; each phase is shippable.
+The instanced-loot core (the zero-trust per-player proxy), distance tiers + structure
+overrides, the loot-injection system, the `api` package (`LootModifierCallback` +
+`LootModifierContext` + HUD accessors), the tier HUD badge + visual indicators, the
+Jade/WTHIT + EMI/REI/JEI loot index, and the config-gated loot-refresh /
+container-protection / mob-loot-scaling systems are in place. Remaining work:
 
-**High — core (Phase 1–2)**
+**High — integration surface**
 
-1. **Scaffold to suite standard** — repo layout cloned from Tribulation (split source
-   sets, gametest entrypoints, AGENTS.md, conventional commits), CCA dependency, config
-   system with hot `/prosperity reload`.
-2. **Instanced loot core** — `InstancedLootComponent` (per-player inventories, original
-   loot table/seed capture, generated flags), `UseBlockCallback` interception, loot-table
-   nullification, the `unpackLootTable` safety-net mixin, double-chest canonicalization,
-   blacklist. This is the zero-trust proxy and the mod's entire reason to exist; gametest
-   two-player instancing before anything visual.
-3. **Distance tiers + structure overrides + notifications** — the five tiers, Nether
-   coordinate rule, End=Depths rule, `StructureManager` override resolution, action-bar
-   notification.
+1. **Public tier accessors** (§5.3) — `getDistanceTier(ServerLevel, BlockPos)` /
+   `getTierForPlayer(ServerPlayer)` and a `ContainerLootedCallback` event, the reward-axis
+   counterpart to `TribulationAPI.getTier`.
+2. **Flagship compats** in `compat/tribulation/` — the luck listener (matrix #1) and the
+   equipment-drop provider registration (matrix #2).
+3. **Conditional Meridian book injections** (matrix #3) — a mod-presence gate on injections
+   plus the authored book pack; the dynamic, distance-rolled form follows once Meridian
+   ships loot-cap enforcement + a roll API.
 
-**High — API & integration (Phase 3)**
+**Med — polish**
 
-4. **`api` package from first principles** (§5.3) — `LootModifierCallback` + context,
-   tier accessors, `ContainerLootedCallback`, `@ApiStatus.Stable`. Then the two flagship
-   compats: the Tribulation luck listener (matrix #1) and the equipment-drop provider
-   registration (matrix #2), both in `compat/tribulation/`.
-5. **Loot injection system** — datapack-driven, wildcard expansion, conditional Meridian
-   book injections (matrix #3).
+4. **Indicator render budget** — distance culling / occlusion for the 200-indicator target,
+   if profiling demands.
+5. **Loot-refresh + protection defaults** — revisit the config-gated defaults with real
+   server feedback (ties into the §7 MP-fairness pass).
 
-**Med — client & polish (Phase 4–5)**
+**Low**
 
-6. **Visual indicators + tier HUD badge** — per spec, built against the §3.3 accessor
-   convention from day one (no hardcoded sibling heights). Budget rendering for the
-   200-indicator target (distance culling first; occlusion later if profiling demands).
-7. **Jade/WTHIT tooltips + EMI/REI/JEI loot index** — with sync throttling for the
-   per-look tooltip data (profile flagged packet-spam risk).
-
-**Low — optional systems (Phase 6)**
-
-8. **Loot refresh, container protection, mob loot scaling** — all config-gated, all
-   default states per spec (refresh off, protection off, mob scaling on).
-9. **Spec future list** (loot preview, party mode, trapped-chest per-player triggering) —
+6. **Spec future list** (loot preview, party mode, trapped-chest per-player triggering) —
    explicitly post-parity.
 
 ---
@@ -547,21 +547,23 @@ Priorities are build phases; each phase is shippable.
 Ordered; each step's dependency noted.
 
 1. **API Standard v1.** The conventions doc is [`API-STANDARD.md`](API-STANDARD.md).
-   Complete Tribulation's API additions (it's the reference and is nearly done); then
-   Meridian and Mercantile `api` packages in parallel.
-   *Dependency: nothing — Tribulation's existing API is already stable enough for
-   Prosperity to target.*
+   The Tribulation, Meridian, and Mercantile `api` packages are in place; the remaining
+   additions are Prosperity's public tier accessors, Meridian's loot-cap enforcement +
+   enchant-roll call, and Mercantile's exclusive-trades resource conditions.
+   *Dependency: nothing — the stable surfaces already exist for Prosperity to target.*
 2. **HUD Convention v1 (with step 1).** The convention is [`HUD-STANDARD.md`](HUD-STANDARD.md).
-   Tribulation + Mercantile implement the accessor pattern; Mercantile deletes its
-   hardcoded offset.
-   *Dependency: the api packages from step 1 (accessors live there).*
+   The HUD accessors live in each `api` package; Mercantile adopts the accessor pattern for
+   cross-mod stacking in place of any hardcoded offset.
+   *Dependency: the HUD accessors (present in each api package).*
 3. **Prosperity to parity (the long pole — start immediately after 1).** Phases 1–3 of
    its roadmap. *Dependency: Tribulation tier API stable (it is; the additions in step 1
    are additive). Its HUD badge (phase 4) depends on step 2.*
 4. **Integration wave 1 (as the pieces land).** Matrix #1/#2 ship inside Prosperity
-   phase 3; #4/#5 ship when Mercantile's conditional trades land; #3 when Meridian's
-   `EnchantmentInfo` is in its api package. Each integration gets one gametest in the
-   *consumer's* repo with the provider on the gametest classpath.
+   phase 3; #4/#5 ship today via the unknown-item skip and harden when Mercantile's
+   conditional trades land; #3's static book-injection ships now (Meridian's
+   `EnchantmentInfo` is already exposed), its dynamic form lands with Meridian's loot-cap
+   enforcement + roll API and Prosperity's tier accessors. Each integration gets one
+   gametest in the *consumer's* repo with the provider on the gametest classpath.
 5. **Design system & website rollout (parallel track, low risk).** The design tokens are
    [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) + [`docs/tokens.css`](docs/tokens.css).
    Finish the Tribulation site punch list; propagate the template; add the cross-mod
