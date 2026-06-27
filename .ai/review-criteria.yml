@@ -55,7 +55,11 @@ categories:
     severity: must_fix
     description: |
       Logic bugs, off-by-ones, null/Optional handling, edge cases, error
-      paths. Are loops bounded? Are early returns correct?
+      paths. Are loops bounded? Are early returns correct? Persisted-state
+      changes that risk data loss or break save/config migration.
+    look_at:
+      - .ai/skills/mc-persistence/SKILL.md (if present)
+      - .ai/skills/mc-config/SKILL.md (if present)
 
   - id: thread_safety
     name: Thread safety
@@ -134,6 +138,7 @@ categories:
       - the mod's compat Mod Menu / Cloth Config integration class
       - assets/<modid>/lang/en_us.json
       - the mod's config class (for new public fields)
+      - .ai/skills/mc-config/SKILL.md (if present)
     applies_when: |
       PR introduces a new config option, command, or player-facing feature —
       typically a feat-typed change that adds a public field to the config class
@@ -146,7 +151,10 @@ categories:
     description: |
       Per-tick allocations in hot paths. O(n²) loops over entity lists.
       Unbounded caches. Synchronous I/O on the server thread. New mixins
-      on hot vanilla methods are flagged for scrutiny.
+      on hot vanilla methods are flagged for scrutiny. In-world/particle
+      rendering that skips culling, LOD, or a per-tick spawn budget.
+    look_at:
+      - .ai/skills/mc-world-render/SKILL.md (if present)
 
   - id: compat
     name: Compat risk
@@ -157,6 +165,9 @@ categories:
       public api package. Any new public API used by compat classes. Scope is
       breakage of an EXISTING integration; omitting a NEW surface for a new
       feature is `feature_completeness`'s job, not this one.
+    look_at:
+      - .ai/skills/mc-public-api/SKILL.md (if present)
+      - .ai/skills/mc-hud/SKILL.md (if present)
     applies_when: |
       PR touches a compat.* package, the mod's public api package, public
       APIs that compat classes import, or fabric.mod.json depends/recommends
