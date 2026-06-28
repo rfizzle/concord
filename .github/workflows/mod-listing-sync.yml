@@ -1,0 +1,128 @@
+# Concord — reusable Modrinth listing-sync workflow.
+#
+# Pushes a member's store description (and optional short summary) to Modrinth
+# via the v2 API whenever the source markdown changes. CurseForge has no public
+# write API for the project description — it is web-dashboard-only — so this
+# syncs Modrinth alone; listing-curseforge.md stays a manual copy-paste source.
+#
+# Syncs the long description from listing-file (default site/listing-modrinth.md)
+# and, when summary-file (default site/listing-summary.txt) exists and is
+# non-empty, the 256-char short description too. Gated on MODRINTH_TOKEN: with no
+# token the job no-ops, so a member that has not opted in is unaffected.
+#
+# The token is the same Modrinth PAT used for releases, and must carry BOTH the
+# "Create versions" (publish) and "Write projects" (this) scopes.
+#
+# Caller stub (.github/workflows/listing-sync.yml):
+#
+#   name: Listing sync
+#   on:
+#     push:
+#       branches: [master]
+#       paths:
+#         - "site/listing-modrinth.md"
+#         - "site/listing-summary.txt"
+#         - ".github/workflows/listing-sync.yml"
+#     workflow_dispatch:
+#   jobs:
+#     listing:
+#       uses: rfizzle/concord/.github/workflows/mod-listing-sync.yml@master
+#       secrets: inherit
+name: Mod Listing Sync
+
+on:
+  workflow_call:
+    inputs:
+      modrinth-id:
+        description: "Modrinth project slug or id (defaults to the repository name)"
+        type: string
+        default: ""
+      listing-file:
+        description: "Markdown file synced to the Modrinth project body"
+        type: string
+        default: site/listing-modrinth.md
+      summary-file:
+        description: "Optional file synced to the 256-char Modrinth description (skipped when absent/empty)"
+        type: string
+        default: site/listing-summary.txt
+    secrets:
+      MODRINTH_TOKEN:
+        # Optional: a Modrinth PAT with the "Write projects" scope. Absent ->
+        # the sync no-ops, so a member without it is unaffected.
+        required: false
+
+env:
+  MODRINTH_ID: ${{ inputs.modrinth-id || github.event.repository.name }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Detect Modrinth auth
+        id: auth
+        # secrets context is not usable in a step `if:`, so map token presence to
+        # a step output the sync step gates on.
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          if [ -n "$MODRINTH_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No MODRINTH_TOKEN; skipping listing sync"
+          fi
+
+      - name: Sync listing to Modrinth
+        if: steps.auth.outputs.available == 'true'
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          LISTING_FILE: ${{ inputs.listing-file }}
+          SUMMARY_FILE: ${{ inputs.summary-file }}
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "$LISTING_FILE" ]; then
+            echo "::error::Listing file not found: $LISTING_FILE"
+            exit 1
+          fi
+
+          # Build the PATCH payload from the file(s). jq -Rs slurps the whole
+          # markdown into a single JSON string, so any quotes/backticks/newlines
+          # are encoded safely. The summary is added only when its file exists
+          # and is non-empty.
+          if [ -s "$SUMMARY_FILE" ]; then
+            SUMMARY="$(tr -d '\n' < "$SUMMARY_FILE" | sed 's/[[:space:]]\{1,\}/ /g; s/^ //; s/ $//')"
+            LEN=${#SUMMARY}
+            if [ "$LEN" -gt 256 ]; then
+              echo "::error::Summary is ${LEN} chars; Modrinth caps description at 256"
+              exit 1
+            fi
+            jq -Rs --arg desc "$SUMMARY" '{body: ., description: $desc}' "$LISTING_FILE" > /tmp/payload.json
+            echo "Syncing body ($(wc -c < "$LISTING_FILE") bytes) + summary (${LEN} chars)"
+          else
+            jq -Rs '{body: .}' "$LISTING_FILE" > /tmp/payload.json
+            echo "Syncing body ($(wc -c < "$LISTING_FILE") bytes); no summary file"
+          fi
+
+          # Modrinth PATs go in the Authorization header verbatim (no "Bearer").
+          # 2xx (204 No Content) on success; anything else is a hard failure with
+          # the response body surfaced for debugging.
+          HTTP_CODE="$(curl -sS -o /tmp/resp.txt -w '%{http_code}' -X PATCH \
+            "https://api.modrinth.com/v2/project/${MODRINTH_ID}" \
+            -H "Authorization: ${MODRINTH_TOKEN}" \
+            -H "User-Agent: rfizzle/concord listing-sync (+https://github.com/rfizzle/concord)" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/payload.json)"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Modrinth project '${MODRINTH_ID}' updated (HTTP ${HTTP_CODE})"
+          else
+            echo "::error::Modrinth sync failed (HTTP ${HTTP_CODE}) for '${MODRINTH_ID}'"
+            cat /tmp/resp.txt || true
+            exit 1
+          fi
