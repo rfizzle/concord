@@ -15,6 +15,12 @@
 # suite target) rather than read from fabric.mod.json, so a "~1.21.1" metadata
 # range can't fan a single release out across every 1.21.x patch.
 #
+# Optional dependencies are read from fabric.mod.json's suggests/recommends and
+# attached to both listings. A mod id whose platform slug differs from its
+# Fabric id is remapped through a repo-local .github/release-slug-overrides.json
+# (e.g. roughlyenoughitems -> rei / roughly-enough-items). Dependencies are
+# best-effort: an unresolvable slug is dropped with a warning, never a failure.
+#
 # The release is assembled as a draft, the jar is attached, then the draft is
 # published — the only order that works on repositories with immutable releases
 # enabled, where assets must be uploaded before a release is published.
@@ -320,6 +326,40 @@ jobs:
             echo "::notice::No MODRINTH_TOKEN/CURSEFORGE_TOKEN; skipping mod-platform publish"
           fi
 
+      - name: Resolve release dependencies
+        if: steps.publish.outputs.available == 'true'
+        # Normalise fabric.mod.json's optional siblings (suggests + recommends)
+        # into a slug list both publish steps consume. A repo-local
+        # .github/release-slug-overrides.json remaps any mod id whose platform
+        # slug differs from its Fabric id (e.g. roughlyenoughitems -> rei /
+        # roughly-enough-items). A missing file, missing keys, or unparsable
+        # fabric.mod.json all degrade to "no dependencies" rather than failing.
+        run: |
+          FMJ="$(find . -path '*/resources/fabric.mod.json' -print -quit 2>/dev/null || true)"
+          if [ -z "$FMJ" ] || ! jq -e . "$FMJ" >/dev/null 2>&1; then
+            echo "::notice::No parseable fabric.mod.json; no release dependencies"
+            echo '[]' > /tmp/release-deps.json
+            exit 0
+          fi
+          OVR='{}'
+          if [ -f .github/release-slug-overrides.json ]; then
+            OVR="$(cat .github/release-slug-overrides.json)"
+          fi
+          # Per dep: id from fabric.mod.json, platform slugs default to that id
+          # but can be overridden per platform. suggests/recommends are optional.
+          jq -n --argjson m "$(cat "$FMJ")" --argjson o "$OVR" '
+            [ (($m.suggests // {}) | keys[]), (($m.recommends // {}) | keys[]) ]
+            | unique
+            | map(. as $id | {
+                id: $id,
+                modrinth: ($o[$id].modrinth // $id),
+                curseforge: ($o[$id].curseforge // $id),
+                type: "optional"
+              })
+          ' > /tmp/release-deps.json
+          echo "Resolved $(jq 'length' /tmp/release-deps.json) optional dependency/ies:"
+          jq -c '.[]' /tmp/release-deps.json || true
+
       - name: Publish to Modrinth
         if: steps.publish.outputs.available == 'true'
         # Direct POST /v2/version: Modrinth wants a multipart body with a `data`
@@ -343,6 +383,26 @@ jobs:
           JAR="$(ls dist/${MOD_ID}-*.jar | head -1)"
           echo "Publishing $JAR to Modrinth project $MODRINTH_ID"
 
+          # Modrinth wants each dependency as a project_id, so resolve every
+          # slug to its id via the public project endpoint. Slugs that don't
+          # resolve are warned and dropped — a stale sibling can't block release.
+          DEPS_JSON='[]'
+          if [ -s /tmp/release-deps.json ] && [ "$(jq 'length' /tmp/release-deps.json)" -gt 0 ]; then
+            RESOLVED='[]'
+            while IFS=$'\t' read -r slug dtype; do
+              [ -z "$slug" ] && continue
+              PID="$(curl -sS "https://api.modrinth.com/v2/project/${slug}" | jq -r '.id // empty')" || PID=""
+              if [ -n "$PID" ]; then
+                RESOLVED="$(printf '%s' "$RESOLVED" | jq --arg pid "$PID" --arg dt "$dtype" \
+                  '. + [{project_id: $pid, dependency_type: $dt}]')"
+              else
+                echo "::warning::Modrinth dependency '$slug' did not resolve; skipping"
+              fi
+            done < <(jq -r '.[] | "\(.modrinth)\t\(.type)"' /tmp/release-deps.json)
+            DEPS_JSON="$RESOLVED"
+          fi
+          echo "Modrinth dependencies: $(printf '%s' "$DEPS_JSON" | jq -c .)"
+
           # split() each csv input and trim whitespace into JSON string arrays.
           # The JSON goes to a file so curl reads it verbatim (`-F name=<file`) —
           # inline `-F name=$DATA` would let a stray ";type=" in the notes break
@@ -356,11 +416,12 @@ jobs:
             --arg gv "$GAME_VERSIONS" \
             --arg ld "$LOADERS" \
             --argjson ft "$FEATURED" \
+            --argjson deps "$DEPS_JSON" \
             '{
               name: $name,
               version_number: $vn,
               changelog: $cl,
-              dependencies: [],
+              dependencies: $deps,
               game_versions: ($gv | split(",") | map(gsub("^\\s+|\\s+$"; ""))),
               version_type: $vt,
               loaders: ($ld | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(ascii_downcase)),
@@ -432,13 +493,32 @@ jobs:
           fi
           echo "Resolved CurseForge version ids: $(printf '%s' "$GV_IDS" | jq -c .)"
 
-          jq -n \
-            --rawfile cl /tmp/release-body.md \
-            --arg dn "$TITLE" \
-            --arg rt "$RELEASE_TYPE" \
-            --argjson gv "$GV_IDS" \
-            '{changelog: $cl, changelogType: "markdown", displayName: $dn, gameVersions: $gv, releaseType: $rt}' \
-            > /tmp/cf-meta.json
+          # CurseForge takes dependencies by slug directly, under relations.projects.
+          CF_PROJECTS='[]'
+          if [ -s /tmp/release-deps.json ]; then
+            CF_PROJECTS="$(jq '[.[] | {
+              slug: .curseforge,
+              type: (if .type == "required" then "requiredDependency" else "optionalDependency" end)
+            }]' /tmp/release-deps.json)"
+          fi
+          echo "CurseForge dependencies: $(printf '%s' "$CF_PROJECTS" | jq -c '[.[].slug]')"
+
+          # relations is omitted when empty (CurseForge rejects an empty projects list).
+          write_meta() {  # $1: 1 -> include relations, 0 -> omit them
+            jq -n \
+              --rawfile cl /tmp/release-body.md \
+              --arg dn "$TITLE" \
+              --arg rt "$RELEASE_TYPE" \
+              --argjson gv "$GV_IDS" \
+              --argjson rel "$CF_PROJECTS" \
+              --argjson inc "$1" \
+              '{changelog: $cl, changelogType: "markdown", displayName: $dn, gameVersions: $gv, releaseType: $rt}
+               + (if $inc == 1 and ($rel | length) > 0 then {relations: {projects: $rel}} else {} end)' \
+              > /tmp/cf-meta.json
+          }
+          INCLUDE_REL=1
+          [ "$(printf '%s' "$CF_PROJECTS" | jq 'length')" -gt 0 ] || INCLUDE_REL=0
+          write_meta "$INCLUDE_REL"
 
           attempt=0
           while :; do
@@ -450,6 +530,16 @@ jobs:
               -F "file=@${JAR};type=application/java-archive")" || HTTP=599
             if [ "$HTTP" -lt 300 ]; then break; fi
             if [ "$attempt" -ge 3 ]; then
+              # Dependencies are best-effort: a bad sibling slug must not block the
+              # release, so drop relations and give the upload one more clean run.
+              if [ "$INCLUDE_REL" -eq 1 ]; then
+                echo "::warning::CurseForge upload failed (HTTP $HTTP); retrying once without optional dependencies"
+                cat /tmp/cf-resp.json || true
+                INCLUDE_REL=0
+                write_meta 0
+                attempt=0
+                continue
+              fi
               echo "::error::CurseForge upload failed (HTTP $HTTP)"
               cat /tmp/cf-resp.json || true
               exit 1
