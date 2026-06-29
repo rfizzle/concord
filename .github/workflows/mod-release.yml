@@ -25,6 +25,13 @@
 # published — the only order that works on repositories with immutable releases
 # enabled, where assets must be uploaded before a release is published.
 #
+# Re-runs are safe. The notes are cached on the tag, so a re-run restores the
+# exact same body (no second model spend), and each publish target skips work
+# that already landed: an existing published GitHub release and an existing
+# Modrinth version are detected and skipped. CurseForge is the last step, so it
+# only runs when it hasn't yet succeeded. A release that failed partway — e.g.
+# CurseForge alone — is completed cleanly by re-running the failed job.
+#
 # Mod id defaults to the repository name — the suite convention is
 # repo name == mod id == jar prefix. Note generation reuses the suite's
 # CLAUDE_CODE_OAUTH_TOKEN (inherited). Caller stub:
@@ -154,7 +161,20 @@ jobs:
           fi
           ls -l dist/
 
+      - name: Restore cached release notes
+        id: notescache
+        # Keyed on the immutable tag, so a re-run of a partially-failed release
+        # restores the exact same body instead of regenerating it — identical
+        # notes across platforms and no second model spend. The cache is written
+        # in this action's post step (on a miss) even when the job later fails,
+        # so the body produced by the first attempt survives for the re-run.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/release-body.md
+          key: release-notes-${{ github.ref_name }}
+
       - name: Gather changelog source
+        if: steps.notescache.outputs.cache-hit != 'true'
         # GitHub's own note generator is the factual ground truth — the real list
         # of merged PRs with the previous tag auto-detected. Claude rewrites it
         # below, and it is also the fallback body if the model is unavailable.
@@ -173,6 +193,7 @@ jobs:
 
       - name: Detect Claude auth
         id: auth
+        if: steps.notescache.outputs.cache-hit != 'true'
         # secrets context is not usable in a step `if:`, so map presence of the
         # token to a step output the changelog steps can gate on.
         env:
@@ -186,7 +207,7 @@ jobs:
           fi
 
       - name: Install Claude Code
-        if: steps.auth.outputs.available == 'true'
+        if: steps.notescache.outputs.cache-hit != 'true' && steps.auth.outputs.available == 'true'
         run: |
           # Fetch the installer to disk rather than piping the network stream
           # straight into bash: this captures the exact bytes (a truncated/MITM'd
@@ -203,7 +224,7 @@ jobs:
           bash /tmp/claude-install.sh
 
       - name: Write release notes
-        if: steps.auth.outputs.available == 'true'
+        if: steps.notescache.outputs.cache-hit != 'true' && steps.auth.outputs.available == 'true'
         # Self-contained prompt: the merged-PR list is embedded, so the model
         # only rewrites what it is given and needs no tools. A failed or empty
         # run leaves /tmp/ai-notes.md absent and the next step uses the raw list.
@@ -269,6 +290,7 @@ jobs:
           fi
 
       - name: Assemble release body
+        if: steps.notescache.outputs.cache-hit != 'true'
         # Always produces /tmp/release-body.md so the release step has a body
         # regardless of whether the model ran. The published notes are the AI's
         # player-facing prose alone — no commit/PR list, contributor roll, or
@@ -287,7 +309,27 @@ jobs:
           echo "--- release body ---"
           cat /tmp/release-body.md
 
+      - name: Detect existing release
+        id: rel
+        # Idempotency for re-runs: if a published (non-draft) release already
+        # exists for this tag, the create/publish steps below are skipped so a
+        # re-run of a partially-failed release doesn't try to re-publish — and,
+        # on immutable-release repos, doesn't error doing so. A leftover draft
+        # from a failed run is treated as not-yet-published, so it gets finished.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+               --json isDraft --jq '.isDraft' > /tmp/rel-draft.txt 2>/dev/null \
+             && [ "$(cat /tmp/rel-draft.txt)" = "false" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Published release $GITHUB_REF_NAME already exists; skipping GitHub release steps"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create draft GitHub Release
+        if: steps.rel.outputs.exists != 'true'
         # Created as a draft so the jar can be attached: repositories with
         # immutable releases enabled reject asset uploads after publish. The
         # Publish step below flips the draft to published once the jar is on it.
@@ -301,6 +343,7 @@ jobs:
           files: dist/${{ env.MOD_ID }}-*.jar
 
       - name: Publish release
+        if: steps.rel.outputs.exists != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
@@ -377,6 +420,17 @@ jobs:
           fi
           JAR="$(ls dist/${MOD_ID}-*.jar | head -1)"
           echo "Publishing $JAR to Modrinth project $MODRINTH_ID"
+
+          # Idempotency for re-runs: if this version_number already exists on the
+          # project, skip — re-running a partially-failed release must not try to
+          # create a duplicate version.
+          EXISTING="$(curl -sS -H "Authorization: $MODRINTH_TOKEN" \
+            "https://api.modrinth.com/v2/project/${MODRINTH_ID}/version" \
+            | jq -r --arg v "$VERSION" '[.[] | select(.version_number == $v)] | length')" || EXISTING=0
+          if [ "${EXISTING:-0}" -gt 0 ]; then
+            echo "::notice::Modrinth already has $MODRINTH_ID version $VERSION; skipping"
+            exit 0
+          fi
 
           # Modrinth wants each dependency as a project_id, so resolve every
           # slug to its id via the public project endpoint. Slugs that don't
