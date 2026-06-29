@@ -547,10 +547,10 @@ jobs:
             | [ $t[] | select(.slug | startswith("modloader")) | .id ] as $loaderTypes
             | ($gvs | split(",") | map(ascii_downcase | gsub("^\\s+|\\s+$"; ""))) as $wantGv
             | ($lds | split(",") | map(ascii_downcase | gsub("^\\s+|\\s+$"; ""))) as $wantLd
-            | ([ .[] | select((($mcTypes | index(.gameVersionTypeID)) != null)
-                  and (($wantGv | index(.name | ascii_downcase)) != null)) | .id ])
-              + ([ .[] | select((($loaderTypes | index(.gameVersionTypeID)) != null)
-                  and (($wantLd | index(.name | ascii_downcase)) != null)) | .id ])
+            | ([ .[] | select((.gameVersionTypeID | IN($mcTypes[]))
+                  and (.name | ascii_downcase | IN($wantGv[]))) | .id ])
+              + ([ .[] | select((.gameVersionTypeID | IN($loaderTypes[]))
+                  and (.name | ascii_downcase | IN($wantLd[]))) | .id ])
             | unique' /tmp/cf-versions.json)"
           COUNT="$(printf '%s' "$GV_IDS" | jq 'length')"
           if [ "$COUNT" -eq 0 ]; then
