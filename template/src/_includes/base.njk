@@ -118,7 +118,7 @@
             {%- if currentMember and m.id == currentMember.id %}
             <span class="font-semibold text-accent">{{ m.name }}</span>
             <span class="block text-xs text-ash mt-0.5">{{ m.tagline }}</span>
-            {%- elif m.status == "released" %}
+            {%- elif m.status == "released" or m.status == "beta" %}
             <a href="{{ m.url }}" rel="noopener noreferrer" target="_blank" class="font-semibold text-bone hover:underline">{{ m.name }}</a>
             <span class="block text-xs text-ash mt-0.5">{{ m.tagline }}</span>
             {%- else %}
