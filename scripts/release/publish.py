@@ -273,12 +273,17 @@ def curseforge_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
         }
         if include_relations and relations:
             metadata["relations"] = {"projects": relations}
+        # metadata is a plain multipart text field, not a JSON body part:
+        # CurseForge binds it by field name and only then reads changelogType.
+        # Tagging the part application/json leaves it unbound, so CurseForge
+        # falls back to its changelogType=text default and renders the markdown
+        # changelog as escaped, newline-collapsed plain text.
+        data = {"metadata": json.dumps(metadata)}
         files = {
-            "metadata": (None, json.dumps(metadata), "application/json"),
             "file": (os.path.basename(jar), jar_bytes, JAR_CONTENT_TYPE),
         }
-        return request_with_retries("POST", url,
-                                    headers={"X-Api-Token": token}, files=files)
+        return request_with_retries("POST", url, headers={"X-Api-Token": token},
+                                    data=data, files=files)
 
     log(f"Publishing {jar} to CurseForge project {project}")
     if relations:
