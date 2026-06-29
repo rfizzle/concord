@@ -468,9 +468,12 @@ jobs:
           JAR="$(ls dist/${MOD_ID}-*.jar | head -1)"
           echo "Publishing $JAR to CurseForge project $CURSEFORGE_ID"
 
-          VERSIONS="$(curl -sS -H "X-Api-Token: $CURSEFORGE_TOKEN" \
-            "https://minecraft.curseforge.com/api/game/versions")" || VERSIONS=""
-          if ! printf '%s' "$VERSIONS" | jq -e 'type == "array" and length > 0' >/dev/null 2>&1; then
+          # The catalogue is hundreds of KB, so write it to a file and let jq read
+          # it as input — passing it via --argjson would blow ARG_MAX (E2BIG).
+          curl -sS -H "X-Api-Token: $CURSEFORGE_TOKEN" \
+            "https://minecraft.curseforge.com/api/game/versions" \
+            -o /tmp/cf-versions.json || : > /tmp/cf-versions.json
+          if ! jq -e 'type == "array" and length > 0' /tmp/cf-versions.json >/dev/null 2>&1; then
             echo "::error::Could not fetch the CurseForge game-versions catalogue"
             exit 1
           fi
@@ -478,9 +481,10 @@ jobs:
           # Match the pinned game versions + loaders against the catalogue by name
           # (case-insensitive) and collect their numeric ids.
           WANTED="${GAME_VERSIONS},${LOADERS}"
-          GV_IDS="$(jq -n --argjson v "$VERSIONS" --arg wanted "$WANTED" '
+          GV_IDS="$(jq --arg wanted "$WANTED" '
             ($wanted | split(",") | map(ascii_downcase | gsub("^\\s+|\\s+$"; ""))) as $w
-            | [ $v[] | select(((.name | ascii_downcase) as $n | $w | index($n)) != null) | .id ]')"
+            | [ .[] | select(((.name | ascii_downcase) as $n | $w | index($n)) != null) | .id ]' \
+            /tmp/cf-versions.json)"
           COUNT="$(printf '%s' "$GV_IDS" | jq 'length')"
           if [ "$COUNT" -eq 0 ]; then
             echo "::error::Could not resolve any CurseForge version ids for: $WANTED"
