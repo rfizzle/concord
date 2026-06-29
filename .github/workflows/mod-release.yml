@@ -80,6 +80,10 @@ on:
         description: "Comma-separated mod loaders to tag the release with"
         type: string
         default: "fabric"
+      concord-ref:
+        description: "concord ref to load the publish script from (pin to freeze it)"
+        type: string
+        default: master
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         # Optional: when absent the release body falls back to GitHub's raw
@@ -364,253 +368,40 @@ jobs:
             echo "::notice::No MODRINTH_TOKEN/CURSEFORGE_TOKEN; skipping mod-platform publish"
           fi
 
-      - name: Resolve release dependencies
+      - name: Checkout concord publish script
         if: steps.publish.outputs.available == 'true'
-        # Normalise fabric.mod.json's optional siblings (suggests + recommends)
-        # into a slug list both publish steps consume. A repo-local
-        # .github/release-slug-overrides.json remaps any mod id whose platform
-        # slug differs from its Fabric id (e.g. roughlyenoughitems -> rei /
-        # roughly-enough-items). A missing file, missing keys, or unparsable
-        # fabric.mod.json all degrade to "no dependencies" rather than failing.
-        run: |
-          FMJ="$(find . -path '*/resources/fabric.mod.json' -print -quit 2>/dev/null || true)"
-          if [ -z "$FMJ" ] || ! jq -e . "$FMJ" >/dev/null 2>&1; then
-            echo "::notice::No parseable fabric.mod.json; no release dependencies"
-            echo '[]' > /tmp/release-deps.json
-            exit 0
-          fi
-          OVR='{}'
-          if [ -f .github/release-slug-overrides.json ]; then
-            OVR="$(cat .github/release-slug-overrides.json)"
-          fi
-          # Per dep: id from fabric.mod.json, platform slugs default to that id
-          # but can be overridden per platform. suggests/recommends are optional.
-          jq -n --argjson m "$(cat "$FMJ")" --argjson o "$OVR" '
-            [ (($m.suggests // {}) | keys[]), (($m.recommends // {}) | keys[]) ]
-            | unique
-            | map(. as $id | {
-                id: $id,
-                modrinth: ($o[$id].modrinth // $id),
-                curseforge: ($o[$id].curseforge // $id),
-                type: "optional"
-              })
-          ' > /tmp/release-deps.json
-          echo "Resolved $(jq 'length' /tmp/release-deps.json) optional dependency/ies:"
-          jq -c '.[]' /tmp/release-deps.json || true
+        # The publish script lives in concord, but the job runs in the member
+        # checkout — pull it into .concord (same pattern as build-site.yml).
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: rfizzle/concord
+          ref: ${{ inputs.concord-ref }}
+          path: .concord
 
-      - name: Publish to Modrinth
+      - name: Set up Python
         if: steps.publish.outputs.available == 'true'
-        # Direct POST /v2/version: Modrinth wants a multipart body with a `data`
-        # JSON part plus the jar. The PAT goes in the Authorization header raw (no
-        # "Bearer"). game_versions/loaders come from the pinned inputs, so the jar's
-        # fabric.mod.json range can't widen the tag set. Self-skips with no token.
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Publish to Modrinth and CurseForge
+        if: steps.publish.outputs.available == 'true'
+        # One script owns both platforms: optional dependencies from
+        # fabric.mod.json (+ .github/release-slug-overrides.json), CurseForge
+        # version-type-aware id resolution, multipart uploads, retries, and
+        # idempotency. Modrinth runs first and must succeed before CurseForge,
+        # keeping CurseForge the terminal, re-run-safe step.
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           MODRINTH_ID: ${{ inputs.modrinth-id || env.MOD_ID }}
-          TITLE: ${{ steps.meta.outputs.title }}
-          VERSION: ${{ steps.meta.outputs.version }}
-          VERSION_TYPE: ${{ steps.meta.outputs.prerelease == 'true' && 'beta' || 'release' }}
-          GAME_VERSIONS: ${{ inputs.game-versions }}
-          LOADERS: ${{ inputs.loaders }}
-          FEATURED: ${{ steps.meta.outputs.prerelease == 'true' && 'false' || 'true' }}
-        run: |
-          if [ -z "$MODRINTH_TOKEN" ]; then
-            echo "::notice::No MODRINTH_TOKEN; skipping Modrinth publish"
-            exit 0
-          fi
-          JAR="$(ls dist/${MOD_ID}-*.jar | head -1)"
-          echo "Publishing $JAR to Modrinth project $MODRINTH_ID"
-
-          # Idempotency for re-runs: if this version_number already exists on the
-          # project, skip — re-running a partially-failed release must not try to
-          # create a duplicate version.
-          EXISTING="$(curl -sS -H "Authorization: $MODRINTH_TOKEN" \
-            "https://api.modrinth.com/v2/project/${MODRINTH_ID}/version" \
-            | jq -r --arg v "$VERSION" '[.[] | select(.version_number == $v)] | length')" || EXISTING=0
-          if [ "${EXISTING:-0}" -gt 0 ]; then
-            echo "::notice::Modrinth already has $MODRINTH_ID version $VERSION; skipping"
-            exit 0
-          fi
-
-          # Modrinth wants each dependency as a project_id, so resolve every
-          # slug to its id via the public project endpoint. Slugs that don't
-          # resolve are warned and dropped — a stale sibling can't block release.
-          DEPS_JSON='[]'
-          if [ -s /tmp/release-deps.json ] && [ "$(jq 'length' /tmp/release-deps.json)" -gt 0 ]; then
-            RESOLVED='[]'
-            while IFS=$'\t' read -r slug dtype; do
-              [ -z "$slug" ] && continue
-              PID="$(curl -sS "https://api.modrinth.com/v2/project/${slug}" | jq -r '.id // empty')" || PID=""
-              if [ -n "$PID" ]; then
-                RESOLVED="$(printf '%s' "$RESOLVED" | jq --arg pid "$PID" --arg dt "$dtype" \
-                  '. + [{project_id: $pid, dependency_type: $dt}]')"
-              else
-                echo "::warning::Modrinth dependency '$slug' did not resolve; skipping"
-              fi
-            done < <(jq -r '.[] | "\(.modrinth)\t\(.type)"' /tmp/release-deps.json)
-            DEPS_JSON="$RESOLVED"
-          fi
-          echo "Modrinth dependencies: $(printf '%s' "$DEPS_JSON" | jq -c .)"
-
-          # split() each csv input and trim whitespace into JSON string arrays.
-          # The JSON goes to a file so curl reads it verbatim (`-F name=<file`) —
-          # inline `-F name=$DATA` would let a stray ";type=" in the notes break
-          # curl's field parsing.
-          jq -n \
-            --arg name "$TITLE" \
-            --arg vn "$VERSION" \
-            --rawfile cl /tmp/release-body.md \
-            --arg vt "$VERSION_TYPE" \
-            --arg pid "$MODRINTH_ID" \
-            --arg gv "$GAME_VERSIONS" \
-            --arg ld "$LOADERS" \
-            --argjson ft "$FEATURED" \
-            --argjson deps "$DEPS_JSON" \
-            '{
-              name: $name,
-              version_number: $vn,
-              changelog: $cl,
-              dependencies: $deps,
-              game_versions: ($gv | split(",") | map(gsub("^\\s+|\\s+$"; ""))),
-              version_type: $vt,
-              loaders: ($ld | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(ascii_downcase)),
-              featured: $ft,
-              project_id: $pid,
-              file_parts: ["file"],
-              primary_file: "file"
-            }' > /tmp/modrinth-data.json
-
-          attempt=0
-          while :; do
-            attempt=$((attempt + 1))
-            HTTP="$(curl -sS -o /tmp/modrinth-resp.json -w '%{http_code}' \
-              -X POST "https://api.modrinth.com/v2/version" \
-              -H "Authorization: $MODRINTH_TOKEN" \
-              -F "data=</tmp/modrinth-data.json;type=application/json" \
-              -F "file=@${JAR};type=application/java-archive")" || HTTP=599
-            if [ "$HTTP" -lt 300 ]; then break; fi
-            if [ "$attempt" -ge 3 ]; then
-              echo "::error::Modrinth upload failed (HTTP $HTTP)"
-              cat /tmp/modrinth-resp.json || true
-              exit 1
-            fi
-            echo "::warning::Modrinth HTTP $HTTP; retrying in 10s ($attempt/3)"
-            sleep 10
-          done
-          echo "✅ Published to Modrinth ($(jq -r '.id // "?"' /tmp/modrinth-resp.json))"
-
-      - name: Publish to CurseForge
-        if: steps.publish.outputs.available == 'true'
-        # Direct POST /api/projects/<id>/upload-file with a multipart metadata JSON
-        # plus the jar, token in the X-Api-Token header. CurseForge wants numeric
-        # version ids resolved by name within the correct version-type category
-        # (see below). changelogType=markdown so notes render. Self-skips with no
-        # token or no curseforge-id.
-        env:
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
           CURSEFORGE_ID: ${{ inputs.curseforge-id }}
+          VERSION: ${{ steps.meta.outputs.version }}
           TITLE: ${{ steps.meta.outputs.title }}
-          RELEASE_TYPE: ${{ steps.meta.outputs.prerelease == 'true' && 'beta' || 'release' }}
+          PRERELEASE: ${{ steps.meta.outputs.prerelease }}
           GAME_VERSIONS: ${{ inputs.game-versions }}
           LOADERS: ${{ inputs.loaders }}
+          CHANGELOG_FILE: /tmp/release-body.md
         run: |
-          if [ -z "$CURSEFORGE_TOKEN" ] || [ -z "$CURSEFORGE_ID" ]; then
-            echo "::notice::No CURSEFORGE_TOKEN or curseforge-id; skipping CurseForge publish"
-            exit 0
-          fi
-          JAR="$(ls dist/${MOD_ID}-*.jar | head -1)"
-          echo "Publishing $JAR to CurseForge project $CURSEFORGE_ID"
-
-          # CurseForge wants numeric ids, and a name like "1.21.1" appears in
-          # several version-type categories (the real minecraft-1-21 one, plus
-          # bukkit/addon entries that the upload API rejects with error 1009). So
-          # fetch the version-type catalogue too and resolve names *within* the
-          # right category: game versions under a "minecraft*" type, loaders under
-          # "modloader*". Both catalogues are hundreds of KB, so jq reads them from
-          # files — passing them via --argjson would blow ARG_MAX (E2BIG).
-          curl -sS -H "X-Api-Token: $CURSEFORGE_TOKEN" \
-            "https://minecraft.curseforge.com/api/game/versions" \
-            -o /tmp/cf-versions.json || : > /tmp/cf-versions.json
-          curl -sS -H "X-Api-Token: $CURSEFORGE_TOKEN" \
-            "https://minecraft.curseforge.com/api/game/version-types" \
-            -o /tmp/cf-types.json || : > /tmp/cf-types.json
-          if ! jq -e 'type == "array" and length > 0' /tmp/cf-versions.json >/dev/null 2>&1 \
-             || ! jq -e 'type == "array" and length > 0' /tmp/cf-types.json >/dev/null 2>&1; then
-            echo "::error::Could not fetch the CurseForge game-version catalogues"
-            exit 1
-          fi
-
-          GV_IDS="$(jq --slurpfile types /tmp/cf-types.json \
-            --arg gvs "$GAME_VERSIONS" --arg lds "$LOADERS" '
-            ($types[0]) as $t
-            | [ $t[] | select(.slug | startswith("minecraft")) | .id ] as $mcTypes
-            | [ $t[] | select(.slug | startswith("modloader")) | .id ] as $loaderTypes
-            | ($gvs | split(",") | map(ascii_downcase | gsub("^\\s+|\\s+$"; ""))) as $wantGv
-            | ($lds | split(",") | map(ascii_downcase | gsub("^\\s+|\\s+$"; ""))) as $wantLd
-            | ([ .[] | select((.gameVersionTypeID | IN($mcTypes[]))
-                  and (.name | ascii_downcase | IN($wantGv[]))) | .id ])
-              + ([ .[] | select((.gameVersionTypeID | IN($loaderTypes[]))
-                  and (.name | ascii_downcase | IN($wantLd[]))) | .id ])
-            | unique' /tmp/cf-versions.json)"
-          COUNT="$(printf '%s' "$GV_IDS" | jq 'length')"
-          if [ "$COUNT" -eq 0 ]; then
-            echo "::error::Could not resolve any CurseForge version ids for: ${GAME_VERSIONS} / ${LOADERS}"
-            exit 1
-          fi
-          echo "Resolved CurseForge version ids: $(printf '%s' "$GV_IDS" | jq -c .)"
-
-          # CurseForge takes dependencies by slug directly, under relations.projects.
-          CF_PROJECTS='[]'
-          if [ -s /tmp/release-deps.json ]; then
-            CF_PROJECTS="$(jq '[.[] | {
-              slug: .curseforge,
-              type: (if .type == "required" then "requiredDependency" else "optionalDependency" end)
-            }]' /tmp/release-deps.json)"
-          fi
-          echo "CurseForge dependencies: $(printf '%s' "$CF_PROJECTS" | jq -c '[.[].slug]')"
-
-          # relations is omitted when empty (CurseForge rejects an empty projects list).
-          write_meta() {  # $1: 1 -> include relations, 0 -> omit them
-            jq -n \
-              --rawfile cl /tmp/release-body.md \
-              --arg dn "$TITLE" \
-              --arg rt "$RELEASE_TYPE" \
-              --argjson gv "$GV_IDS" \
-              --argjson rel "$CF_PROJECTS" \
-              --argjson inc "$1" \
-              '{changelog: $cl, changelogType: "markdown", displayName: $dn, gameVersions: $gv, releaseType: $rt}
-               + (if $inc == 1 and ($rel | length) > 0 then {relations: {projects: $rel}} else {} end)' \
-              > /tmp/cf-meta.json
-          }
-          INCLUDE_REL=1
-          [ "$(printf '%s' "$CF_PROJECTS" | jq 'length')" -gt 0 ] || INCLUDE_REL=0
-          write_meta "$INCLUDE_REL"
-
-          attempt=0
-          while :; do
-            attempt=$((attempt + 1))
-            HTTP="$(curl -sS -o /tmp/cf-resp.json -w '%{http_code}' \
-              -X POST "https://minecraft.curseforge.com/api/projects/${CURSEFORGE_ID}/upload-file" \
-              -H "X-Api-Token: $CURSEFORGE_TOKEN" \
-              -F "metadata=</tmp/cf-meta.json;type=application/json" \
-              -F "file=@${JAR};type=application/java-archive")" || HTTP=599
-            if [ "$HTTP" -lt 300 ]; then break; fi
-            if [ "$attempt" -ge 3 ]; then
-              # Dependencies are best-effort: a bad sibling slug must not block the
-              # release, so drop relations and give the upload one more clean run.
-              if [ "$INCLUDE_REL" -eq 1 ]; then
-                echo "::warning::CurseForge upload failed (HTTP $HTTP); retrying once without optional dependencies"
-                cat /tmp/cf-resp.json || true
-                INCLUDE_REL=0
-                write_meta 0
-                attempt=0
-                continue
-              fi
-              echo "::error::CurseForge upload failed (HTTP $HTTP)"
-              cat /tmp/cf-resp.json || true
-              exit 1
-            fi
-            echo "::warning::CurseForge HTTP $HTTP; retrying in 10s ($attempt/3)"
-            sleep 10
-          done
-          echo "✅ Published to CurseForge ($(jq -r '.id // "?"' /tmp/cf-resp.json))"
+          python3 -m pip install --quiet 'requests>=2.31,<3'
+          python3 .concord/scripts/release/publish.py
