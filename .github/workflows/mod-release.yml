@@ -503,9 +503,8 @@ jobs:
         if: steps.publish.outputs.available == 'true'
         # Direct POST /api/projects/<id>/upload-file with a multipart metadata JSON
         # plus the jar, token in the X-Api-Token header. CurseForge wants numeric
-        # version ids, so first GET /api/game/versions and resolve the pinned game
-        # versions and loaders by name (loaders live in that same catalogue, e.g.
-        # "Fabric"). changelogType=markdown so notes render. Self-skips with no
+        # version ids resolved by name within the correct version-type category
+        # (see below). changelogType=markdown so notes render. Self-skips with no
         # token or no curseforge-id.
         env:
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
@@ -522,26 +521,40 @@ jobs:
           JAR="$(ls dist/${MOD_ID}-*.jar | head -1)"
           echo "Publishing $JAR to CurseForge project $CURSEFORGE_ID"
 
-          # The catalogue is hundreds of KB, so write it to a file and let jq read
-          # it as input — passing it via --argjson would blow ARG_MAX (E2BIG).
+          # CurseForge wants numeric ids, and a name like "1.21.1" appears in
+          # several version-type categories (the real minecraft-1-21 one, plus
+          # bukkit/addon entries that the upload API rejects with error 1009). So
+          # fetch the version-type catalogue too and resolve names *within* the
+          # right category: game versions under a "minecraft*" type, loaders under
+          # "modloader*". Both catalogues are hundreds of KB, so jq reads them from
+          # files — passing them via --argjson would blow ARG_MAX (E2BIG).
           curl -sS -H "X-Api-Token: $CURSEFORGE_TOKEN" \
             "https://minecraft.curseforge.com/api/game/versions" \
             -o /tmp/cf-versions.json || : > /tmp/cf-versions.json
-          if ! jq -e 'type == "array" and length > 0' /tmp/cf-versions.json >/dev/null 2>&1; then
-            echo "::error::Could not fetch the CurseForge game-versions catalogue"
+          curl -sS -H "X-Api-Token: $CURSEFORGE_TOKEN" \
+            "https://minecraft.curseforge.com/api/game/version-types" \
+            -o /tmp/cf-types.json || : > /tmp/cf-types.json
+          if ! jq -e 'type == "array" and length > 0' /tmp/cf-versions.json >/dev/null 2>&1 \
+             || ! jq -e 'type == "array" and length > 0' /tmp/cf-types.json >/dev/null 2>&1; then
+            echo "::error::Could not fetch the CurseForge game-version catalogues"
             exit 1
           fi
 
-          # Match the pinned game versions + loaders against the catalogue by name
-          # (case-insensitive) and collect their numeric ids.
-          WANTED="${GAME_VERSIONS},${LOADERS}"
-          GV_IDS="$(jq --arg wanted "$WANTED" '
-            ($wanted | split(",") | map(ascii_downcase | gsub("^\\s+|\\s+$"; ""))) as $w
-            | [ .[] | select(((.name | ascii_downcase) as $n | $w | index($n)) != null) | .id ]' \
-            /tmp/cf-versions.json)"
+          GV_IDS="$(jq --slurpfile types /tmp/cf-types.json \
+            --arg gvs "$GAME_VERSIONS" --arg lds "$LOADERS" '
+            ($types[0]) as $t
+            | [ $t[] | select(.slug | startswith("minecraft")) | .id ] as $mcTypes
+            | [ $t[] | select(.slug | startswith("modloader")) | .id ] as $loaderTypes
+            | ($gvs | split(",") | map(ascii_downcase | gsub("^\\s+|\\s+$"; ""))) as $wantGv
+            | ($lds | split(",") | map(ascii_downcase | gsub("^\\s+|\\s+$"; ""))) as $wantLd
+            | ([ .[] | select((($mcTypes | index(.gameVersionTypeID)) != null)
+                  and (($wantGv | index(.name | ascii_downcase)) != null)) | .id ])
+              + ([ .[] | select((($loaderTypes | index(.gameVersionTypeID)) != null)
+                  and (($wantLd | index(.name | ascii_downcase)) != null)) | .id ])
+            | unique' /tmp/cf-versions.json)"
           COUNT="$(printf '%s' "$GV_IDS" | jq 'length')"
           if [ "$COUNT" -eq 0 ]; then
-            echo "::error::Could not resolve any CurseForge version ids for: $WANTED"
+            echo "::error::Could not resolve any CurseForge version ids for: ${GAME_VERSIONS} / ${LOADERS}"
             exit 1
           fi
           echo "Resolved CurseForge version ids: $(printf '%s' "$GV_IDS" | jq -c .)"
