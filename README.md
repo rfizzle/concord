@@ -12,7 +12,7 @@ dependency, never a shared jar.
 | **[Tribulation](https://tribulation.rfizzle.com)** | Difficulty & scaling | "Survive what comes next." | Released |
 | **[Meridian](https://meridian.rfizzle.com)** | Enchanting | "Chart your enchantments." | Released |
 | **[Mercantile](https://mercantile.rfizzle.com)** | Villagers & trade | "Every villager remembers." | Released |
-| **[Prosperity](https://prosperity.rfizzle.com)** | Loot & containers | "Every chest, yours to discover." | Beta |
+| **[Prosperity](https://prosperity.rfizzle.com)** | Loot & containers | "Every chest, yours to discover." | Released |
 
 Install any. Combine all.
 

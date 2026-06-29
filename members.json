@@ -62,7 +62,7 @@
         "modrinth": { "id": "bD4rtHdZ", "slug": "prosperity-loot-overhaul" },
         "curseforge": { "id": "1591262", "slug": "prosperity-loot-overhaul" }
       },
-      "status": "beta",
+      "status": "released",
       "conformance": {
         "apiStandard": null,
         "hudStandard": null,
