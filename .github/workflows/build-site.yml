@@ -42,6 +42,16 @@ jobs:
         with:
           node-version: 22
 
+      - name: Generate changelog page
+        # Derive site/pages/changelog.json from the mod's committed changelogs/*
+        # unioned with its GitHub Releases, before eleventy reads the pages. A
+        # no-op unless site.json's nav includes "changelog". GITHUB_REPOSITORY is
+        # the calling mod repo; the token only raises the releases-API rate limit.
+        env:
+          SITE_DIR: ${{ github.workspace }}/${{ inputs.site-dir }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node "$GITHUB_WORKSPACE/.concord/template/scripts/gen-changelog.cjs" "$SITE_DIR"
+
       - name: Build site
         env:
           SITE_DIR: ${{ github.workspace }}/${{ inputs.site-dir }}
