@@ -107,6 +107,7 @@ with the `## Code Review` heading — no preamble before it.
 | Mixin safety      | ✗ | <one-line summary> |
 | Test coverage     | ✓ | <one-line summary> |
 | Site docs         | ✓ | <one-line summary> |
+| Changelog         | ✓ | <one-line summary> |
 | Performance       | ✓ | <one-line summary> |
 | Compat risk       | ✓ | <one-line summary> |
 

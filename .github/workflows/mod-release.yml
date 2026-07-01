@@ -177,8 +177,27 @@ jobs:
           path: /tmp/release-body.md
           key: release-notes-${{ github.ref_name }}
 
-      - name: Gather changelog source
+      - name: Detect manual changelog
+        id: manual
         if: steps.notescache.outputs.cache-hit != 'true'
+        # A hand-written changelogs/<version>.md is authoritative: when present it
+        # is published verbatim and the model is not run. This lets a milestone
+        # release (e.g. 1.0.0) ship curated notes instead of AI-rewritten PRs.
+        # Absent, the pipeline falls through to the AI notes as normal.
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          if [ -s "changelogs/${VERSION}.md" ]; then
+            cp "changelogs/${VERSION}.md" /tmp/manual-notes.md
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "📝 Using hand-written changelogs/${VERSION}.md"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No changelogs/${VERSION}.md; generating release notes"
+          fi
+
+      - name: Gather changelog source
+        if: steps.notescache.outputs.cache-hit != 'true' && steps.manual.outputs.present != 'true'
         # GitHub's own note generator is the factual ground truth — the real list
         # of merged PRs with the previous tag auto-detected. Claude rewrites it
         # below, and it is also the fallback body if the model is unavailable.
@@ -197,7 +216,7 @@ jobs:
 
       - name: Detect Claude auth
         id: auth
-        if: steps.notescache.outputs.cache-hit != 'true'
+        if: steps.notescache.outputs.cache-hit != 'true' && steps.manual.outputs.present != 'true'
         # secrets context is not usable in a step `if:`, so map presence of the
         # token to a step output the changelog steps can gate on.
         env:
@@ -296,14 +315,17 @@ jobs:
       - name: Assemble release body
         if: steps.notescache.outputs.cache-hit != 'true'
         # Always produces /tmp/release-body.md so the release step has a body
-        # regardless of whether the model ran. The published notes are the AI's
-        # player-facing prose alone — no commit/PR list, contributor roll, or
-        # compare links. The raw merged-PR list is used only as the fallback body
-        # when the model was unavailable, never appended to the prose.
+        # regardless of whether the model ran. A hand-written changelog wins when
+        # present; otherwise the published notes are the AI's player-facing prose
+        # alone — no commit/PR list, contributor roll, or compare links. The raw
+        # merged-PR list is used only as the fallback body when the model was
+        # unavailable, never appended to the prose.
         env:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          if [ -s /tmp/ai-notes.md ]; then
+          if [ -s /tmp/manual-notes.md ]; then
+            cp /tmp/manual-notes.md /tmp/release-body.md
+          elif [ -s /tmp/ai-notes.md ]; then
             cp /tmp/ai-notes.md /tmp/release-body.md
           elif [ -s /tmp/gh-notes.md ]; then
             cp /tmp/gh-notes.md /tmp/release-body.md

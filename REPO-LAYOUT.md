@@ -57,6 +57,9 @@ and Prosperity.
 │   ├── listing-modrinth.md    #   store listing copy (Mercantile pattern)
 │   └── listing-curseforge.md
 │
+├── changelogs/                # OPTIONAL hand-authored release notes
+│   └── <version>.md           #   e.g. 1.0.0.md — published verbatim if present
+│
 ├── scripts/                   # repo automation
 │   └── release.sh
 │
