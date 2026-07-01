@@ -29,6 +29,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Only reads the repo and uploads artifacts. The caller stub grants
+    # checks/pull-requests write, which these jobs never use — cap them here so
+    # an over-broad stub can't widen this reusable workflow's token.
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -59,6 +64,8 @@ jobs:
 
   gametest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

@@ -43,6 +43,13 @@ jobs:
         github.event.comment.author_association == 'COLLABORATOR'
       )
     runs-on: ubuntu-latest
+    # Reads the PR/commit, reacts to and comments on the triggering comment, and
+    # uploads the built jar as an artifact. Cap the token to exactly that so an
+    # over-broad caller stub can't widen it.
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     steps:
       - name: Validate command
         id: validate

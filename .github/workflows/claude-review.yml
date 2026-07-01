@@ -56,6 +56,12 @@ jobs:
   review:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    # Reads the code and history, reads issue/PR comments, and maintains the
+    # sticky review comment. No write beyond pull-requests — cap it here.
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -76,13 +82,6 @@ jobs:
           # response can't partially execute) and logs their digest for audit.
           curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh
           echo "claude install.sh sha256: $(sha256sum /tmp/claude-install.sh | cut -d' ' -f1)"
-          # To pin against supply-chain tampering, set EXPECTED_SHA256 to the
-          # logged digest once reviewed — install then fails closed on any change.
-          EXPECTED_SHA256=""
-          if [ -n "$EXPECTED_SHA256" ]; then
-            echo "${EXPECTED_SHA256}  /tmp/claude-install.sh" | sha256sum -c - \
-              || { echo "::error::claude install.sh checksum mismatch"; exit 1; }
-          fi
           bash /tmp/claude-install.sh
 
       - name: Build review prompt

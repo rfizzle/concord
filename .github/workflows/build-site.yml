@@ -26,6 +26,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Build only reads the repo and uploads a Pages artifact; it needs neither
+    # pages: write nor id-token: write. Deploy (below) narrows to those. Without
+    # this cap the build job inherits the caller's full grant — id-token: write
+    # in particular — and hands it to the unpinned `npx eleventy` dependency tree.
+    permissions:
+      contents: read
     steps:
       - name: Checkout mod repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
