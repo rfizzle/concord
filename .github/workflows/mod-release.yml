@@ -108,6 +108,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # The final step records AI-generated notes by opening and merging a
+      # one-file PR (member master requires a PR, 0 approvals / 0 checks). The
+      # CALLER stub must grant pull-requests: write too — a reusable workflow can
+      # only narrow the GITHUB_TOKEN, never widen it, so declaring it here alone
+      # is not enough.
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -390,10 +396,11 @@ jobs:
             echo "::notice::No MODRINTH_TOKEN/CURSEFORGE_TOKEN; skipping mod-platform publish"
           fi
 
-      - name: Checkout concord publish script
-        if: steps.publish.outputs.available == 'true'
-        # The publish script lives in concord, but the job runs in the member
-        # checkout — pull it into .concord (same pattern as build-site.yml).
+      - name: Checkout concord scripts
+        # The publish and changelog-record scripts live in concord, but the job
+        # runs in the member checkout — pull them into .concord (same pattern as
+        # build-site.yml). Unconditional: the record step below runs even when
+        # platform publish is skipped, and it needs the script too.
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: rfizzle/concord
@@ -427,3 +434,25 @@ jobs:
         run: |
           python3 -m pip install --quiet 'requests>=2.31,<3'
           python3 .concord/scripts/release/publish.py
+
+      - name: Record release notes in changelogs/
+        # Terminal and best-effort: mirror the published notes into
+        # changelogs/<version>.md on the default branch so the repo keeps a
+        # complete Markdown record of every release, not just hand-written ones.
+        # This is the committed half of the changelog pipeline — the website
+        # changelog derives from changelogs/* plus GitHub Releases, so recording
+        # the AI notes here keeps the in-repo history complete.
+        #
+        # No-op when the version is already recorded (hand-authored file shipped
+        # with the tag, or a prior run committed it). master requires a PR
+        # (0 approvals, 0 checks), so the script stages the file via the Contents
+        # API and merges the PR with the default token — no bypass, no extra
+        # secret. continue-on-error keeps a record-keeping hiccup from red-X'ing
+        # an already-published release. The script is stdlib-only, so it needs no
+        # pip install / setup-python.
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          CHANGELOG_FILE: /tmp/release-body.md
+        run: python3 .concord/scripts/changelog/record_changelog.py
