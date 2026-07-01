@@ -58,47 +58,45 @@ function isRawFormat(body) {
 }
 
 // Parse a clean player-facing body (lead paragraph + ## Added/Changed/... with
-// "- " bullets) into the template's block list.
+// "- " bullets) into the template's block list. Soft line wrapping is folded: a
+// non-blank line that continues a bullet or paragraph is joined onto it with a
+// space, so hard-wrapped source Markdown renders as full lines rather than
+// shattering into stray fragments. A blank line ends the current bullet/paragraph.
 function parseBody(body) {
   const lines = body.replace(/\r\n/g, "\n").split("\n");
-  const blocks = [];
-  const lead = [];
-  let i = 0;
-  for (; i < lines.length; i++) {
-    if (/^#{1,6}\s/.test(lines[i])) break;
-    if (lines[i].trim()) lead.push(lines[i].trim());
-  }
-  if (lead.length) blocks.push({ type: "prose", html: [inline(lead.join(" "))] });
+  const root = [];
+  let sub = null;   // current ## section
+  let list = null;  // current list block
+  let item = null;  // current list-item fragments
+  let para = null;  // current paragraph fragments
+  const target = () => (sub ? sub.blocks : root);
+  const flushItem = () => { if (item) { list.items.push(inline(item.join(" "))); item = null; } };
+  const flushPara = () => { if (para) { target().push({ type: "prose", html: [inline(para.join(" "))] }); para = null; } };
+  const flushBlock = () => { flushItem(); flushPara(); list = null; };
 
-  let sub = null;
-  let list = null;
-  const flush = () => { if (sub) { blocks.push(sub); sub = null; list = null; } };
-  for (; i < lines.length; i++) {
-    const line = lines[i];
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, "");
+    if (!line.trim()) { flushBlock(); continue; }        // blank ends a block
     const h = line.match(/^#{1,6}\s+(.*)$/);
     if (h) {
-      flush();
-      sub = {
-        type: "sub",
-        title: `<span class='text-accent uppercase tracking-wider'>${esc(h[1].trim())}</span>`,
-        blocks: [],
-      };
-      list = null;
+      flushBlock();
+      if (sub) root.push(sub);
+      sub = { type: "sub", title: `<span class='text-accent uppercase tracking-wider'>${esc(h[1].trim())}</span>`, blocks: [] };
       continue;
     }
     const b = line.match(/^\s*[-*]\s+(.*)$/);
-    if (b) {
-      if (!list) { list = { type: "list", spacing: 1, items: [] }; (sub ? sub.blocks : blocks).push(list); }
-      list.items.push(inline(b[1].trim()));
+    if (b) {                                             // new bullet
+      flushPara(); flushItem();
+      if (!list) { list = { type: "list", spacing: 1, items: [] }; target().push(list); }
+      item = [b[1].trim()];
       continue;
     }
-    if (line.trim()) {
-      list = null;
-      (sub ? sub.blocks : blocks).push({ type: "prose", html: [inline(line.trim())] });
-    }
+    if (item) item.push(line.trim());                    // continuation of a bullet
+    else (para = para || []).push(line.trim());          // continuation of a paragraph
   }
-  flush();
-  return blocks;
+  flushBlock();
+  if (sub) root.push(sub);
+  return root;
 }
 
 function parseVersion(v) {
@@ -217,6 +215,19 @@ async function main() {
     blocks.push({ type: "note", html: `<a href='${tagUrl}' class='${ACCENT}'>Download &amp; full notes on GitHub →</a>` });
     return { id, title, blocks };
   });
+
+  // Opted-in but nothing to show yet (pre-release, no committed notes): a
+  // graceful "coming soon" instead of an empty page.
+  if (!entries.length) {
+    sections.push({
+      id: "unreleased",
+      title: "Unreleased",
+      blocks: [
+        { type: "prose", html: [`${esc(site.name)} is in active development ahead of its first public release. This page lists each version once releases begin.`] },
+        { type: "note", html: `Watch <a href='${ghBase}/releases' class='${ACCENT}'>GitHub Releases</a> for the first tagged build.` },
+      ],
+    });
+  }
 
   sections.push({
     id: "versioning",
