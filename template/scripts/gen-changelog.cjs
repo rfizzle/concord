@@ -9,7 +9,9 @@
  * at config-eval time, so the file must exist first.
  *
  * Opt-in: no-op unless site.json's nav includes "changelog" (that is the same
- * switch that puts it in the header nav). Dependency-free (Node built-in fetch).
+ * switch that puts it in the header nav). Markdown is parsed with the vendored
+ * markdown-it (template/vendor/), so a body can wrap, nest, or use any CommonMark
+ * without shattering; only the Releases fetch needs the network (built-in fetch).
  *
  * Policy:
  *   - Stable releases only; prereleases (a "-suffix" version, or a release
@@ -28,8 +30,21 @@
  */
 const fs = require("fs");
 const path = require("path");
+const MarkdownIt = require("../vendor/markdown-it.min.js");
 
 const ACCENT = "text-accent hover:text-accent2 underline";
+
+// One parser, configured to emit the site's HTML conventions: no raw HTML,
+// soft/hard wraps collapse to a space, and inline emphasis/code/links carry the
+// site's CSS classes. Everything else (nesting, escaping, edge cases) is
+// markdown-it's job, not ours.
+const md = new MarkdownIt({ html: false, linkify: false, typographer: false });
+md.renderer.rules.softbreak = () => " ";
+md.renderer.rules.hardbreak = () => " ";
+md.renderer.rules.strong_open = () => "<strong class='text-bone'>";
+md.renderer.rules.em_open = () => "<em class='text-bone'>";
+md.renderer.rules.code_inline = (t, i) => `<code class='text-bone'>${md.utils.escapeHtml(t[i].content)}</code>`;
+md.renderer.rules.link_open = (t, i) => `<a href='${md.utils.escapeHtml(t[i].attrGet("href") || "#")}' class='${ACCENT}'>`;
 
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, "utf8"));
@@ -39,16 +54,7 @@ function esc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// Inline Markdown -> the site's HTML span conventions. Escape first, then apply
-// tokens (their markers are never HTML-escaped, so this stays safe).
-function inline(s) {
-  let h = esc(s);
-  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-    (_, t, u) => `<a href='${u}' class='${ACCENT}'>${t}</a>`);
-  h = h.replace(/\*\*([^*]+)\*\*/g, "<strong class='text-bone'>$1</strong>");
-  h = h.replace(/`([^`]+)`/g, "<code class='text-bone'>$1</code>");
-  return h;
-}
+const renderInline = (tok) => md.renderer.renderInline(tok.children, md.options, {}).trim();
 
 // Detect the raw GitHub auto-generated release note format.
 function isRawFormat(body) {
@@ -57,44 +63,55 @@ function isRawFormat(body) {
     /^\*\*Full Changelog\*\*:/im.test(body);
 }
 
-// Parse a clean player-facing body (lead paragraph + ## Added/Changed/... with
-// "- " bullets) into the template's block list. Soft line wrapping is folded: a
-// non-blank line that continues a bullet or paragraph is joined onto it with a
-// space, so hard-wrapped source Markdown renders as full lines rather than
-// shattering into stray fragments. A blank line ends the current bullet/paragraph.
+// Walk markdown-it's block tokens into the template's block schema: headings ->
+// accent-titled `sub` sections, bullet/ordered lists -> `list`, paragraphs ->
+// `prose`. Anything else CommonMark allows (blockquotes, tables, code fences, …)
+// is rendered to HTML and kept as a `prose` block so nothing is silently dropped.
 function parseBody(body) {
-  const lines = body.replace(/\r\n/g, "\n").split("\n");
+  const tokens = md.parse(body || "", {});
   const root = [];
-  let sub = null;   // current ## section
-  let list = null;  // current list block
-  let item = null;  // current list-item fragments
-  let para = null;  // current paragraph fragments
+  let sub = null;
   const target = () => (sub ? sub.blocks : root);
-  const flushItem = () => { if (item) { list.items.push(inline(item.join(" "))); item = null; } };
-  const flushPara = () => { if (para) { target().push({ type: "prose", html: [inline(para.join(" "))] }); para = null; } };
-  const flushBlock = () => { flushItem(); flushPara(); list = null; };
-
-  for (const raw of lines) {
-    const line = raw.replace(/\s+$/, "");
-    if (!line.trim()) { flushBlock(); continue; }        // blank ends a block
-    const h = line.match(/^#{1,6}\s+(.*)$/);
-    if (h) {
-      flushBlock();
+  let i = 0;
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t.type === "heading_open") {
       if (sub) root.push(sub);
-      sub = { type: "sub", title: `<span class='text-accent uppercase tracking-wider'>${esc(h[1].trim())}</span>`, blocks: [] };
-      continue;
+      sub = { type: "sub", title: `<span class='text-accent uppercase tracking-wider'>${renderInline(tokens[i + 1])}</span>`, blocks: [] };
+      i += 3; // heading_open, inline, heading_close
+    } else if (t.type === "paragraph_open") {
+      target().push({ type: "prose", html: [renderInline(tokens[i + 1])] });
+      i += 3;
+    } else if (t.type === "bullet_list_open" || t.type === "ordered_list_open") {
+      const list = { type: "list", spacing: 1, items: [] };
+      if (t.type === "ordered_list_open") list.ordered = true;
+      const close = t.type === "ordered_list_open" ? "ordered_list_close" : "bullet_list_close";
+      i++;
+      while (i < tokens.length && tokens[i].type !== close) {
+        if (tokens[i].type === "list_item_open") {
+          const level = tokens[i].level;
+          const parts = [];
+          i++;
+          while (i < tokens.length && !(tokens[i].type === "list_item_close" && tokens[i].level === level)) {
+            if (tokens[i].type === "inline") parts.push(renderInline(tokens[i]));
+            i++;
+          }
+          list.items.push(parts.join(" "));
+        }
+        i++;
+      }
+      i++; // list close
+      target().push(list);
+    } else {
+      // Unmapped block: render its balanced token span (tracked by nesting) to
+      // HTML and keep it as prose rather than dropping it.
+      let j = i + 1, depth = t.nesting;
+      while (j < tokens.length && depth > 0) { depth += tokens[j].nesting; j++; }
+      const html = md.renderer.render(tokens.slice(i, j), md.options, {}).trim();
+      if (html) target().push({ type: "prose", html: [html] });
+      i = j;
     }
-    const b = line.match(/^\s*[-*]\s+(.*)$/);
-    if (b) {                                             // new bullet
-      flushPara(); flushItem();
-      if (!list) { list = { type: "list", spacing: 1, items: [] }; target().push(list); }
-      item = [b[1].trim()];
-      continue;
-    }
-    if (item) item.push(line.trim());                    // continuation of a bullet
-    else (para = para || []).push(line.trim());          // continuation of a paragraph
   }
-  flushBlock();
   if (sub) root.push(sub);
   return root;
 }
