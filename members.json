@@ -69,5 +69,13 @@
         "layoutMigrated": false
       }
     }
+  ],
+  "packs": [
+    {
+      "id": "fizzlesmp",
+      "name": "Fizzle's SMP",
+      "tagline": "All the Concord mods in one multiplayer survival pack.",
+      "url": "https://smp.rfizzle.com"
+    }
   ]
 }

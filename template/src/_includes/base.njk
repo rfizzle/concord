@@ -112,7 +112,7 @@
         <p class="text-sm text-ash mb-4">
           Part of <a href="{{ members.collection.url }}" rel="noopener noreferrer" target="_blank" class="font-semibold text-bone hover:underline">{{ members.collection.name }}</a> — a modular collection of system overhauls
         </p>
-        <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4 text-sm">
+        <ul class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-x-8 gap-y-4 text-sm">
           {%- for m in members.members %}
           <li>
             {%- if currentMember and m.id == currentMember.id %}
@@ -128,6 +128,22 @@
           </li>
           {%- endfor %}
         </ul>
+
+        {%- if members.packs and members.packs.length %}
+        <!-- Packs bundle the mods together — a different relationship than a
+             sibling mod, so they get their own strip below the member grid. -->
+        <div class="mt-6 pt-6 border-t border-elevated flex flex-col gap-4">
+          {%- for p in members.packs %}
+          <div class="flex items-baseline gap-3">
+            <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-smoke border border-elevated rounded px-1.5 py-0.5">Pack</span>
+            <div>
+              <a href="{{ p.url }}" rel="noopener noreferrer" target="_blank" class="font-semibold text-bone hover:underline">{{ p.name }} <span aria-hidden="true">&rarr;</span></a>
+              <span class="block text-xs text-ash mt-0.5">{{ p.tagline }}</span>
+            </div>
+          </div>
+          {%- endfor %}
+        </div>
+        {%- endif %}
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
