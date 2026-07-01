@@ -3,9 +3,9 @@
 # Two propagation mechanisms, one workflow:
 #
 #   1. Site rebuilds — when the shared site template (or the member registry)
-#      changes, dispatch a `concord-template-updated` event to every member
-#      repo so all sites pick up the change within minutes. Nothing is
-#      committed to the member repos; their site workflows rebuild against
+#      changes, dispatch a `concord-template-updated` event to every member AND
+#      pack repo so all sites pick up the change within minutes. Nothing is
+#      committed to those repos; their site workflows rebuild against
 #      concord@master.
 #
 #   2. File sync (PR-based) — concord-owned payloads are proposed to every member
@@ -54,10 +54,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       repos: ${{ steps.list.outputs.repos }}
+      sites: ${{ steps.list.outputs.sites }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - id: list
-        run: echo "repos=$(jq -c '[.members[].id]' members.json)" >> "$GITHUB_OUTPUT"
+        # repos = file-sync targets: members only. A pack is not a Fabric mod, so
+        #   the AGENTS.md regions and propagate/ files do not apply to it.
+        # sites = site-rebuild targets: members + packs. A pack ships a
+        #   template-built site too, so it must rebuild on template/registry
+        #   changes even though it takes no file sync.
+        run: |
+          echo "repos=$(jq -c '[.members[].id]' members.json)" >> "$GITHUB_OUTPUT"
+          echo "sites=$(jq -c '[.members[].id] + [.packs[].id]' members.json)" >> "$GITHUB_OUTPUT"
 
   dispatch:
     needs: members
@@ -65,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repo: ${{ fromJson(needs.members.outputs.repos) }}
+        repo: ${{ fromJson(needs.members.outputs.sites) }}
     steps:
       - name: Dispatch rebuild to rfizzle/${{ matrix.repo }}
         env:
