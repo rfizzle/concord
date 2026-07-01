@@ -1,0 +1,1 @@
+Hub for Concord — a collection of independent Minecraft 1.21.1 Fabric mods that each overhaul one vanilla system, standalone yet cross-integrating. Holds the shared vision, standards, design system, and CI.
