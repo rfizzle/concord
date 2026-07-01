@@ -1,14 +1,24 @@
 # Concord HUD Standard — v1
 
-> Normative for every Concord member mod that renders a persistent HUD element.
-> Tribulation's `TribulationHudOverlay` is the reference implementation.
+> Normative for every Concord member mod that renders an on-screen HUD surface — the
+> persistent slot badge (§2–§7) and the optional hold-to-peek detail panel (§8).
+> Tribulation's `TribulationHudOverlay` and `TierDetailPanelRenderer` are the reference
+> implementations.
 
-## 1. Whether a mod gets a slot at all
+## 1. Two HUD surfaces
 
-A mod takes a HUD slot **only if it has persistent ambient state the player needs while
-walking around** (a level, a standing, a tier that changes as you play). Everything else
-belongs in screens, tooltips (Jade/WTHIT), or recipe viewers. Opting out is conformant —
-Meridian has no slot by design. Future members default to **no slot**.
+The standard governs two on-screen surfaces a mod may render, independently of each other:
+
+- **The slot badge** (§2–§7) — a persistent, always-on element in the shared top-left
+  stack. A mod takes a slot **only if it has persistent ambient state the player needs
+  while walking around** (a level, a standing, a tier that changes as you play).
+- **The hold-to-peek detail panel** (§8) — an on-demand overlay shown only while a keybind
+  is held, expanding the badge's headline into the full picture. Optional and independent
+  of the badge: a mod may ship a badge, a panel, both, or neither.
+
+Everything that is neither persistent-ambient nor on-demand-detail belongs in screens,
+tooltips (Jade/WTHIT), or recipe viewers. Opting out of both is conformant — Meridian has
+no HUD surface by design. Future members default to **no slot**.
 
 ## 2. Slot registry
 
@@ -89,7 +99,42 @@ dependency (`VISION.md` §8.1).
 `assets/tribulation/textures/gui/hud_icon.png`, tier tints, progress bar, level-up lerp,
 and all four visibility rules.
 
-## 8. Conformance checklist
+## 8. Hold-to-peek detail panel
+
+An optional on-demand companion to the slot badge: the badge says *roughly* where the
+player stands, the panel says *everything*. It is a HUD surface, not a `Screen`.
+
+- **Trigger.** A `KeyMapping` under Controls → `<Mod>`, **unbound by default**, named
+  "Peek `<Domain>` Detail" (e.g. "Peek Tier Detail", "Peek Reputation Detail"). Shown only
+  while the key is held; released, it dismisses.
+- **Non-capturing.** It behaves like vanilla's hold-Tab player list — it never captures the
+  mouse, pauses the game, or blocks movement. It is drawn from a `HudRenderCallback`, never
+  by opening a `Screen`.
+- **Visibility.** Governed by the **same four rules as the badge** (§5); reuse the badge's
+  visibility predicate rather than re-deriving it.
+- **No slot, no coordination.** The panel is transient, so it takes **no slot-registry row
+  (§2) and no `isHudVisible()`/`getHudHeight()` accessors (§6)** — it is never stacked.
+  Anchor it adjacent to the mod's badge.
+- **Framing.** A framed panel (9-slice) in the mod's theme; **vanilla font only** (§3):
+  a header expanding the badge's headline stat, the relevant progress, and the mod's domain
+  detail.
+- **Proximity element.** Any "what's around me right now" listing is built from a **cached,
+  throttled scan** (refreshed on a tick interval, not per frame) so the render path stays a
+  lookup, not an entity sweep.
+- **Overflow pages, never scrolls.** A non-focused HUD layer cannot scroll without capturing
+  input, so overflow is **paged with a cross-fade and page dots**, not a scrollbar.
+- **It cannot lie.** Every figure is derived from the same config/registry the server acts
+  on (the same source the badge and `/`-commands read), never a parallel copy.
+- **It does not duplicate the catalog.** Possible-loot / possible-reward listings live in
+  the recipe viewers (EMI/REI/JEI) and tooltips (Jade/WTHIT); the panel is the *live,
+  contextual* view — current state and what is physically around the player — not a static
+  index of what *could* appear.
+- **Class convention.** `*DetailPanelRenderer` (a `HudRenderCallback`).
+
+Reference implementations: Tribulation's `TierDetailPanelRenderer`, Mercantile's
+`ReputationDetailPanelRenderer`.
+
+## 9. Conformance checklist
 
 - [ ] Slot registered in §2 of this file (or explicit no-slot decision recorded in the
       mod's `design/DESIGN.md`)
@@ -101,4 +146,7 @@ and all four visibility rules.
 - [ ] `isHudVisible()` / `getHudHeight()` exposed in the `api` package,
       reflection-safe from common code
 - [ ] Offset computed from sibling accessors — no hardcoded sibling heights
+- [ ] A hold-to-peek detail panel (if any) follows §8: unbound keybind, non-capturing
+      (not a `Screen`), the badge's four visibility rules reused, no slot/accessors, paged
+      (not scrolled) overflow, and no duplication of recipe-viewer/tooltip catalogs
 - [ ] `AGENTS.md` declares "conforms to Concord HUD Standard v1"
