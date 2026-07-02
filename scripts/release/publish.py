@@ -15,6 +15,10 @@ repo-local .github/release-slug-overrides.json remapping any mod id whose
 platform slug differs from its Fabric id. They are best-effort: an unresolvable
 Modrinth slug is dropped, and a CurseForge upload that fails with relations is
 retried once without them, so a stale sibling slug never blocks a release.
+
+The Modrinth version's supported environment defaults to client_and_server (the
+suite is client+server mods) and is overridable per mod via the ENVIRONMENT
+input for the rare client-only or server-only member.
 """
 from __future__ import annotations
 
@@ -180,6 +184,7 @@ def modrinth_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
         "dependencies": dependencies,
         "game_versions": csv(env("GAME_VERSIONS")),
         "version_type": "beta" if prerelease else "release",
+        "environment": env("ENVIRONMENT") or "client_and_server",
         "loaders": [loader.lower() for loader in csv(env("LOADERS"))],
         "featured": not prerelease,
         "project_id": project,

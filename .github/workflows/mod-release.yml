@@ -13,7 +13,9 @@
 #
 # Game versions and loaders are pinned via inputs (default 1.21.1 / fabric, the
 # suite target) rather than read from fabric.mod.json, so a "~1.21.1" metadata
-# range can't fan a single release out across every 1.21.x patch.
+# range can't fan a single release out across every 1.21.x patch. The Modrinth
+# supported-environment tag is likewise an input (default client_and_server),
+# overridable per mod for a client-only or server-only member.
 #
 # Optional dependencies are read from fabric.mod.json's suggests/recommends and
 # attached to both listings. A mod id whose platform slug differs from its
@@ -80,6 +82,12 @@ on:
         description: "Comma-separated mod loaders to tag the release with"
         type: string
         default: "fabric"
+      environment:
+        description: >-
+          Modrinth supported environment (client_and_server, client_only,
+          server_only, client_only_server_optional, dedicated_server_only, …)
+        type: string
+        default: "client_and_server"
       concord-ref:
         description: "concord ref to load the publish script from (pin to freeze it)"
         type: string
@@ -423,6 +431,7 @@ jobs:
           PRERELEASE: ${{ steps.meta.outputs.prerelease }}
           GAME_VERSIONS: ${{ inputs.game-versions }}
           LOADERS: ${{ inputs.loaders }}
+          ENVIRONMENT: ${{ inputs.environment }}
           CHANGELOG_FILE: /tmp/release-body.md
         run: |
           python3 -m pip install --quiet 'requests>=2.31,<3'
