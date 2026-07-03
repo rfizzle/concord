@@ -80,13 +80,33 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry-1.outputs.page_url || steps.deployment-retry-2.outputs.page_url }}
     steps:
       - name: Configure Pages (auto-enable with Actions source)
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
         with:
           enablement: true
 
+      # The Pages service occasionally rejects a deployment with a transient
+      # "Deployment failed, try again later" error even when the artifact is
+      # fine. Retry up to two more times, with a pause for the service to
+      # settle, before failing the job for real.
       - name: Deploy to GitHub Pages
         id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        continue-on-error: true
+
+      - name: Deploy to GitHub Pages (retry 1)
+        id: deployment-retry-1
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        continue-on-error: true
+
+      - name: Wait before final retry
+        if: steps.deployment-retry-1.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy to GitHub Pages (retry 2)
+        id: deployment-retry-2
+        if: steps.deployment-retry-1.outcome == 'failure'
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
