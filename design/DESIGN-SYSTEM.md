@@ -59,6 +59,12 @@ Deepslate Grey `#5B6470` / Copper Orange `#E07A3F`.
   or tooltip. This is the one deliberately absolute typographic rule — and it is about
   *fonts*, not textures. Custom textures are welcome and have their own pathway (§8); a
   custom font is not, because text legibility and cross-mod consistency depend on it.
+- **Notification glyph:** chat lines and action-bar toasts a mod pushes to the player
+  are prefixed with **✦** (U+2726, four-pointed star) — the shared marker that reads as
+  "a Concord mod is telling you something" across every member. Reserve **⚠** (U+26A0)
+  for a genuine warning (a blocked or destructive action); everything else takes ✦. Keep
+  the following text vanilla-toned and terse. Prosperity's loot toast, structure-cleared
+  line, and peek hint are the reference.
 
 ## 4. Logos
 
