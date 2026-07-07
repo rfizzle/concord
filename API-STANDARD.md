@@ -1,4 +1,4 @@
-# Concord API Standard — v1
+# Concord API Standard
 
 > Normative for every Concord member mod. Generalized from Tribulation's
 > `com.rfizzle.tribulation.api` package, the collection's reference implementation.
@@ -113,7 +113,7 @@ this standard from its first commit.
 
 ## 10. Conformance checklist
 
-A mod conforms to API Standard v1 when:
+A mod conforms to the API Standard when:
 
 - [ ] All externally consumable surface lives in `com.rfizzle.<mod>.api`, annotated
       with the mod's local `@Stable` marker (see §2 erratum)
@@ -126,4 +126,4 @@ A mod conforms to API Standard v1 when:
 - [ ] Events are Fabric `Event`s named `<Mod><Thing>Callback` with documented triggers
 - [ ] README has a developer/API section with the gradle + guard example (model:
       Tribulation's README)
-- [ ] `AGENTS.md` declares "conforms to Concord API Standard v1"
+- [ ] `AGENTS.md` declares "conforms to Concord API Standard"

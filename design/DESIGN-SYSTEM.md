@@ -1,4 +1,4 @@
-# Concord Design System — v1
+# Concord Design System
 
 > Normative visual language for every Concord member: shared tokens, per-mod palettes,
 > typography, and the logo/icon formula. The consumable form of the shared tokens is

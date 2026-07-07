@@ -219,7 +219,7 @@ all four rules already implemented in Tribulation; normative for everyone.
 **Coordination mechanism — fix the current gap.** Today Mercantile hardcodes
 `TRIBULATION_RESERVED_HEIGHT = 22` and offsets if `isModLoaded("tribulation")` — which is
 wrong whenever the Tribulation user disables its HUD or moves its anchor. The standard's
-v1 coordination rule: each HUD-bearing mod exposes two **client-safe API accessors** in
+coordination rule: each HUD-bearing mod exposes two **client-safe API accessors** in
 its `api` package — `isHudVisible()` and `getHudHeight()` (reflection-backed, safe
 defaults when absent, same pattern as `TribulationAPI.getClientLevel()`). Each mod
 computes its offset by summing the heights of *visible* higher-priority siblings.
@@ -556,12 +556,12 @@ container-protection / mob-loot-scaling systems are in place. Remaining work:
 
 Ordered; each step's dependency noted.
 
-1. **API Standard v1.** The conventions doc is [`API-STANDARD.md`](API-STANDARD.md).
+1. **API Standard.** The conventions doc is [`API-STANDARD.md`](API-STANDARD.md).
    The Tribulation, Meridian, and Mercantile `api` packages are in place; the remaining
    additions are Prosperity's public tier accessors, Meridian's loot-cap enforcement +
    enchant-roll call, and Mercantile's exclusive-trades resource conditions.
    *Dependency: nothing — the stable surfaces already exist for Prosperity to target.*
-2. **HUD Convention v1 (with step 1).** The convention is [`HUD-STANDARD.md`](HUD-STANDARD.md).
+2. **HUD Convention (with step 1).** The convention is [`HUD-STANDARD.md`](HUD-STANDARD.md).
    The HUD accessors live in each `api` package; Mercantile adopts the accessor pattern for
    cross-mod stacking in place of any hardcoded offset.
    *Dependency: the HUD accessors (present in each api package).*
