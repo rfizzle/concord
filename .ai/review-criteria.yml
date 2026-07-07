@@ -175,6 +175,7 @@ categories:
       - the mod's config class (for new public fields)
       - .ai/skills/mc-config/SKILL.md (if present)
       - .ai/skills/mc-hud/SKILL.md (if present)
+      - .ai/skills/mc-screen/SKILL.md (if present)
     applies_when: |
       PR introduces a new config option, command, or player-facing feature
       (including a HUD badge or hold-to-peek detail panel) — typically a feat-typed
