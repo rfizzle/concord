@@ -16,8 +16,6 @@
       },
       "status": "released",
       "conformance": {
-        "apiStandard": null,
-        "hudStandard": null,
         "layoutMigrated": true
       }
     },
@@ -32,8 +30,6 @@
       },
       "status": "released",
       "conformance": {
-        "apiStandard": null,
-        "hudStandard": null,
         "layoutMigrated": true
       }
     },
@@ -48,8 +44,6 @@
       },
       "status": "released",
       "conformance": {
-        "apiStandard": null,
-        "hudStandard": null,
         "layoutMigrated": false
       }
     },
@@ -64,8 +58,6 @@
       },
       "status": "released",
       "conformance": {
-        "apiStandard": null,
-        "hudStandard": null,
         "layoutMigrated": false
       }
     }

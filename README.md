@@ -33,7 +33,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`design/VISION-GUIDE.md`](design/VISION-GUIDE.md) · [`DESIGN-GUIDE.md`](design/DESIGN-GUIDE.md) · [`SPEC-GUIDE.md`](design/SPEC-GUIDE.md) · [`ASSETS-GUIDE.md`](design/ASSETS-GUIDE.md) | Authoring guides for the four fixed member docs under `design/` — each prescribes its document's shape, requirements, and truth direction: the player-facing vision, the brand record, the behavioral contract, and the asset manifest |
 | [`docs/tokens.css`](docs/tokens.css) | The shared design tokens as consumable CSS — mod sites hot-link this |
 | [`template/`](template/README.md) | The shared website template — mod repos hold only `site/` content; CI builds and deploys via [`build-site.yml`](.github/workflows/build-site.yml) |
-| [`members.json`](members.json) | The member registry — per-member `status`, `conformance` (standard versions, layout migration), name/tagline/url, and `store` (Modrinth/CurseForge project id + slug); drives every site's cross-mod footer and the propagate workflow. The `store` ids are the canonical source for the publish (`modrinth-id`/`curseforge-id`) and listing-sync workflow inputs |
+| [`members.json`](members.json) | The member registry — per-member `status`, `conformance` (layout migration), name/tagline/url, and `store` (Modrinth/CurseForge project id + slug); drives every site's cross-mod footer and the propagate workflow. The `store` ids are the canonical source for the publish (`modrinth-id`/`curseforge-id`) and listing-sync workflow inputs |
 | [`propagate/`](propagate) | Canonical concord-owned files (currently the `.github/ISSUE_TEMPLATE/` forms) proposed verbatim to every member repo via a `concord-sync` PR by `propagate.yml` (member default branches are protected) — edit HERE, never in a mod repo |
 | [`.github/workflows/`](.github/workflows) | Reusable CI for all members: `mod-ci`, `mod-release`, `mod-build-artifact`, `mod-listing-sync`, `claude-review`, `claude-spec`, `claude-mention`, `build-site` — mod repos carry only thin trigger stubs |
 | [`.ai/`](.ai) | Suite-default Claude prompts (`code-reviewer`, `spec-writer`) and `review-criteria.yml` — generic, mod identity comes from each repo's AGENTS.md. Resolution: explicit `prompt-file`/`criteria-file` workflow input → repo-local `.ai/` file (whole-file override) → these defaults |
@@ -91,9 +91,10 @@ in the local workspace. Normative for this repo:
 - [REPO-LAYOUT.md](https://github.com/rfizzle/concord/blob/master/REPO-LAYOUT.md) — where non-code files live
 ```
 
-Conformance is **declared, not copied**: a mod states the standard version it conforms
-to in one line and bumps it deliberately. The only mechanically *consumed* artifact is
-`docs/tokens.css`, which the mod websites hot-link once the Concord site is on Pages.
+Conformance is **declared, not copied**: a mod states which suite standards it conforms
+to in its `AGENTS.md` rather than vendoring the standard text. The only mechanically
+*consumed* artifact is `docs/tokens.css`, which the mod websites hot-link once the
+Concord site is on Pages.
 
 ### Shared AGENTS.md regions
 
