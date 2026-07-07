@@ -1,14 +1,12 @@
 # Concord Repo Layout Standard
 
 > Where non-programmatic files live, so all Concord member repos (and every future
-> member) mirror each other. Grounded in the current state of `meridian`, `mercantile`,
-> `tribulation`, and `prosperity` as of 2026-06-11. Companion to [`VISION.md`](VISION.md).
+> member) mirror each other. Companion to [`VISION.md`](VISION.md).
 
 The rule of thumb: **`src/` is for the compiler, `site/` is for the website,
-everything else that's text or art has exactly one named home.** Meridian
-(2026-06-11) and Mercantile (2026-06-12) completed their migrations and join
-Tribulation as references; the remaining work is Tribulation's last root moves
-and Prosperity.
+everything else that's text or art has exactly one named home.** Meridian,
+Mercantile, Tribulation, and Prosperity all mirror this layout; a new member
+is scaffolded from it before any code exists.
 
 ---
 
@@ -125,15 +123,12 @@ default to concord's `.ai/`; a repo-local `prompts/*.md` or
 in concord's README). Reusable role prompts belong in concord.
 
 ### `.plan/` — planning (local only)
-A local dev scratchpad, **never committed** — the whole directory is gitignored
-(decided 2026-06-11 during the Meridian migration). Durable work tracking lives
-in GitHub Issues (the `needs-spec` → `jules` lifecycle); anything under `.plan/`
-is personal working state. Repos that still commit `.plan/` files (Mercantile)
-untrack them as part of their migration.
+A local dev scratchpad, **never committed** — the whole directory is gitignored.
+Durable work tracking lives in GitHub Issues (the `needs-spec` → `jules`
+lifecycle); anything under `.plan/` is personal working state.
 
 ### `design/` — pre-implementation truth
-The **why and what**, kept out of the published site (Tribulation currently
-publishes its DESIGN.md inside `docs/` — that moves out). Fixed names: `VISION.md`
+The **why and what**, kept out of the published site. Fixed names: `VISION.md`
 (the player-experience promise — written for players, zero implementation
 vocabulary), `DESIGN.md` (brand, palette, motif, HUD slot decision), `SPEC.md`
 (behavioral spec), `ASSETS.md` (asset manifest — each asset's `.glyph` source under
@@ -205,67 +200,7 @@ swallows a Java package of that name. Genuinely global junk (IDE/OS files,
 
 ---
 
-## 5. Per-repo migration checklist
-
-### Meridian (migrated 2026-06-11 — PRs #22–#26)
-- [x] `mkdir design/` ; `git mv DESIGN.md design/DESIGN.md`
-- [x] Write `AGENTS.md` (adapt Tribulation's skeleton); `ln -s AGENTS.md CLAUDE.md`
-- [x] Create `.ai/` (README + `skills/` vendored from concord; no prompt/criteria
-      overrides — concord defaults apply). `.plan/` is local-only per the updated
-      standard, so nothing to commit
-- [x] `mkdir art/` ; `git mv logo.png art/logo.png` ; update README `<img src>` →
-      `art/logo.png`; add `icon-128.png` master (copy of the in-jar icon)
-- [x] **Delete stray `net/` directory** (compiled `.class` files at repo root) and
-      gitignore the pattern
-- [x] Adopt the standard `.gitignore`
-- [x] Migrate `docs/` to `site/` content + `site.yml`; `docs/curseforge.md` →
-      `site/listing-curseforge.md`; `listing-modrinth.md` added; legacy `docs/`
-      deleted after verifying meridian.rfizzle.com live (Pages source: Actions)
-
-### Mercantile (migrated 2026-06-12)
-- [x] `spec/` → `design/` ; `design/DESIGN.md` written (brand seeded from
-      `VISION.md` §2–3 + the live site palette). Bonus: `SPEC.md` was
-      gitignored before — it is now actually tracked
-- [x] `mkdir art/` ; `git mv logo.png art/logo.png` ; README img src updated;
-      `icon-128.png` master added (derived from the 1024px docs icon)
-- [x] **Delete `replay_pid391.log`**; standard `.gitignore` adopted; the log
-      blob was also expunged from history (master rewritten + force-pushed
-      2026-06-12)
-- [x] `.plan/` was already untracked; now gitignored as a whole directory
-- [x] `CLAUDE.md` verified as a symlink to `AGENTS.md`; `.ai/` prompt/criteria
-      overrides dropped (they were the ancestors of the concord defaults)
-- [x] CI workflows replaced with thin stubs calling the concord reusables;
-      `test.yml` dropped (covered by `mod-ci.yml`)
-- [x] Migrate `docs/` to `site/` content + `site.yml`; listings moved to
-      `site/listing-*.md`; mercantile.rfizzle.com verified live on the
-      Actions Pages source and legacy `docs/` removed (PR #2)
-
-### Tribulation (reference repo — one move)
-- [ ] `mkdir design/` ; `git mv docs/design/DESIGN.md design/DESIGN.md` ; remove the
-      now-empty `docs/design/` (design docs no longer published with the site)
-- [ ] `mkdir art/` ; `git mv logo.png art/logo.png` ; update README img src; copy
-      icon master in
-- [x] Migrate `docs/` to `site/` content + `site.yml` workflow (done — the pilot);
-      delete legacy `docs/` once the Pages build is verified live; move
-      `docs/curseforge.md` → `site/listing-curseforge.md`; add `listing-modrinth.md`
-- [ ] Gitignore `.claude/scheduled_tasks.lock` and `.plan/`
-
-### Prosperity (greenfield — scaffold the standard from day one)
-- [ ] `mkdir design/` ; `git mv DESIGN.md SPEC.md design/`
-- [ ] `git mv art/hud-exploration art/exploration` ;
-      `git mv art/hud_icon_prosperity.png art/hud-icon-16.png`
-- [ ] Initialize as a git repo with the standard `.gitignore` (currently not one)
-- [ ] Write `AGENTS.md` + `CLAUDE.md` symlink, `.ai/` (skills vendored from
-      concord); track the build plan from `VISION.md` §6 in GitHub Issues
-- [ ] **Delete `.claude/blah.txt`**
-- [ ] `docs/` stays empty until the site is built; add `CNAME`
-      (`prosperity.rfizzle.com`) when Pages is enabled
-- [ ] Gradle scaffold, `Makefile`, `scripts/release.sh`, `src/` split source sets,
-      `README.md`, `LICENSE` arrive with Phase 1 of the build plan
-
----
-
-## 6. Definition of "mirrored"
+## 5. Definition of "mirrored"
 
 A repo conforms when all of these are true at the same paths:
 
@@ -284,4 +219,4 @@ A repo conforms when all of these are true at the same paths:
    `replay_pid*`, compiled classes)
 
 Future members (Husbandry, Apothecary, …) are created from this layout before any
-code exists — Prosperity post-migration is the template.
+code exists — Prosperity is the template.
