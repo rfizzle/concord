@@ -51,6 +51,13 @@ New slots are assigned here, in this file, by appending — never by renumbering
 - The glyph is a **purpose-built 16×16 texture**, not a downscaled vanilla item render
   (those go muddy at 16px). Author it through the texture pipeline and commit its `.glyph`
   source beside the master — see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
+- **Draw batch integrity.** Both surfaces draw through `GuiGraphics`
+  (`blit`/`fill`/`drawString`) and **end every render pass with `graphics.flush()`**.
+  The flush commits the batch immediately, so a batching optimizer (ImmediatelyFast) or a
+  framebuffer-reading effect (Blur+, post shaders) can't fold in, drop, or capture
+  unflushed GUI geometry. Never draw with raw `RenderSystem.setShaderTexture` +
+  `Tessellator`/`BufferBuilder` quads (the manual path batching mods drop), and don't
+  stash GL state across the render expecting it to reach a deferred draw.
 
 ## 4. Positioning
 
@@ -152,6 +159,8 @@ Reference implementations: Tribulation's `TierDetailPanelRenderer`, Mercantile's
 - [ ] Slot registered in §2 of this file (or explicit no-slot decision recorded in the
       mod's `design/DESIGN.md`)
 - [ ] 20px element + 2px gap; visual spec per §3; vanilla font only
+- [ ] Every HUD render pass ends with `graphics.flush()` and draws only through
+      `GuiGraphics` (ImmediatelyFast / Blur+ compatibility, §3)
 - [ ] Glyph is a purpose-built texture with its `.glyph` source committed beside the
       master (DESIGN-SYSTEM §8) — not a downscaled vanilla item
 - [ ] Anchor + pixel-offset config; default top-left, 4px
