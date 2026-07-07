@@ -1,4 +1,4 @@
-# Concord HUD Standard — v1
+# Concord HUD Standard
 
 > Normative for every Concord member mod that renders an on-screen HUD surface — the
 > persistent slot badge (§2–§7) and the optional hold-to-peek detail panel (§8).
@@ -59,6 +59,12 @@ New slots are assigned here, in this file, by appending — never by renumbering
   (default 4px from each edge).
 - Stacking applies within an anchor: a lower-priority element placed at the same anchor
   as a visible higher-priority sibling offsets past it.
+- **Canonical config surface.** The three positioning controls carry the same option names
+  and labels in every mod, so the config screen reads identically: `hudAnchor` → **"HUD
+  Anchor"** (the `Anchor` enum, values labelled "Top Left" / "Top Right" / "Bottom Left" /
+  "Bottom Right"), `hudOffsetX` → **"HUD Offset X"**, `hudOffsetY` → **"HUD Offset Y"**. The
+  badge's own on/off toggle is domain-named on the pattern **"Show `<Domain>` HUD"** (e.g.
+  "Show Tier HUD", "Show Reputation HUD").
 
 ## 5. Visibility rules
 
@@ -104,9 +110,16 @@ and all four visibility rules.
 An optional on-demand companion to the slot badge: the badge says *roughly* where the
 player stands, the panel says *everything*. It is a HUD surface, not a `Screen`.
 
-- **Trigger.** A `KeyMapping` under Controls → `<Mod>`, **unbound by default**, named
-  "Peek `<Domain>` Detail" (e.g. "Peek Tier Detail", "Peek Reputation Detail"). Shown only
-  while the key is held; released, it dismisses.
+- **Trigger.** A `KeyMapping` under Controls → `<Mod>`, named "Peek `<Domain>` Detail" (e.g.
+  "Peek Tier Detail", "Peek Reputation Detail"). Shown only while the key is held; released,
+  it dismisses. **Default: Left Alt** (`GLFW_KEY_LEFT_ALT`) — unused by vanilla and ergonomic
+  to hold. Never bind it to Tab: Tab holds the vanilla player list, the exact interaction this
+  panel imitates, so the two would conflict. New keybinds use the key `key.<mod>.peek_detail`;
+  a shipped mod may keep an existing key id to avoid resetting players' rebindings.
+- **Title.** The panel header is the keybind label minus "Peek " — **"`<Domain>` Detail"**
+  (e.g. "Tier Detail", "Reputation Detail", "Loot Detail"), lang key `hud.<mod>.detail.title`.
+  Never the mod's own name: the header names the panel's *content*, so it reads as the same
+  feature as the keybind that opens it.
 - **Non-capturing.** It behaves like vanilla's hold-Tab player list — it never captures the
   mouse, pauses the game, or blocks movement. It is drawn from a `HudRenderCallback`, never
   by opening a `Screen`.
@@ -146,7 +159,8 @@ Reference implementations: Tribulation's `TierDetailPanelRenderer`, Mercantile's
 - [ ] `isHudVisible()` / `getHudHeight()` exposed in the `api` package,
       reflection-safe from common code
 - [ ] Offset computed from sibling accessors — no hardcoded sibling heights
-- [ ] A hold-to-peek detail panel (if any) follows §8: unbound keybind, non-capturing
-      (not a `Screen`), the badge's four visibility rules reused, no slot/accessors, paged
-      (not scrolled) overflow, and no duplication of recipe-viewer/tooltip catalogs
-- [ ] `AGENTS.md` declares "conforms to Concord HUD Standard v1"
+- [ ] A hold-to-peek detail panel (if any) follows §8: "Peek `<Domain>` Detail" keybind
+      defaulting to Left Alt (never Tab), "`<Domain>` Detail" header, non-capturing (not a
+      `Screen`), the badge's four visibility rules reused, no slot/accessors, paged (not
+      scrolled) overflow, and no duplication of recipe-viewer/tooltip catalogs
+- [ ] `AGENTS.md` declares "conforms to Concord HUD Standard"
