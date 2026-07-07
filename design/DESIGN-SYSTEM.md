@@ -196,3 +196,42 @@ source at the same path with the `.sfx` extension, committed beside the `.ogg` i
 source of truth: edits re-render in seconds and the master is reproducible from the spec
 alone. The derived `.ogg` is copied into `assets/<mod>/sounds/`. Re-touching a sound
 recreates it through its `.sfx`.
+
+## 10. Localization keys
+
+**The rule.** Every user-visible string is translatable — command feedback, HUD text,
+Jade/WTHIT tooltip lines, advancement titles, config labels. No literal user-facing
+strings in code. The one sanctioned exception: op-gated dense diagnostic/telemetry
+command output may be `Component.literal`.
+
+**The prefix vocabulary.** Keys in `en_us.json` are namespaced by the *surface* the
+string appears on, one prefix per surface:
+
+| Prefix | Surface | Example |
+|---|---|---|
+| `config.<mod>.*` | Config labels — every label pairs with a `.tooltip` key | `config.tribulation.enableTierHud` |
+| `command.<mod>.*` | Command feedback | `command.prosperity.no_container` |
+| `hud.<mod>.*` | HUD element and detail-panel text | `hud.tribulation.detail.title` |
+| `gui.<mod>.*` | Screens and widgets | `gui.mercantile.reroll_trades` |
+| `tooltip.<mod>.*` | Hover tooltips and Jade/WTHIT lines | `tooltip.mercantile.pylon.fuel` |
+| `message.<mod>.*` | Chat lines pushed by the mod | `message.tribulation.level_up` |
+| `notification.<mod>.*` | ✦-prefixed toasts and action-bar lines | `notification.prosperity.loot_generated` |
+| `advancements.<mod>.*` | Advancement `.title` / `.description` pairs | `advancements.meridian.root.title` |
+| `info.<mod>.*` | Block/item purpose lines | `info.meridian.enchant.clues` |
+| `key.<mod>.*` | Keybind names, plus one `key.categories.<mod>` per mod | `key.prosperity.peek_detail` |
+| `stat.<mod>.*` | Custom statistics | `stat.tribulation.highest_level_reached` |
+| `block.<mod>.<id>` | Block names (vanilla-mandated) | `block.meridian.stoneshelf` |
+| `item.<mod>.<id>` | Item names (vanilla-mandated) | `item.mercantile.delivery_contract` |
+| `enchantment.<mod>.<id>` | Enchantment names (vanilla-mandated) | `enchantment.tribulation.soulbound` |
+
+**Conventions that ride along.**
+
+- Internal enums (tiers, moods, states) expose a `translationKey()` rather than display
+  strings — code never formats an enum name for the player.
+- Notification strings carry the **✦** suite marker (§3) inside the localized value, not
+  bolted on in code.
+- Hints that name a key use `Component.keybind` so the client resolves the player's
+  actual binding, never a hardcoded key name.
+
+**Enforcement.** These conventions are pinned by each mod's Tier-1 resource-contract
+tests; the recipe lives in the `mc-mod-testing` skill.
