@@ -133,10 +133,17 @@ untrack them as part of their migration.
 
 ### `design/` — pre-implementation truth
 The **why and what**, kept out of the published site (Tribulation currently
-publishes its DESIGN.md inside `docs/` — that moves out). Fixed names: `DESIGN.md`
-(brand, palette, motif, HUD slot decision), `SPEC.md` (behavioral spec), `ASSETS.md`
-(asset manifest — each asset's `.glyph` source under `art/`, its final resource/site
-path, and `MISSING` where no glyph source exists yet). Specs are written *before* implementation (the Prosperity model) and
+publishes its DESIGN.md inside `docs/` — that moves out). Fixed names: `VISION.md`
+(the player-experience promise — written for players, zero implementation
+vocabulary), `DESIGN.md` (brand, palette, motif, HUD slot decision), `SPEC.md`
+(behavioral spec), `ASSETS.md` (asset manifest — each asset's `.glyph` source under
+`art/`, its final resource/site path, and `MISSING` where no glyph source exists
+yet). Each fixed name has an authoring guide in concord prescribing its shape,
+requirements, and truth direction:
+[`design/VISION-GUIDE.md`](design/VISION-GUIDE.md),
+[`design/DESIGN-GUIDE.md`](design/DESIGN-GUIDE.md),
+[`design/SPEC-GUIDE.md`](design/SPEC-GUIDE.md),
+[`design/ASSETS-GUIDE.md`](design/ASSETS-GUIDE.md). Specs are written *before* implementation (the Prosperity model) and
 updated when behavior changes — `README.md`/`docs/` describe what *is*; `design/`
 records what was *intended* and why.
 

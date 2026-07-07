@@ -30,6 +30,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`REPO-LAYOUT.md`](REPO-LAYOUT.md) | The common repository layout all mod repos mirror |
 | [`AGENTS-COMMON.md`](AGENTS-COMMON.md) | The Concord-owned regions shared by every member's `AGENTS.md` (skills pointer, dev lifecycle, version scheme) — proposed to each member via the `concord-sync` PR by `propagate.yml`; edit shared agent guidance HERE |
 | [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) | Color tokens, per-mod palettes, typography, logo formula |
+| [`design/VISION-GUIDE.md`](design/VISION-GUIDE.md) · [`DESIGN-GUIDE.md`](design/DESIGN-GUIDE.md) · [`SPEC-GUIDE.md`](design/SPEC-GUIDE.md) · [`ASSETS-GUIDE.md`](design/ASSETS-GUIDE.md) | Authoring guides for the four fixed member docs under `design/` — each prescribes its document's shape, requirements, and truth direction: the player-facing vision, the brand record, the behavioral contract, and the asset manifest |
 | [`docs/tokens.css`](docs/tokens.css) | The shared design tokens as consumable CSS — mod sites hot-link this |
 | [`template/`](template/README.md) | The shared website template — mod repos hold only `site/` content; CI builds and deploys via [`build-site.yml`](.github/workflows/build-site.yml) |
 | [`members.json`](members.json) | The member registry — per-member `status`, `conformance` (standard versions, layout migration), name/tagline/url, and `store` (Modrinth/CurseForge project id + slug); drives every site's cross-mod footer and the propagate workflow. The `store` ids are the canonical source for the publish (`modrinth-id`/`curseforge-id`) and listing-sync workflow inputs |
@@ -37,7 +38,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`.github/workflows/`](.github/workflows) | Reusable CI for all members: `mod-ci`, `mod-release`, `mod-build-artifact`, `mod-listing-sync`, `claude-review`, `claude-spec`, `claude-mention`, `build-site` — mod repos carry only thin trigger stubs |
 | [`.ai/`](.ai) | Suite-default Claude prompts (`code-reviewer`, `spec-writer`) and `review-criteria.yml` — generic, mod identity comes from each repo's AGENTS.md. Resolution: explicit `prompt-file`/`criteria-file` workflow input → repo-local `.ai/` file (whole-file override) → these defaults |
 | [`.ai/skills/`](.ai/skills) | Canonical `mc-*` domain skills for all member repos. Mod repos keep vendored copies (so Claude Code, Jules, and bare clones all work) and refresh them with `make sync` — edit skills HERE, never in a mod repo. The generated [`CATALOG.md`](.ai/skills/CATALOG.md) (`make catalog`) indexes them — one row per skill, summary + when to read it — and rides the same sync, so each `AGENTS.md` points at it instead of carrying its own table |
-| [`.ai/commands/`](.ai/commands) | Canonical slash commands (`/glyph`, `/sfx`, `/assess`, `/align`) for all member repos — vendored by the same `make sync` target, surfaced to Claude Code via a `.claude/commands` → `.ai/commands` symlink. Edit HERE, never in a mod repo |
+| [`.ai/commands/`](.ai/commands) | Canonical slash commands (`/glyph`, `/sfx`, `/assess`, `/align`, `/implement`) for all member repos — vendored by the same `make sync` target, surfaced to Claude Code via a `.claude/commands` → `.ai/commands` symlink. Edit HERE, never in a mod repo |
 
 ### The CI contract
 
