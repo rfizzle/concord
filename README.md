@@ -36,6 +36,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`members.json`](members.json) | The member registry — per-member `status`, `conformance` (layout migration), name/tagline/url, and `store` (Modrinth/CurseForge project id + slug); drives every site's cross-mod footer and the propagate workflow. The `store` ids are the canonical source for the publish (`modrinth-id`/`curseforge-id`) and listing-sync workflow inputs |
 | [`propagate/`](propagate) | Canonical concord-owned files (currently the `.github/ISSUE_TEMPLATE/` forms) proposed verbatim to every member repo via a `concord-sync` PR by `propagate.yml` (member default branches are protected) — edit HERE, never in a mod repo |
 | [`.github/workflows/`](.github/workflows) | Reusable CI for all members: `mod-ci`, `mod-release`, `mod-build-artifact`, `mod-listing-sync`, `claude-review`, `claude-spec`, `claude-mention`, `build-site` — mod repos carry only thin trigger stubs |
+| [`workflow-stubs.json`](workflow-stubs.json) | The canonical caller-stub contract — for each member `.github/workflows/*.yml` stub, the reusable `uses:` ref and least-privilege `permissions:` block that must never drift. Enforced by [`check-workflow-stubs.py`](scripts/check-workflow-stubs.py) (`make stubs-check` locally, the scheduled `stub-drift` workflow in CI); a member's own `on:`/`with:` inputs are deliberately not compared |
 | [`.ai/`](.ai) | Suite-default Claude prompts (`code-reviewer`, `spec-writer`) and `review-criteria.yml` — generic, mod identity comes from each repo's AGENTS.md. Resolution: explicit `prompt-file`/`criteria-file` workflow input → repo-local `.ai/` file (whole-file override) → these defaults |
 | [`.ai/skills/`](.ai/skills) | Canonical `mc-*` domain skills for all member repos. Mod repos keep vendored copies (so Claude Code, Jules, and bare clones all work) and refresh them with `make sync` — edit skills HERE, never in a mod repo. The generated [`CATALOG.md`](.ai/skills/CATALOG.md) (`make catalog`) indexes them — one row per skill, summary + when to read it — and rides the same sync, so each `AGENTS.md` points at it instead of carrying its own table |
 | [`.ai/commands/`](.ai/commands) | Canonical slash commands (`/glyph`, `/sfx`, `/assess`, `/align`, `/implement`) for all member repos — vendored by the same `make sync` target, surfaced to Claude Code via a `.claude/commands` → `.ai/commands` symlink. Edit HERE, never in a mod repo |
@@ -49,7 +50,12 @@ unit tests + jar), `jacocoTestReport` (XML at
 `build/junit-gametest.xml`), and `printVersion`. Secrets per repo:
 `CLAUDE_CODE_OAUTH_TOKEN` (for the Claude workflows).
 Each mod repo's stubs declare only triggers, concurrency, and permissions — the
-stub bodies are documented at the top of each reusable workflow.
+stub bodies are documented at the top of each reusable workflow. The `uses:` ref
+and `permissions:` block each stub must carry are pinned in
+[`workflow-stubs.json`](workflow-stubs.json); `make stubs-check` (and the weekly
+`stub-drift` workflow) flag any member stub that drifts from it — a widened
+token in particular, since the reusable workflows cap their own job tokens and a
+stub granting more is the sharp edge.
 
 ### Syncing skills & commands
 

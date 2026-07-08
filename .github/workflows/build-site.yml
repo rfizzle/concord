@@ -1,7 +1,13 @@
 # Concord — reusable site build & deploy workflow.
 #
-# Called by each member mod repo's .github/workflows/site.yml:
+# Called by each member mod repo's .github/workflows/site.yml. The deploy job
+# needs Pages + id-token write, which a reusable workflow cannot add to the
+# caller's token — so the calling site.yml must grant them:
 #
+#   permissions:
+#     contents: read
+#     pages: write
+#     id-token: write
 #   jobs:
 #     site:
 #       uses: rfizzle/concord/.github/workflows/build-site.yml@master

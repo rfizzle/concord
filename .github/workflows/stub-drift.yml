@@ -1,0 +1,68 @@
+# Detects drift between the member repos' .github/workflows/*.yml caller stubs
+# and the canonical contract in workflow-stubs.json. Fetches each member stub
+# fresh via the GitHub API (the members aren't checked out in CI) into a temp
+# mirror, then runs the same checker as `make stubs-check`. Fails the run on any
+# permissions- or uses-ref drift, so a widened member token surfaces here.
+#
+# Reuses CONCORD_DISPATCH_TOKEN (the propagate credential) for read access to
+# member repos. Runs weekly and on demand — not on push/PR — so a real,
+# currently-known drift doesn't block unrelated pull requests.
+name: Member workflow stub drift
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays, 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Ensure PyYAML
+        run: python3 -c "import yaml" 2>/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq python3-yaml; }
+      - name: Fetch member stubs
+        env:
+          GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/members"
+          # Assign first so a jq failure trips errexit (a bare `for x in $(jq…)`
+          # would swallow it and iterate zero times, passing green having checked
+          # nothing).
+          ids=$(jq -r '.members[].id' members.json)
+          stubs=$(jq -r '.stubs[].member' workflow-stubs.json)
+          [ -n "$ids" ] || { echo "::error::no member ids in members.json"; exit 1; }
+          [ -n "$stubs" ] || { echo "::error::no stub names in workflow-stubs.json"; exit 1; }
+          infra_fail=0
+          for id in $ids; do
+            for stub in $stubs; do
+              dest="$root/$id/.github/workflows/$stub"
+              mkdir -p "$(dirname "$dest")"
+              if content=$(gh api "repos/rfizzle/$id/contents/.github/workflows/$stub" --jq '.content' 2>err.txt); then
+                if ! printf '%s' "$content" | base64 -d > "$dest"; then
+                  echo "::error::base64 decode failed for $id/$stub"
+                  infra_fail=1
+                fi
+              elif grep -qi 'HTTP 404\|Not Found' err.txt; then
+                # Repo reachable, stub genuinely absent — leave it unwritten so
+                # the checker reports it as real "missing stub" drift.
+                echo "::warning::$id/.github/workflows/$stub is absent (404) — reported as drift"
+              else
+                # Auth/rate-limit/network/repo-not-found: an infra failure, not
+                # drift. Surface it distinctly so a transient error can't
+                # masquerade as a deleted stub and produce false drift.
+                echo "::error::fetch failed for $id/$stub (not a 404): $(cat err.txt)"
+                infra_fail=1
+              fi
+            done
+          done
+          if [ "$infra_fail" -ne 0 ]; then
+            echo "::error::infrastructure failures fetching member stubs — aborting before the drift check to avoid false positives"
+            exit 1
+          fi
+      - name: Check for drift
+        run: python3 scripts/check-workflow-stubs.py --root "$RUNNER_TEMP/members"

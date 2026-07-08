@@ -24,6 +24,8 @@
 #         - "site/listing-summary.txt"
 #         - ".github/workflows/listing-sync.yml"
 #     workflow_dispatch:
+#   permissions:
+#     contents: read
 #   jobs:
 #     listing:
 #       uses: rfizzle/concord/.github/workflows/mod-listing-sync.yml@master
