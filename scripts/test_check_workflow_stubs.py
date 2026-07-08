@@ -185,6 +185,58 @@ class CheckWorkflowStubs(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertIn("not in the manifest", err)
 
+    def test_scalar_permissions_is_drift(self) -> None:
+        self._write_correct()
+        self._write(
+            "ci.yml",
+            "name: Stub\non:\n  push:\n    branches: [master]\n"
+            "permissions: write-all\njobs:\n  job:\n"
+            "    uses: rfizzle/concord/.github/workflows/mod-ci.yml@master\n",
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("write-all", err)
+
+    def test_empty_doc_is_drift_not_crash(self) -> None:
+        self._write_correct()
+        self._write("ci.yml", "")  # yaml.safe_load("") -> None
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("top level is not a mapping", err)
+
+    def test_job_level_permissions_override_is_checked(self) -> None:
+        self._write_correct()
+        # Top-level permissions are correct, but a job-level block adds issues:
+        # read — the effective grant for the reusable call, so it must be caught.
+        self._write(
+            "ci.yml",
+            "name: Stub\non:\n  push:\n    branches: [master]\n"
+            "permissions:\n  contents: read\n  checks: write\n  pull-requests: write\n"
+            "jobs:\n  job:\n"
+            "    permissions:\n      contents: read\n      checks: write\n"
+            "      pull-requests: write\n      issues: read\n"
+            "    uses: rfizzle/concord/.github/workflows/mod-ci.yml@master\n",
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("unexpected 'issues: read'", err)
+
+    def test_malformed_manifest_exits_2(self) -> None:
+        bad = self.root / "bad.json"
+        bad.write_text("{ not json", encoding="utf-8")
+        with self.assertRaises(SystemExit) as cm:
+            checker.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "--manifest",
+                    str(bad),
+                    "--members",
+                    str(self.members),
+                ]
+            )
+        self.assertEqual(cm.exception.code, 2)
+
     def test_no_members_checked_out_passes(self) -> None:
         self.members.write_text(
             json.dumps({"members": [{"id": "absent"}]}), encoding="utf-8"

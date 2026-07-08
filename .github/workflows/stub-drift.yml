@@ -30,16 +30,39 @@ jobs:
         run: |
           set -euo pipefail
           root="$RUNNER_TEMP/members"
-          for id in $(jq -r '.members[].id' members.json); do
-            for stub in $(jq -r '.stubs[].member' workflow-stubs.json); do
+          # Assign first so a jq failure trips errexit (a bare `for x in $(jq…)`
+          # would swallow it and iterate zero times, passing green having checked
+          # nothing).
+          ids=$(jq -r '.members[].id' members.json)
+          stubs=$(jq -r '.stubs[].member' workflow-stubs.json)
+          [ -n "$ids" ] || { echo "::error::no member ids in members.json"; exit 1; }
+          [ -n "$stubs" ] || { echo "::error::no stub names in workflow-stubs.json"; exit 1; }
+          infra_fail=0
+          for id in $ids; do
+            for stub in $stubs; do
               dest="$root/$id/.github/workflows/$stub"
               mkdir -p "$(dirname "$dest")"
-              if content=$(gh api "repos/rfizzle/$id/contents/.github/workflows/$stub" --jq '.content' 2>/dev/null); then
-                printf '%s' "$content" | base64 -d > "$dest"
+              if content=$(gh api "repos/rfizzle/$id/contents/.github/workflows/$stub" --jq '.content' 2>err.txt); then
+                if ! printf '%s' "$content" | base64 -d > "$dest"; then
+                  echo "::error::base64 decode failed for $id/$stub"
+                  infra_fail=1
+                fi
+              elif grep -qi 'HTTP 404\|Not Found' err.txt; then
+                # Repo reachable, stub genuinely absent — leave it unwritten so
+                # the checker reports it as real "missing stub" drift.
+                echo "::warning::$id/.github/workflows/$stub is absent (404) — reported as drift"
               else
-                echo "::warning::could not fetch $id/.github/workflows/$stub (missing stub or no access)"
+                # Auth/rate-limit/network/repo-not-found: an infra failure, not
+                # drift. Surface it distinctly so a transient error can't
+                # masquerade as a deleted stub and produce false drift.
+                echo "::error::fetch failed for $id/$stub (not a 404): $(cat err.txt)"
+                infra_fail=1
               fi
             done
           done
+          if [ "$infra_fail" -ne 0 ]; then
+            echo "::error::infrastructure failures fetching member stubs — aborting before the drift check to avoid false positives"
+            exit 1
+          fi
       - name: Check for drift
         run: python3 scripts/check-workflow-stubs.py --root "$RUNNER_TEMP/members"

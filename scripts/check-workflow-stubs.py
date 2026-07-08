@@ -35,26 +35,53 @@ import yaml
 CONCORD_PREFIX = "rfizzle/concord/.github/workflows/"
 
 
+def _load_json(path: pathlib.Path, what: str) -> dict:
+    """Load a repo-controlled JSON file, failing with a clean message + exit 2
+    (never a raw traceback) on a missing or malformed file."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"error: {what} not found at {path}", file=sys.stderr)
+        raise SystemExit(2)
+    except json.JSONDecodeError as exc:
+        print(f"error: {what} is not valid JSON: {exc}", file=sys.stderr)
+        raise SystemExit(2)
+
+
 def load_manifest(path: pathlib.Path) -> list[dict]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return data["stubs"]
+    data = _load_json(path, "workflow-stubs.json")
+    stubs = data.get("stubs")
+    if not isinstance(stubs, list):
+        print("error: workflow-stubs.json has no 'stubs' list", file=sys.stderr)
+        raise SystemExit(2)
+    for stub in stubs:
+        missing = [k for k in ("member", "uses", "permissions") if k not in stub]
+        if missing:
+            print(
+                f"error: workflow-stubs.json entry {stub!r} missing {missing}",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
+    return stubs
 
 
 def member_ids(path: pathlib.Path) -> list[str]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = _load_json(path, "members.json")
     return [m["id"] for m in data.get("members", [])]
 
 
-def job_uses(doc: dict) -> list[str]:
-    """Every `uses:` value across the stub's jobs, in declaration order."""
+def concord_jobs(doc: dict) -> list[dict]:
+    """The stub's jobs that call a concord reusable workflow, in order."""
     jobs = doc.get("jobs")
     if not isinstance(jobs, dict):
         return []
-    out = []
-    for job in jobs.values():
-        if isinstance(job, dict) and isinstance(job.get("uses"), str):
-            out.append(job["uses"])
-    return out
+    return [
+        job
+        for job in jobs.values()
+        if isinstance(job, dict)
+        and isinstance(job.get("uses"), str)
+        and job["uses"].startswith(CONCORD_PREFIX)
+    ]
 
 
 def diff_permissions(expected: dict, found) -> list[str]:
@@ -87,18 +114,25 @@ def check_stub(stub: dict, wf_path: pathlib.Path) -> list[str]:
     if not isinstance(doc, dict):
         return ["malformed stub: top level is not a mapping"]
 
-    findings = diff_permissions(stub["permissions"], doc.get("permissions"))
-
-    uses = job_uses(doc)
-    concord_uses = [u for u in uses if u.startswith(CONCORD_PREFIX)]
-    if not concord_uses:
+    calls = concord_jobs(doc)
+    findings = []
+    if not calls:
         findings.append(
             f"uses: no job calls a concord reusable workflow, expected {stub['uses']}"
         )
     else:
-        for u in concord_uses:
-            if u != stub["uses"]:
-                findings.append(f"uses: is '{u}', expected '{stub['uses']}'")
+        for job in calls:
+            if job["uses"] != stub["uses"]:
+                findings.append(f"uses: is '{job['uses']}', expected '{stub['uses']}'")
+
+    # A calling job's own `permissions:` overrides the workflow top-level block
+    # for the reusable call, so the effective grant is what must be checked —
+    # otherwise a widening moved to job level would slip past.
+    if calls and "permissions" in calls[0]:
+        effective = calls[0]["permissions"]
+    else:
+        effective = doc.get("permissions")
+    findings += diff_permissions(stub["permissions"], effective)
     return findings
 
 
