@@ -1,0 +1,85 @@
+{
+  "description": "Canonical caller-stub contract for the .github/workflows/*.yml stubs in every member repo. Each member stub is a thin wrapper that `uses:` one of concord's reusable workflows; this file is the machine-readable source of truth for the two fields that must never drift — the `uses:` ref and the `permissions:` block. Enforced by scripts/check-workflow-stubs.py (see `make stubs-check`). Per-repo variation — `on:` triggers, `with:` inputs (curseforge-id, modrinth-id, mod-id), and concurrency — is deliberately NOT compared, so a member stays free to set them. Edit this file when a reusable workflow's required caller permissions or ref change, and keep the matching header-comment stub in the reusable workflow in step.",
+  "uses_prefix": "rfizzle/concord/.github/workflows/",
+  "stubs": [
+    {
+      "member": "ci.yml",
+      "reusable": "mod-ci.yml",
+      "uses": "rfizzle/concord/.github/workflows/mod-ci.yml@master",
+      "permissions": {
+        "contents": "read",
+        "checks": "write",
+        "pull-requests": "write"
+      }
+    },
+    {
+      "member": "release.yml",
+      "reusable": "mod-release.yml",
+      "uses": "rfizzle/concord/.github/workflows/mod-release.yml@master",
+      "permissions": {
+        "contents": "write",
+        "pull-requests": "write"
+      }
+    },
+    {
+      "member": "listing-sync.yml",
+      "reusable": "mod-listing-sync.yml",
+      "uses": "rfizzle/concord/.github/workflows/mod-listing-sync.yml@master",
+      "permissions": {
+        "contents": "read"
+      }
+    },
+    {
+      "member": "site.yml",
+      "reusable": "build-site.yml",
+      "uses": "rfizzle/concord/.github/workflows/build-site.yml@master",
+      "permissions": {
+        "contents": "read",
+        "pages": "write",
+        "id-token": "write"
+      }
+    },
+    {
+      "member": "build-artifact.yml",
+      "reusable": "mod-build-artifact.yml",
+      "uses": "rfizzle/concord/.github/workflows/mod-build-artifact.yml@master",
+      "permissions": {
+        "contents": "read",
+        "pull-requests": "write",
+        "issues": "write",
+        "actions": "read"
+      }
+    },
+    {
+      "member": "claude-code-review.yml",
+      "reusable": "claude-review.yml",
+      "uses": "rfizzle/concord/.github/workflows/claude-review.yml@master",
+      "permissions": {
+        "contents": "read",
+        "pull-requests": "write",
+        "issues": "read"
+      }
+    },
+    {
+      "member": "claude-spec.yml",
+      "reusable": "claude-spec.yml",
+      "uses": "rfizzle/concord/.github/workflows/claude-spec.yml@master",
+      "permissions": {
+        "contents": "read",
+        "issues": "write"
+      }
+    },
+    {
+      "member": "claude.yml",
+      "reusable": "claude-mention.yml",
+      "uses": "rfizzle/concord/.github/workflows/claude-mention.yml@master",
+      "permissions": {
+        "contents": "write",
+        "pull-requests": "write",
+        "issues": "write",
+        "id-token": "write",
+        "actions": "read"
+      }
+    }
+  ]
+}
