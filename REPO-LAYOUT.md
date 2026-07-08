@@ -217,6 +217,10 @@ A repo conforms when all of these are true at the same paths:
    build; no committed `docs/` or `_site/` output
 6. The standard `.gitignore`, with no committed runtime artifacts (`logs/`, `run/`,
    `replay_pid*`, compiled classes)
+7. The `.github/workflows/` caller stubs match concord's canonical contract —
+   each stub's `uses:` ref and `permissions:` block per
+   [`workflow-stubs.json`](workflow-stubs.json) (checked by `make stubs-check`);
+   per-repo triggers and `with:` inputs (e.g. `curseforge-id`) may vary
 
 Future members (Husbandry, Apothecary, …) are created from this layout before any
 code exists — Prosperity is the template.
