@@ -28,6 +28,7 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`API-STANDARD.md`](API-STANDARD.md) | The public-API + event pattern every mod's `api` package follows |
 | [`HUD-STANDARD.md`](HUD-STANDARD.md) | The shared HUD element spec: slots, stacking, visibility, coordination |
 | [`REPO-LAYOUT.md`](REPO-LAYOUT.md) | The common repository layout all mod repos mirror |
+| [`design/REPO-SETTINGS.md`](design/REPO-SETTINGS.md) | The GitHub-side settings standard every member repo carries — merge policy, branch protection, Actions permissions & secrets, Pages, labels, security — with `gh` commands to apply and audit it |
 | [`AGENTS-COMMON.md`](AGENTS-COMMON.md) | The Concord-owned regions shared by every member's `AGENTS.md` (skills pointer, dev lifecycle, version scheme) — proposed to each member via the `concord-sync` PR by `propagate.yml`; edit shared agent guidance HERE |
 | [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) | Color tokens, per-mod palettes, typography, logo formula |
 | [`design/VISION-GUIDE.md`](design/VISION-GUIDE.md) · [`DESIGN-GUIDE.md`](design/DESIGN-GUIDE.md) · [`SPEC-GUIDE.md`](design/SPEC-GUIDE.md) · [`ASSETS-GUIDE.md`](design/ASSETS-GUIDE.md) | Authoring guides for the four fixed member docs under `design/` — each prescribes its document's shape, requirements, and truth direction: the player-facing vision, the brand record, the behavioral contract, and the asset manifest |

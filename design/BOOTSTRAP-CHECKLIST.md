@@ -76,9 +76,12 @@ duplicated).
       `/implement` work.
 - [ ] All eight `.github/workflows/` caller stubs exist with the `uses:` refs
       and `permissions:` blocks pinned in
-      [`workflow-stubs.json`](../workflow-stubs.json); the
-      `CLAUDE_CODE_OAUTH_TOKEN` secret is set; the default branch is
-      protected.
+      [`workflow-stubs.json`](../workflow-stubs.json).
+- [ ] The repo's GitHub settings match
+      [`REPO-SETTINGS.md`](REPO-SETTINGS.md) — merge policy, `master`
+      protection, Actions permissions, the `CLAUDE_CODE_OAUTH_TOKEN` secret,
+      and the five suite labels (release-time items like store tokens and the
+      §7 security features wait for Phase 5 and the release).
 - [ ] CI is green on the empty skeleton.
 
 ## Phase 4 — Suite admission
