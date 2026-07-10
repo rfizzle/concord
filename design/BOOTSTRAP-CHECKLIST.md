@@ -121,4 +121,5 @@ The site may still be thin at this point — it markets what has shipped, and
 nothing has — but it must be live before the first release. From here,
 features flow through the normal lifecycle: issue → spec → `/implement` →
 review, with `SPEC.md` updated in the same PR whenever behavior changes by
-design.
+design. The feature set itself is revisited in working sessions via
+[`TUNING-PROMPT.md`](TUNING-PROMPT.md).
