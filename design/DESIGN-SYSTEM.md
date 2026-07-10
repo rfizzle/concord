@@ -83,7 +83,7 @@ The formula, the spec for every **new** member logo:
 | Prosperity | Overflowing treasure chest, ornate key crowning the frame |
 | Mercantile | Market stall with hanging scales, in a circular emerald-rimmed medallion on green brickwork |
 | Respite | Hanging lantern in a circular indigo stone medallion over midnight brickwork |
-| Distillation | Brewing stand mid-brew — three glowing bottles, rising vapor, copper piping along the frame |
+| Distillation | Alchemist's still in a rune-carved magenta medallion — copper alembic and coiled piping feeding glowing flasks, on plum brickwork |
 
 One motif object per mod; the motif may recur in headers and flavor art but never in
 another mod's assets.
