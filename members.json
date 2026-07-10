@@ -88,6 +88,20 @@
       "conformance": {
         "layoutMigrated": true
       }
+    },
+    {
+      "id": "cultivation",
+      "name": "Cultivation",
+      "tagline": "Worth growing.",
+      "url": "https://cultivation.rfizzle.com",
+      "store": {
+        "modrinth": { "slug": "cultivation-agriculture-overhaul" },
+        "curseforge": { "slug": "cultivation-agriculture-overhaul" }
+      },
+      "status": "in-development",
+      "conformance": {
+        "layoutMigrated": true
+      }
     }
   ],
   "packs": [

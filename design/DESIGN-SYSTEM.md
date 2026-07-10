@@ -35,10 +35,11 @@ dark-surface pair + two accents.
 | Prosperity | `#1a1408` / `#2e2510` | `#DAA520`→`#FFD700` Gold | `#4EEAED` Diamond Cyan |
 | Respite | `#141a3d` / `#232e66` | `#7C8EE8` Moonlight Indigo | `#F2C14E` Candleglow |
 | Distillation | `#1a0a18` / `#2e102c` | `#C44DCC` Potion Magenta | `#E77C56` Copper |
+| Cultivation | `#101a0a` / `#1c2e10` | `#D9A441` Wheat Amber | `#7CB342` Leaf Green |
 
-Reserved by shortlisted future members (`VISION.md` §9): Husbandry — Wheat Amber
-`#D9A441` / Leaf Green `#7CB342`; Tempest — Storm Blue `#4A7FB5` / Lightning White
-`#E8F4FF`; Stratum — Deepslate Grey `#5B6470` / Copper Orange `#E07A3F`.
+Reserved by shortlisted future members (`VISION.md` §9): Tempest — Storm Blue
+`#4A7FB5` / Lightning White `#E8F4FF`; Stratum — Deepslate Grey `#5B6470` / Copper
+Orange `#E07A3F`.
 
 ### Coexistence rules
 
@@ -48,7 +49,9 @@ Reserved by shortlisted future members (`VISION.md` §9): Husbandry — Wheat Am
    the pair is distinct. Gold-with-violet reads Meridian; gold-with-cyan reads
    Prosperity; candle-with-indigo reads Respite; magenta-with-copper reads
    Distillation (the nearest hue, Meridian's purple, is disambiguated by both
-   partners). Every new palette is checked against the full table above.
+   partners); amber-with-leaf reads Cultivation (the gold-family amber is
+   disambiguated by its green partner). Every new palette is checked against the
+   full table above.
 3. **HUD tints** use the mod's accent/state colors inside the standard element only
    (see [`../HUD-STANDARD.md`](../HUD-STANDARD.md) §3).
 
@@ -84,6 +87,7 @@ The formula, the spec for every **new** member logo:
 | Mercantile | Market stall with hanging scales, in a circular emerald-rimmed medallion on green brickwork |
 | Respite | Hanging lantern in a circular indigo stone medallion over midnight brickwork |
 | Distillation | Alchemist's still in a rune-carved magenta medallion — copper alembic and coiled piping feeding glowing flasks, on plum brickwork |
+| Cultivation | Bound wheat sheaf with a scythe and hoe crossed behind it, on mossy-green brickwork breaking into tilled furrows |
 
 One motif object per mod; the motif may recur in headers and flavor art but never in
 another mod's assets.
@@ -96,8 +100,8 @@ Two sizes per mod, both pixel art:
   `art/icon-128.png` in the mod repo.
 - **16×16 glyph** — HUD element (if the mod has a slot), Jade/recipe-viewer contexts.
   Master at `art/hud-icon-16.png`. Existing: Tribulation skull, Prosperity chest,
-  Respite lantern and Distillation bottle (both Jade/recipe-viewer contexts only —
-  no HUD slot).
+  Respite lantern, Distillation bottle, and Cultivation sheaf (those three
+  Jade/recipe-viewer contexts only — no HUD slot).
   Needed: Mercantile (bell or emerald), Meridian (open book — Jade/EMI contexts only).
 
 Masters live in each repo's `art/`; `docs/` and `assets/` hold derived copies

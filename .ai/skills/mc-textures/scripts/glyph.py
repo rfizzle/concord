@@ -103,6 +103,10 @@ NAMED_COLORS = {
     "distillation.elixir": "#da79e3",
     "distillation.copper": "#e77c56",
     "distillation.glass": "#afc6ce",
+    "cultivation.amber": "#d9a441",
+    "cultivation.harvest": "#edc35c",
+    "cultivation.leaf": "#7cb342",
+    "cultivation.sprout": "#a5d66a",
     # bare convenience aliases (unambiguous accents)
     "emerald": "#50c878",
     "emerald-bright": "#6ddb94",
@@ -115,6 +119,8 @@ NAMED_COLORS = {
     "magenta": "#c44dcc",
     "elixir": "#da79e3",
     "candleglow": "#f2c14e",
+    "amber": "#d9a441",
+    "leaf": "#7cb342",
 }
 
 TRANSPARENT = (0, 0, 0, 0)
