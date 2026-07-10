@@ -18,16 +18,17 @@
 
 **Collection tagline: *"The depth vanilla deserved."***
 
-Concord is a collection of seven independent Fabric mods for Minecraft 1.21.1 that
+Concord is a collection of eight independent Fabric mods for Minecraft 1.21.1 that
 each take one vanilla system the game shipped shallow — enchanting, villagers, difficulty,
-loot, vitality, alchemy, agriculture — and overhaul it. Meridian makes enchanting a system you
+loot, vitality, alchemy, agriculture, husbandry — and overhaul it. Meridian makes enchanting a system you
 build toward instead of a slot machine. Mercantile makes villagers people you have a
 history with instead of lever-operated vending machines. Tribulation makes the world push
 back the longer and farther you survive. Prosperity makes every chest worth opening for
 every player who finds it. Respite makes the night a lived part of survival instead of a
 skip button. Distillation makes brewing a craft the stand itself teaches instead of a
 wiki tab. Cultivation makes farming a practice you tend instead of a chore you
-automate away. Each mod owns a single domain and goes as deep as that domain
+automate away. Instinct makes the animals you tame and raise worth keeping instead of
+disposable stock. Each mod owns a single domain and goes as deep as that domain
 needs — deepening, replacing, or running a system in parallel with vanilla's — but it stays
 in its lane: one domain per mod, no new dimension, and nothing another member must load.
 The discipline is structural, not cosmetic: a mod is free to ship its own high-quality
@@ -43,7 +44,9 @@ risk. Mercantile supplies the economy that converts surplus into what you're mis
 Respite supplies the recovery beat — the night that restores you between runs.
 Distillation supplies the consumable edge — the bottled preparation you spend going in.
 Cultivation supplies the provisioning floor — the fields and food that keep every run fed.
-Install all seven and survival Minecraft has the escalation arc of a roguelike without a
+Instinct supplies the living capital — the pack and herds whose value compounds the
+longer they survive with you.
+Install all eight and survival Minecraft has the escalation arc of a roguelike without a
 single new block of HUD clutter beyond a small, opt-out icon strip. Install any one and
 it stands entirely on its own.
 
@@ -68,18 +71,20 @@ The member taglines sit under the collection's one line:
 | **Respite** | Rest | "Make the night count." |
 | **Distillation** | Brew | "Every drop counts." |
 | **Cultivation** | Grow | "Worth growing." |
+| **Instinct** | Raise | "Worth raising." |
 
 ---
 
 ## 2. Narrative & Naming
 
-### The seven narratives as one loop
+### The eight narratives as one loop
 
-Survive / Enchant / Brew / Grow / Trade / Discover / Rest are the seven verbs of a single
-survival session, in the order a player actually lives them: the world threatens you
+Survive / Enchant / Brew / Grow / Raise / Trade / Discover / Rest are the eight verbs of a
+single survival session, in the order a player actually lives them: the world threatens you
 (**Tribulation**), you grow stronger to meet it (**Meridian**), you bottle the edge
-you'll need (**Distillation**), you raise the surplus that feeds the run
-(**Cultivation**), you convert surplus into what you lack
+you'll need (**Distillation**), you grow the surplus that feeds the run
+(**Cultivation**), you raise the pack and herds that walk it with you (**Instinct**),
+you convert surplus into what you lack
 (**Mercantile**), you push outward for more (**Prosperity**) — which raises
 the threat, closing the loop — and you rest to run it again (**Respite**), the night that
 turns one day's loop into the next. Marketing copy for any one mod should gesture at this loop in
@@ -92,7 +97,7 @@ The collection is named **Concord** — *agreement and harmony between independe
 parties* — which is the architecture thesis itself: independent gates, optional
 integration, no hard dependencies. It keeps the established register (a single weighty
 Latinate abstract noun, alongside Tribulation, Meridian, Mercantile, Prosperity,
-Respite, Distillation, Cultivation) while
+Respite, Distillation, Cultivation, Instinct) while
 naming what the members share rather than competing with what each owns. Positioning
 always pairs the name with the descriptor for searchability: "**Concord** — a modular
 collection of system overhauls." The name is deliberately not username-derived; the maintainer's identity
@@ -162,6 +167,7 @@ exactly four colors layered on the shared neutrals:
 | Respite | `#141a3d` / `#232e66` (midnight indigo) | `#7C8EE8` Moonlight Indigo | `#F2C14E` Candleglow |
 | Distillation | `#1a0a18` / `#2e102c` (plum) | `#C44DCC` Potion Magenta | `#E77C56` Copper |
 | Cultivation | `#101a0a` / `#1c2e10` (loam) | `#D9A441` Wheat Amber | `#7CB342` Leaf Green |
+| Instinct | `#1a120a` / `#2e2210` (umber) | `#E5709B` Heart Rose | `#B8622B` Hide Russet |
 
 Rules for coexistence when multiple mods are installed:
 
@@ -227,6 +233,7 @@ higher-priority sibling is absent or has its HUD disabled:
 | — | Respite | **No slot, by design.** Weariness rides the vanilla status-effect icons; time is read from the sky, the Chronometer block, and `/respite status`. |
 | — | Distillation | **No slot, by design.** Discovery hints and the recipes page live in the brewing screen; active effects use vanilla's own status-effect icons. |
 | — | Cultivation | **No slot, by design.** Soil is read from the ground itself (overlays, Jade/WTHIT, `/cultivation soil`); dietary fatigue lives on food tooltips; meal buffs use vanilla's own status-effect icons. |
+| — | Instinct | **No slot, by design.** Veterancy, bloodline grades, and downed status are properties of specific animals — read by crouch-inspecting them, Jade/WTHIT, and `/instinct info`. |
 
 This opt-out is a feature of the standard, not an omission: a mod takes a HUD slot only
 if it has *persistent ambient state* the player needs while walking around. Future mods
@@ -371,6 +378,12 @@ provider only exposes API). Value = player-facing payoff vs. cost.
 | 22 | Cultivation → Meridian | Scythes and high-tier hoes enter Meridian's enchanting flow through the vanilla enchantable tags — a charted enchant on a netherite scythe | **Med** | Item tags only (`#minecraft:enchantable/*`) | Nothing — zero-code integration |
 | 23 | Cultivation → Tribulation | Husk Hunger bites a monotonous diet harder — the ability reads the victim's dietary fatigue where present | **Low-Med** | `getFoodEffectiveness(ServerPlayer, ItemStack)` *(new, lands with implementation)* | A guarded read in the Husk ability scaling |
 | 24 | Cultivation → Distillation | Farm-grown reagents feed the still — brews list Cultivation produce among their ingredients where it fits | **Low-Med** | Item IDs only | Recipe entries in Distillation's own brew data |
+| 25 | Tribulation → Instinct | Pets forged in a harder world — veterancy accrues double while a pet's local difficulty tier is 3+ | **Med** | `getEffectiveLevel` / `getTier` *(exists)* | A veterancy-rate provider registration in `compat/tribulation/` |
+| 26 | Instinct → Mercantile | Reputation-gated butcher/farmer exclusive trades sell Vet Kits and Pedigree Treats — emeralds stock the vet's shelf | **Med** | Item IDs only (`instinct:vet_kit`, `instinct:pedigree_treat`) | Conditional exclusive-trades datapack entries |
+| 27 | Instinct → Prosperity | Vet Kits and Pedigree Treats surface in far-tier chests — the wilderness stocks the vet's shelf too | **Low-Med** | Item IDs only | Conditional `loot_injections` datapack entries |
+| 28 | Instinct → Distillation | A brewed remedy revives downed pets — Distillation's tonic joins the `#instinct:revive_items` convention tag | **Med** | The `#instinct:revive_items` tag | One tag entry in Distillation's own data |
+| 29 | Instinct → Cultivation | Farm produce feeds the trough — Cultivation crops join `#instinct:trough_food` and herds fatten on the harvest | **Low-Med** | The `#instinct:trough_food` tag | One tag entry in Cultivation's own data |
+| 30 | Respite → Instinct | Time-lapse nights age pets and finish breeding rests — veterancy and love cooldowns ride world game time unchanged | **Low** | Nothing — game time is shared vanilla state | Nothing — zero-code integration |
 
 Items 1+2 form the flagship pairing — both Tribulation and Prosperity scale with
 remoteness, though they anchor it differently: Tribulation measures distance from **world
@@ -391,9 +404,10 @@ members, present or future.
 
 ### 5.3 API surface per mod — shipped and remaining
 
-Marked *(exists)* / *(new)* against the current code. Three of the seven `api` packages
-are built (Respite's, Distillation's, and Cultivation's are specced, pre-implementation);
-what remains is a small set of targeted additions the integrations need.
+Marked *(exists)* / *(new)* against the current code. Three of the eight `api` packages
+are built (Respite's, Distillation's, Cultivation's, and Instinct's are specced,
+pre-implementation); what remains is a small set of targeted additions the integrations
+need.
 
 **Tribulation** (reference implementation — full surface shipped):
 - `getLevel`, `getTier`, `getEffectiveLevel(Entity)`, `getScaledTier`,
@@ -464,6 +478,17 @@ what remains is a small set of targeted additions the integrations need.
   observational `CultivationFoodCallback` — all *(new, land with implementation)*. No HUD
   accessors, by design (no slot). Cultivation is a provider in every current integration
   (matrix #20–#24), so it ships no compat code of its own.
+
+**Instinct** (specced, pre-implementation — its `design/SPEC.md` §Public API):
+- `com.rfizzle.instinct.api`: `isPet(EntityType)`, `isLivestock(EntityType)`,
+  `getGrade(Animal)`, `getVeterancyDays(TamableAnimal)`, `getVeterancyRank(TamableAnimal)`,
+  `isDowned(LivingEntity)`, `isTroughFed(Animal)`, the `setVeterancyRateProvider` hook
+  (the sanctioned mutation point — how the Tribulation compat accelerates accrual), plus
+  the `InstinctAnimalBredCallback`, `InstinctPetDownedCallback`, and
+  `InstinctPetRevivedCallback` events — all *(new, land with implementation)*. No HUD
+  accessors, by design (no slot). Instinct ships one guarded consumer of its own (matrix
+  #25, `compat/tribulation/`); its `#instinct:revive_items` and `#instinct:trough_food`
+  convention tags make #28/#29 pure data integrations, no API call needed.
 
 ### 5.4 Third-party integration story
 
@@ -709,19 +734,23 @@ decoration, Nether/End, exploration/structures, fishing-as-standalone (Prosperit
 already lists fishing loot as its own future consideration) — reasons in §8. Survivors,
 ranked:
 
-### 1. Farming, food & animals — **admitted as Cultivation.**
+### 1. Farming, food & animals — **admitted as Cultivation and Instinct.**
 
-This profile (working name *Husbandry*) graduated through the admission gate as
-**Cultivation**, the seventh member — the name the member chose within the register.
-Its silo boundary, integrations (matrix #20–#24), palette, and no-HUD-slot decision
-now live with the member: see §1, §3.1, §3.3, §5.2–§5.3, and
-`../cultivation/design/`. The member's shipped vision promises the crop half of the
-profile — living soil, harvests, food values, and cooking payoffs; animal breeding
-and animal products remain granted to this silo as Cultivation's future scope, not a
-new candidate's territory. The boundaries the profile drew stand in the member's own
-vision: villager identity and trades are Mercantile's (Cultivation touches only the
-farmer's fieldwork), difficulty and crop-trampling mobs are Tribulation's, chest loot
-is Prosperity's, and enchantment definitions are Meridian's.
+This profile (working name *Husbandry*) graduated through the admission gate as two
+members — the silo split at admission, each half owned whole. **Cultivation**, the
+seventh member, owns the crop half: living soil, harvests, food values, and cooking
+payoffs. **Instinct**, the eighth, owns the animal half: pet survival and veterancy,
+livestock bloodlines and breeding, herding, the feeding trough, and downed-pet
+revival. Their silo boundaries, integrations (matrix #20–#24 Cultivation, #25–#30
+Instinct), palettes, and no-HUD-slot decisions now live with the members: see §1,
+§3.1, §3.3, §5.2–§5.3, `../cultivation/design/`, and `../instinct/design/`. The
+boundary contract between the halves: Instinct never changes what grows or what food
+does when eaten; Cultivation never changes what animals do or drop; the trough
+consumes the harvest through Instinct's own convention tag (matrix #29). The
+boundaries the profile drew stand in both members' visions: villager identity and
+trades are Mercantile's (Cultivation touches only the farmer's fieldwork; Instinct
+never touches villagers), difficulty and crop-trampling mobs are Tribulation's, chest
+loot is Prosperity's, and enchantment definitions are Meridian's.
 
 ### 2. Brewing & status effects — **admitted as Distillation.**
 
@@ -788,8 +817,9 @@ belong to the world and Prosperity.
 Vitality — sleep, rest, and the passage of night — entered through this gate as
 **Respite**, the fifth member, without appearing on the original survey; the gate, not
 the list, is what admits a member. Brewing & status effects entered as
-**Distillation**, the sixth; farming and food as **Cultivation**, the seventh.
-Remaining candidates:
+**Distillation**, the sixth; farming and food as **Cultivation**, the seventh; the same
+profile's animal half as **Instinct**, the eighth — one profile, two members, the silo
+split deliberately at admission. Remaining candidates:
 
 **Tempest**, with Stratum held until
 its three-way boundary contract is drafted and Expedition on the Mojang-watchlist. Each

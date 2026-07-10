@@ -107,6 +107,10 @@ NAMED_COLORS = {
     "cultivation.harvest": "#edc35c",
     "cultivation.leaf": "#7cb342",
     "cultivation.sprout": "#a5d66a",
+    "instinct.rose": "#e5709b",
+    "instinct.rose-glow": "#f5a8c8",
+    "instinct.russet": "#b8622b",
+    "instinct.tan": "#d98a4a",
     # bare convenience aliases (unambiguous accents)
     "emerald": "#50c878",
     "emerald-bright": "#6ddb94",

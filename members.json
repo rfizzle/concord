@@ -102,6 +102,20 @@
       "conformance": {
         "layoutMigrated": true
       }
+    },
+    {
+      "id": "instinct",
+      "name": "Instinct",
+      "tagline": "Worth raising.",
+      "url": "https://instinct.rfizzle.com",
+      "store": {
+        "modrinth": { "slug": "instinct-husbandry-overhaul" },
+        "curseforge": { "slug": "instinct-husbandry-overhaul" }
+      },
+      "status": "in-development",
+      "conformance": {
+        "layoutMigrated": true
+      }
     }
   ],
   "packs": [

@@ -36,6 +36,7 @@ dark-surface pair + two accents.
 | Respite | `#141a3d` / `#232e66` | `#7C8EE8` Moonlight Indigo | `#F2C14E` Candleglow |
 | Distillation | `#1a0a18` / `#2e102c` | `#C44DCC` Potion Magenta | `#E77C56` Copper |
 | Cultivation | `#101a0a` / `#1c2e10` | `#D9A441` Wheat Amber | `#7CB342` Leaf Green |
+| Instinct | `#1a120a` / `#2e2210` | `#E5709B` Heart Rose | `#B8622B` Hide Russet |
 
 Reserved by shortlisted future members (`VISION.md` §9): Tempest — Storm Blue
 `#4A7FB5` / Lightning White `#E8F4FF`; Stratum — Deepslate Grey `#5B6470` / Copper
@@ -50,7 +51,9 @@ Orange `#E07A3F`.
    Prosperity; candle-with-indigo reads Respite; magenta-with-copper reads
    Distillation (the nearest hue, Meridian's purple, is disambiguated by both
    partners); amber-with-leaf reads Cultivation (the gold-family amber is
-   disambiguated by its green partner). Every new palette is checked against the
+   disambiguated by its green partner); rose-with-russet reads Instinct (the suite's
+   only pink — its russet sits near Distillation's lighter copper but the rose
+   partner disambiguates at a glance). Every new palette is checked against the
    full table above.
 3. **HUD tints** use the mod's accent/state colors inside the standard element only
    (see [`../HUD-STANDARD.md`](../HUD-STANDARD.md) §3).
@@ -88,6 +91,7 @@ The formula, the spec for every **new** member logo:
 | Respite | Hanging lantern in a circular indigo stone medallion over midnight brickwork |
 | Distillation | Alchemist's still in a rune-carved magenta medallion — copper alembic and coiled piping feeding glowing flasks, on plum brickwork |
 | Cultivation | Bound wheat sheaf with a scythe and hoe crossed behind it, on mossy-green brickwork breaking into tilled furrows |
+| Instinct | Glowing rose paw print pressed into a weathered stone slab, in a circular russet-leather-rimmed medallion over umber brickwork |
 
 One motif object per mod; the motif may recur in headers and flavor art but never in
 another mod's assets.
@@ -100,8 +104,8 @@ Two sizes per mod, both pixel art:
   `art/icon-128.png` in the mod repo.
 - **16×16 glyph** — HUD element (if the mod has a slot), Jade/recipe-viewer contexts.
   Master at `art/hud-icon-16.png`. Existing: Tribulation skull, Prosperity chest,
-  Respite lantern, Distillation bottle, and Cultivation sheaf (those three
-  Jade/recipe-viewer contexts only — no HUD slot).
+  Respite lantern, Distillation bottle, Cultivation sheaf, and Instinct paw (those
+  four Jade/recipe-viewer contexts only — no HUD slot).
   Needed: Mercantile (bell or emerald), Meridian (open book — Jade/EMI contexts only).
 
 Masters live in each repo's `art/`; `docs/` and `assets/` hold derived copies
