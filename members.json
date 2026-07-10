@@ -60,6 +60,20 @@
       "conformance": {
         "layoutMigrated": false
       }
+    },
+    {
+      "id": "respite",
+      "name": "Respite",
+      "tagline": "Make the night count.",
+      "url": "https://respite.rfizzle.com",
+      "store": {
+        "modrinth": { "slug": "respite-vitality-overhaul" },
+        "curseforge": { "slug": "respite-vitality-overhaul" }
+      },
+      "status": "in-development",
+      "conformance": {
+        "layoutMigrated": true
+      }
     }
   ],
   "packs": [

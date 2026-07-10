@@ -18,13 +18,14 @@
 
 **Collection tagline: *"The depth vanilla deserved."***
 
-Concord is a collection of four independent Fabric mods for Minecraft 1.21.1 that
+Concord is a collection of five independent Fabric mods for Minecraft 1.21.1 that
 each take one vanilla system the game shipped shallow — enchanting, villagers, difficulty,
-loot — and overhaul it. Meridian makes enchanting a system you
+loot, vitality — and overhaul it. Meridian makes enchanting a system you
 build toward instead of a slot machine. Mercantile makes villagers people you have a
 history with instead of lever-operated vending machines. Tribulation makes the world push
 back the longer and farther you survive. Prosperity makes every chest worth opening for
-every player who finds it. Each mod owns a single domain and goes as deep as that domain
+every player who finds it. Respite makes the night a lived part of survival instead of a
+skip button. Each mod owns a single domain and goes as deep as that domain
 needs — deepening, replacing, or running a system in parallel with vanilla's — but it stays
 in its lane: one domain per mod, no new dimension, and nothing another member must load.
 The discipline is structural, not cosmetic: a mod is free to ship its own high-quality
@@ -32,12 +33,13 @@ textures wherever they raise the bar (icons, HUD glyphs, items, blocks — even 
 vanilla mobs), as long as the result stays visually coherent with Minecraft. The pathway for that art is the design
 system's texture pipeline (see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8).
 
-The unified promise the four make *together* — that none makes alone — is a **complete
+The unified promise the members make *together* — that none makes alone — is a **complete
 risk/reward loop layered over unmodified vanilla survival**. Tribulation supplies the
 risk curve (time, distance, depth). Prosperity supplies the reward curve on the same
 distance axis. Meridian supplies the power progression that lets you keep pace with the
 risk. Mercantile supplies the economy that converts surplus into what you're missing.
-Install all four and survival Minecraft has the escalation arc of a roguelike without a
+Respite supplies the recovery beat — the night that restores you between runs.
+Install all five and survival Minecraft has the escalation arc of a roguelike without a
 single new block of HUD clutter beyond a small, opt-out icon strip. Install any one and
 it stands entirely on its own.
 
@@ -51,7 +53,7 @@ mod's features and nothing else. A server admin can adopt the collection one mod
 time. A third-party mod can integrate with any member using the identical pattern the
 siblings use — the suite has no private handshakes.
 
-The four taglines sit under the collection's one line:
+The member taglines sit under the collection's one line:
 
 | | Verb | Tagline |
 |---|---|---|
@@ -59,18 +61,20 @@ The four taglines sit under the collection's one line:
 | **Meridian** | Enchant | "Chart your enchantments." |
 | **Mercantile** | Trade | "Every villager remembers." |
 | **Prosperity** | Discover | "Every chest, yours to discover." |
+| **Respite** | Rest | "Make the night count." |
 
 ---
 
 ## 2. Narrative & Naming
 
-### The four narratives as one loop
+### The five narratives as one loop
 
-Survive / Enchant / Trade / Discover are the four verbs of a single survival session,
-in the order a player actually lives them: the world threatens you (**Tribulation**),
-you grow stronger to meet it (**Meridian**), you convert surplus into what you lack
-(**Mercantile**), and you push outward for more (**Prosperity**) — which raises the
-threat, closing the loop. Marketing copy for any one mod should gesture at this loop in
+Survive / Enchant / Trade / Discover / Rest are the five verbs of a single survival
+session, in the order a player actually lives them: the world threatens you
+(**Tribulation**), you grow stronger to meet it (**Meridian**), you convert surplus into
+what you lack (**Mercantile**), you push outward for more (**Prosperity**) — which raises
+the threat, closing the loop — and you rest to run it again (**Respite**), the night that
+turns one day's loop into the next. Marketing copy for any one mod should gesture at this loop in
 exactly one sentence ("Part of **Concord** — a modular collection of system overhauls.
 Install any, combine all.") and no more; each mod's page sells that mod.
 
@@ -79,7 +83,8 @@ Install any, combine all.") and no more; each mod's page sells that mod.
 The collection is named **Concord** — *agreement and harmony between independent
 parties* — which is the architecture thesis itself: independent gates, optional
 integration, no hard dependencies. It keeps the established register (a single weighty
-Latinate abstract noun, alongside Tribulation, Meridian, Mercantile, Prosperity) while
+Latinate abstract noun, alongside Tribulation, Meridian, Mercantile, Prosperity,
+Respite) while
 naming what the members share rather than competing with what each owns. Positioning
 always pairs the name with the descriptor for searchability: "**Concord** — a modular
 collection of system overhauls." The name is deliberately not username-derived; the maintainer's identity
@@ -89,7 +94,7 @@ Apothecary, Tempest, Stratum).
 
 ### Tagline pattern
 
-The four taglines follow a codified pattern: **a short declarative or imperative
+The taglines follow a codified pattern: **a short declarative or imperative
 sentence about the player's relationship to the system** — "Survive what comes
 next," "Chart your enchantments," "Every chest, yours to discover," "Every
 villager remembers." Mercantile's line states the reputation thesis in three
@@ -121,12 +126,12 @@ Shared across all marketing, docs, and in-game text:
 
 ### 3.1 Color: shared tokens + per-mod signature pairs
 
-All four mods already converge on identical neutral/surface tokens — this is the design
+All member mods converge on identical neutral/surface tokens — this is the design
 system's foundation, canonicalized in this repo as
 [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) + [`docs/tokens.css`](docs/tokens.css)
 (hot-linked by the mod sites, never copied):
 
-**Shared tokens (identical across all four sites today):**
+**Shared tokens (identical across all member sites):**
 
 | Token | Hex | Role |
 |---|---|---|
@@ -146,6 +151,7 @@ exactly four colors layered on the shared neutrals:
 | Mercantile | *(neutral — none today)* | `#50C878` Emerald | `#6DDB94` Emerald Bright |
 | Tribulation | `#1a0a0a` / `#2e1010` (crimson) | `#DC143C` Crimson | `#FF6B35` Ember |
 | Prosperity | `#1a1408` / `#2e2510` (bronze) | `#DAA520`→`#FFD700` Gold | `#4EEAED` Diamond Cyan |
+| Respite | `#141a3d` / `#232e66` (midnight indigo) | `#7C8EE8` Moonlight Indigo | `#F2C14E` Candleglow |
 
 Rules for coexistence when multiple mods are installed:
 
@@ -208,6 +214,7 @@ higher-priority sibling is absent or has its HUD disabled:
 | 2 | Mercantile | Reputation tier (`Trusted`), emerald glyph |
 | 3 | Prosperity | Current distance tier (`Frontier`), chest glyph, tier-color tint |
 | — | Meridian | **No slot, by design.** Meridian's info lives in the enchanting screen, Jade/WTHIT, and recipe viewers. |
+| — | Respite | **No slot, by design.** Weariness rides the vanilla status-effect icons; time is read from the sky, the Chronometer block, and `/respite status`. |
 
 This opt-out is a feature of the standard, not an omission: a mod takes a HUD slot only
 if it has *persistent ambient state* the player needs while walking around. Future mods
@@ -247,8 +254,8 @@ tokens, `<mod>.rfizzle.com`. Standard page set:
 Tribulation's missing specced pages (changelog, mob reference, apple-touch icon) are the
 template's punch list — finish them there first since it's the reference site.
 
-**Cross-mod footer (new, all four sites):** a "Part of **Concord** — a modular
-collection of system overhauls" strip — four 16×16 glyphs + names + one-line taglines, current mod
+**Cross-mod footer (all member sites):** a "Part of **Concord** — a modular
+collection of system overhauls" strip — member 16×16 glyphs + names + one-line taglines, current mod
 highlighted, linking to the sibling sites and the Concord landing page. This is the entire cross-promotion surface;
 no banners, no popups.
 
@@ -260,8 +267,8 @@ mechanical sentence; OG image = full logo on Obsidian at 1200×630; canonical do
 
 Recommendation: **one lightweight page served from this repo's `docs/`** at
 **`concord.rfizzle.com`** (matching the `<mod>.rfizzle.com` pattern) — hero with the
-collection tagline, four logo cards, a visual of the integration loop
-(Survive → Enchant → Trade → Discover), an "install any, combine all" explainer, and the
+collection tagline, member logo cards, a visual of the integration loop
+(Survive → Enchant → Trade → Discover → Rest), an "install any, combine all" explainer, and the
 integration matrix in friendly form. One page, same design tokens, near-zero maintenance.
 It is warranted because the suite's core differentiator — *mods that light up together* —
 currently has nowhere to be explained. Pair it with a **Modrinth Collection** and
@@ -340,6 +347,9 @@ provider only exposes API). Value = player-facing payoff vs. cost.
 | 10 | Mercantile → Prosperity | Reputation adds loot luck | **Rejected** → §8 (silo bleed: village standing should not change wilderness chests) |
 | 11 | Mercantile → Meridian | Reputation discounts enchanting costs | **Rejected** → §8 (wrong currency — enchanting spends XP, not standing) |
 | 12 | Prosperity → Meridian | Distance tier biases table enchant quality | **Rejected** → §8 (enchanting is location-built via shelves, not location-found; would undercut Meridian's own progression) |
+| 13 | Tribulation → Respite | Tribulation's mob scaling reaches Respite's altitude/new-moon phantoms automatically — they are plain vanilla phantoms, so a hardened world's peaks are real fights | **Med** | `getEffectiveLevel` scaling *(exists — applies to the vanilla phantom type unchanged)* | Nothing — zero-code integration |
+| 14 | Respite → Mercantile | Reputation-gated farmer/wandering-trader exclusive trades sell cocoa and Caffeinated Brews — emeralds buy safe all-nighters | **Med** | Item IDs only (`respite:caffeinated_brew`, `respite:unsteeped_brew`) | Conditional exclusive-trades datapack entries |
+| 15 | Respite → Prosperity | Chronometers and Caffeinated Brews turn up in far-tier chests — the deep wilderness keeps its own time | **Low-Med** | Item IDs only | Conditional `loot_injections` datapack entries |
 
 Items 1+2 form the flagship pairing — both Tribulation and Prosperity scale with
 remoteness, though they anchor it differently: Tribulation measures distance from **world
@@ -360,8 +370,9 @@ members, present or future.
 
 ### 5.3 API surface per mod — shipped and remaining
 
-Marked *(exists)* / *(new)* against the current code. Three of the four `api` packages are
-built; what remains is a small set of targeted additions the integrations need.
+Marked *(exists)* / *(new)* against the current code. Three of the five `api` packages are
+built (Respite's is specced, pre-implementation); what remains is a small set of targeted
+additions the integrations need.
 
 **Tribulation** (reference implementation — full surface shipped):
 - `getLevel`, `getTier`, `getEffectiveLevel(Entity)`, `getScaledTier`,
@@ -407,13 +418,20 @@ built; what remains is a small set of targeted additions the integrations need.
 - The full §5.1 conventions applied from the first commit (a local `@Stable` marker, not
   a shared `@ApiStatus.Stable`, per the no-shared-jar rule)
 
+**Respite** (specced, pre-implementation — its `design/SPEC.md` §Public API):
+- `com.rfizzle.respite.api`: `getTimeLapseRate(ServerLevel)`, `isTimeLapseActive(ServerLevel)`,
+  `getTicksSinceRest(ServerPlayer)`, `isWeary(ServerPlayer)`, `getChronometerSignal(Level)`,
+  plus the `RespiteTimeLapseCallback` and `RespiteRestCallback` events — all *(new, land
+  with implementation)*. No HUD accessors, by design (no slot). Respite is a provider in
+  every current integration (matrix #13–#15), so it ships no compat code of its own.
+
 ### 5.4 Third-party integration story
 
 An outside mod integrates with any member identically: add the Modrinth maven
 `modCompileOnly` dep, guard with `isModLoaded`, read the api package, optionally register
 a provider/callback. Document the pattern **once** on the collection landing page's API
 section with one worked example (the Tribulation README's developer section is the seed),
-and link it from every per-mod API page. The suite's pitch to third parties: *four mods,
+and link it from every per-mod API page. The suite's pitch to third parties: *five mods,
 one integration pattern* — learn it once, integrate with all, and any future member (§9)
 works the same way. Prosperity's `LootModifierContext.customData()` CompoundTag is the
 designated escape hatch for inter-mod context the APIs don't model.
@@ -577,14 +595,14 @@ Ordered; each step's dependency noted.
 5. **Design system & website rollout (parallel track, low risk).** The design tokens are
    [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) + [`docs/tokens.css`](docs/tokens.css).
    Finish the Tribulation site punch list; propagate the template; add the cross-mod
-   footer to all four; build the collection landing page; create the Modrinth Collection;
-   Mercantile surface tint.
-   *Dependency: none on code — start anytime; footer links want all four sites
+   footer to every member site; build the collection landing page; create the Modrinth
+   Collection; Mercantile surface tint.
+   *Dependency: none on code — start anytime; footer links want the member sites
    template-consistent first.*
 6. **MP-fairness pass (after parity).** Tribulation shared-progression mode, Mercantile
    happiness, Prosperity refresh-mechanic review with real server feedback.
-7. **Member 5 evaluation (last).** Only after Prosperity ships and integration wave 1
-   proves the pattern end-to-end — see §9 shortlist.
+7. **Next-member evaluation (last).** Only after integration wave 1 proves the pattern
+   end-to-end — see §9 shortlist.
 
 The critical path is **1 → 3 → 4**: API standard, Prosperity build, integrations.
 Everything else is parallelizable.
@@ -633,7 +651,7 @@ former purity bans are now conventions, marked *(convention)*. What stays out:
    Prosperity exists to remove.
 10. **A redstone/automation overhaul as a future member.** Wrong audience register for
     the suite, brutal vanilla-parity maintenance (Mojang actively iterates redstone), and
-    near-zero integration surface with the existing four. Likewise **building/decoration**
+    near-zero integration surface with the existing members. Likewise **building/decoration**
     (pure content, no system, no API story) and a **Nether/End progression overhaul**
     (a dimension is a *place*, not a *system* — it would cut across every existing silo).
 11. **Exploration/structures as a fifth silo.** Its natural features are already owned:
@@ -704,11 +722,13 @@ ranked:
 
 ### 3. Tempest — weather & sky. **Priority: Med.**
 
-- **Silo & boundary:** owns weather event variety, weather gameplay consequences, and the
-  day/night/moon axis. Does NOT touch: seasons (changes vanilla's core rhythm — cross-cuts
-  every silo; explicitly out), mob spawn *scaling* (Tribulation), crop growth rules (would
-  collide with Husbandry — if both exist, Tempest exposes weather state and Husbandry
-  consumes it).
+- **Silo & boundary:** owns weather event variety and weather gameplay consequences.
+  Does NOT touch: seasons (changes vanilla's core rhythm — cross-cuts every silo;
+  explicitly out), mob spawn *scaling* (Tribulation), crop growth rules (would collide
+  with Husbandry — if both exist, Tempest exposes weather state and Husbandry consumes
+  it), and not sleep, rest, or how the night passes — Respite owns those. The
+  day/night/moon axis itself is shared vanilla state: Tempest may *read* it (as Respite
+  does, and already exposes as a Chronometer signal accessor), never own or reshape it.
 - **Vanilla pain point:** weather is a screen filter. Rain means nothing, thunder means
   one mob conversion. Thesis: weather as *event* — meaningful storms, fog mornings, moon
   phases that matter — all atmospheric-consequence, no new blocks.
@@ -751,7 +771,11 @@ ranked:
 
 ### The shortlist
 
-**After Prosperity ships: Husbandry → Apothecary → Tempest**, with Stratum held until
+Vitality — sleep, rest, and the passage of night — entered through this gate as
+**Respite**, the fifth member, without appearing on the original survey; the gate, not
+the list, is what admits a member. Remaining candidates:
+
+**Husbandry → Apothecary → Tempest**, with Stratum held until
 its three-way boundary contract is drafted and Expedition on the Mojang-watchlist. Each
 follows the same admission path: DESIGN.md + SPEC.md first (the Prosperity model proved
 this works), API designed from day one, no HUD slot unless it carries persistent ambient

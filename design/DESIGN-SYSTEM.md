@@ -33,6 +33,7 @@ dark-surface pair + two accents.
 | Mercantile | `#0a140d` / `#10241a` *(proposed — currently neutral)* | `#50C878` Emerald | `#6DDB94` Emerald Bright |
 | Tribulation | `#1a0a0a` / `#2e1010` | `#DC143C` Crimson | `#FF6B35` Ember |
 | Prosperity | `#1a1408` / `#2e2510` | `#DAA520`→`#FFD700` Gold | `#4EEAED` Diamond Cyan |
+| Respite | `#141a3d` / `#232e66` | `#7C8EE8` Moonlight Indigo | `#F2C14E` Candleglow |
 
 Reserved by shortlisted future members (`VISION.md` §9): Husbandry — Wheat Amber
 `#D9A441` / Leaf Green `#7CB342`; Apothecary — Potion Magenta `#C44DCC` / Copper
@@ -45,7 +46,8 @@ Deepslate Grey `#5B6470` / Copper Orange `#E07A3F`.
    UI, site, and HUD contexts.
 2. **The pairing rule:** no two mods may share *both* accents; sharing one is fine if
    the pair is distinct. Gold-with-violet reads Meridian; gold-with-cyan reads
-   Prosperity. Every new palette is checked against the full table above.
+   Prosperity; candle-with-indigo reads Respite. Every new palette is checked against
+   the full table above.
 3. **HUD tints** use the mod's accent/state colors inside the standard element only
    (see [`../HUD-STANDARD.md`](../HUD-STANDARD.md) §3).
 
@@ -79,6 +81,7 @@ The formula, the spec for every **new** member logo:
 | Tribulation | Hourglass, heart above, skulls below |
 | Prosperity | Overflowing treasure chest, ornate key crowning the frame |
 | Mercantile | Market stall with hanging scales, in a circular emerald-rimmed medallion on green brickwork |
+| Respite | Hanging lantern in a circular indigo stone medallion over midnight brickwork |
 
 One motif object per mod; the motif may recur in headers and flavor art but never in
 another mod's assets.
@@ -90,7 +93,8 @@ Two sizes per mod, both pixel art:
 - **128×128 mod icon** — `fabric.mod.json`, store listings. Master at
   `art/icon-128.png` in the mod repo.
 - **16×16 glyph** — HUD element (if the mod has a slot), Jade/recipe-viewer contexts.
-  Master at `art/hud-icon-16.png`. Existing: Tribulation skull, Prosperity chest.
+  Master at `art/hud-icon-16.png`. Existing: Tribulation skull, Prosperity chest,
+  Respite lantern (Jade/recipe-viewer contexts only — no HUD slot).
   Needed: Mercantile (bell or emerald), Meridian (open book — Jade/EMI contexts only).
 
 Masters live in each repo's `art/`; `docs/` and `assets/` hold derived copies
