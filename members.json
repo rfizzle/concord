@@ -74,6 +74,20 @@
       "conformance": {
         "layoutMigrated": true
       }
+    },
+    {
+      "id": "distillation",
+      "name": "Distillation",
+      "tagline": "Every drop counts.",
+      "url": "https://distillation.rfizzle.com",
+      "store": {
+        "modrinth": { "slug": "distillation-alchemy-overhaul" },
+        "curseforge": { "slug": "distillation-alchemy-overhaul" }
+      },
+      "status": "in-development",
+      "conformance": {
+        "layoutMigrated": true
+      }
     }
   ],
   "packs": [

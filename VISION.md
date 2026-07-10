@@ -18,14 +18,15 @@
 
 **Collection tagline: *"The depth vanilla deserved."***
 
-Concord is a collection of five independent Fabric mods for Minecraft 1.21.1 that
+Concord is a collection of six independent Fabric mods for Minecraft 1.21.1 that
 each take one vanilla system the game shipped shallow — enchanting, villagers, difficulty,
-loot, vitality — and overhaul it. Meridian makes enchanting a system you
+loot, vitality, alchemy — and overhaul it. Meridian makes enchanting a system you
 build toward instead of a slot machine. Mercantile makes villagers people you have a
 history with instead of lever-operated vending machines. Tribulation makes the world push
 back the longer and farther you survive. Prosperity makes every chest worth opening for
 every player who finds it. Respite makes the night a lived part of survival instead of a
-skip button. Each mod owns a single domain and goes as deep as that domain
+skip button. Distillation makes brewing a craft the stand itself teaches instead of a
+wiki tab. Each mod owns a single domain and goes as deep as that domain
 needs — deepening, replacing, or running a system in parallel with vanilla's — but it stays
 in its lane: one domain per mod, no new dimension, and nothing another member must load.
 The discipline is structural, not cosmetic: a mod is free to ship its own high-quality
@@ -39,7 +40,8 @@ risk curve (time, distance, depth). Prosperity supplies the reward curve on the 
 distance axis. Meridian supplies the power progression that lets you keep pace with the
 risk. Mercantile supplies the economy that converts surplus into what you're missing.
 Respite supplies the recovery beat — the night that restores you between runs.
-Install all five and survival Minecraft has the escalation arc of a roguelike without a
+Distillation supplies the consumable edge — the bottled preparation you spend going in.
+Install all six and survival Minecraft has the escalation arc of a roguelike without a
 single new block of HUD clutter beyond a small, opt-out icon strip. Install any one and
 it stands entirely on its own.
 
@@ -62,17 +64,19 @@ The member taglines sit under the collection's one line:
 | **Mercantile** | Trade | "Every villager remembers." |
 | **Prosperity** | Discover | "Every chest, yours to discover." |
 | **Respite** | Rest | "Make the night count." |
+| **Distillation** | Brew | "Every drop counts." |
 
 ---
 
 ## 2. Narrative & Naming
 
-### The five narratives as one loop
+### The six narratives as one loop
 
-Survive / Enchant / Trade / Discover / Rest are the five verbs of a single survival
+Survive / Enchant / Brew / Trade / Discover / Rest are the six verbs of a single survival
 session, in the order a player actually lives them: the world threatens you
-(**Tribulation**), you grow stronger to meet it (**Meridian**), you convert surplus into
-what you lack (**Mercantile**), you push outward for more (**Prosperity**) — which raises
+(**Tribulation**), you grow stronger to meet it (**Meridian**), you bottle the edge
+you'll need (**Distillation**), you convert surplus into what you lack
+(**Mercantile**), you push outward for more (**Prosperity**) — which raises
 the threat, closing the loop — and you rest to run it again (**Respite**), the night that
 turns one day's loop into the next. Marketing copy for any one mod should gesture at this loop in
 exactly one sentence ("Part of **Concord** — a modular collection of system overhauls.
@@ -84,13 +88,13 @@ The collection is named **Concord** — *agreement and harmony between independe
 parties* — which is the architecture thesis itself: independent gates, optional
 integration, no hard dependencies. It keeps the established register (a single weighty
 Latinate abstract noun, alongside Tribulation, Meridian, Mercantile, Prosperity,
-Respite) while
+Respite, Distillation) while
 naming what the members share rather than competing with what each owns. Positioning
 always pairs the name with the descriptor for searchability: "**Concord** — a modular
 collection of system overhauls." The name is deliberately not username-derived; the maintainer's identity
 spans more than these mods. Future members must keep the naming register: one weighty
 abstract noun, no compounds, no "Craft"/"Plus" suffixes (see §9 candidates: Husbandry,
-Apothecary, Tempest, Stratum).
+Tempest, Stratum).
 
 ### Tagline pattern
 
@@ -152,6 +156,7 @@ exactly four colors layered on the shared neutrals:
 | Tribulation | `#1a0a0a` / `#2e1010` (crimson) | `#DC143C` Crimson | `#FF6B35` Ember |
 | Prosperity | `#1a1408` / `#2e2510` (bronze) | `#DAA520`→`#FFD700` Gold | `#4EEAED` Diamond Cyan |
 | Respite | `#141a3d` / `#232e66` (midnight indigo) | `#7C8EE8` Moonlight Indigo | `#F2C14E` Candleglow |
+| Distillation | `#1a0a18` / `#2e102c` (plum) | `#C44DCC` Potion Magenta | `#E77C56` Copper |
 
 Rules for coexistence when multiple mods are installed:
 
@@ -215,6 +220,7 @@ higher-priority sibling is absent or has its HUD disabled:
 | 3 | Prosperity | Current distance tier (`Frontier`), chest glyph, tier-color tint |
 | — | Meridian | **No slot, by design.** Meridian's info lives in the enchanting screen, Jade/WTHIT, and recipe viewers. |
 | — | Respite | **No slot, by design.** Weariness rides the vanilla status-effect icons; time is read from the sky, the Chronometer block, and `/respite status`. |
+| — | Distillation | **No slot, by design.** Discovery hints and the recipes page live in the brewing screen; active effects use vanilla's own status-effect icons. |
 
 This opt-out is a feature of the standard, not an omission: a mod takes a HUD slot only
 if it has *persistent ambient state* the player needs while walking around. Future mods
@@ -350,6 +356,10 @@ provider only exposes API). Value = player-facing payoff vs. cost.
 | 13 | Tribulation → Respite | Tribulation's mob scaling reaches Respite's altitude/new-moon phantoms automatically — they are plain vanilla phantoms, so a hardened world's peaks are real fights | **Med** | `getEffectiveLevel` scaling *(exists — applies to the vanilla phantom type unchanged)* | Nothing — zero-code integration |
 | 14 | Respite → Mercantile | Reputation-gated farmer/wandering-trader exclusive trades sell cocoa and Caffeinated Brews — emeralds buy safe all-nighters | **Med** | Item IDs only (`respite:caffeinated_brew`, `respite:unsteeped_brew`) | Conditional exclusive-trades datapack entries |
 | 15 | Respite → Prosperity | Chronometers and Caffeinated Brews turn up in far-tier chests — the deep wilderness keeps its own time | **Low-Med** | Item IDs only | Conditional `loot_injections` datapack entries |
+| 16 | Tribulation → Distillation | Shard debuffs gain brewable antidotes made from the shard items themselves — a hardened world's afflictions become curable, surgically | **Med-High** | Effect + item IDs only | `compat/tribulation/` antidote registration through Distillation's own `registerAntidote` |
+| 17 | Distillation → Tribulation | High-tier scaled witches throw Distillation brews (premium and lingering) — the witch arsenal keeps pace with the difficulty curve | **Med** | Potion IDs only | A guarded throw-pool extension in the witch scaling |
+| 18 | Distillation → Mercantile | Cleric exclusive trades sell rare brewing reagents at high reputation — emeralds buy the alchemy endgame's inputs | **Med** | Item IDs only | Conditional exclusive-trades datapack entries |
+| 19 | Distillation → Prosperity | Rare reagents surface in far-tier chests — exploration feeds the still | **Low-Med** | Item IDs only | Conditional `loot_injections` datapack entries |
 
 Items 1+2 form the flagship pairing — both Tribulation and Prosperity scale with
 remoteness, though they anchor it differently: Tribulation measures distance from **world
@@ -370,9 +380,9 @@ members, present or future.
 
 ### 5.3 API surface per mod — shipped and remaining
 
-Marked *(exists)* / *(new)* against the current code. Three of the five `api` packages are
-built (Respite's is specced, pre-implementation); what remains is a small set of targeted
-additions the integrations need.
+Marked *(exists)* / *(new)* against the current code. Three of the six `api` packages are
+built (Respite's and Distillation's are specced, pre-implementation); what remains is a
+small set of targeted additions the integrations need.
 
 **Tribulation** (reference implementation — full surface shipped):
 - `getLevel`, `getTier`, `getEffectiveLevel(Entity)`, `getScaledTier`,
@@ -425,13 +435,23 @@ additions the integrations need.
   with implementation)*. No HUD accessors, by design (no slot). Respite is a provider in
   every current integration (matrix #13–#15), so it ships no compat code of its own.
 
+**Distillation** (specced, pre-implementation — its `design/SPEC.md` §Public API):
+- `com.rfizzle.distillation.api`: `isDiscovered(ServerPlayer, ResourceLocation)`,
+  `getDiscoveredRecipes(ServerPlayer)`, `getRecipeIds()`, and
+  `registerAntidote(ResourceLocation, Ingredient)` (the sanctioned additive registration
+  point — how matrix #16 and any third-party debuff get a cure), plus the
+  `DistillationBrewCallback` and `DistillationDiscoveryCallback` events — all *(new, land
+  with implementation)*. No HUD accessors, by design (no slot). Distillation ships one
+  guarded consumer of its own (matrix #16, `compat/tribulation/`); in every other current
+  integration it is the provider.
+
 ### 5.4 Third-party integration story
 
 An outside mod integrates with any member identically: add the Modrinth maven
 `modCompileOnly` dep, guard with `isModLoaded`, read the api package, optionally register
 a provider/callback. Document the pattern **once** on the collection landing page's API
 section with one worked example (the Tribulation README's developer section is the seed),
-and link it from every per-mod API page. The suite's pitch to third parties: *five mods,
+and link it from every per-mod API page. The suite's pitch to third parties: *six mods,
 one integration pattern* — learn it once, integrate with all, and any future member (§9)
 works the same way. Prosperity's `LootModifierContext.customData()` CompoundTag is the
 designated escape hatch for inter-mod context the APIs don't model.
@@ -696,29 +716,16 @@ ranked:
 - **Verdict: High.** Big untouched silo, four natural integrations, zero overlap, a clean
   single-domain overhaul. The strongest "what comes after Prosperity" candidate.
 
-### 2. Apothecary — brewing & status effects. **Priority: High (close second).**
+### 2. Brewing & status effects — **admitted as Distillation.**
 
-- **Silo & boundary:** owns the brewing stand, potion recipes/durations, status-effect
-  behavior, and effect application UX. Does NOT touch: enchantment effects (Meridian),
-  Tribulation's shard debuffs (it *consumes* effect definitions, never redefines
-  Tribulation's), witch loot (Prosperity/Tribulation).
-- **Vanilla pain point:** brewing is the least-used major system — recipe-wiki dependence,
-  awkward batch sizes, and most potions lose to a golden apple. Thesis: in-game recipe
-  discoverability (the Meridian "clues" philosophy applied to the brewing stand),
-  worthwhile niche potions from existing ingredients, and durations that respect how
-  people actually play.
-- **Narrative & motif:** working name **Apothecary** (alternatives: Tincture, Panacea).
-  Tagline candidate: *"Every drop counts."* Color signature: **Potion Magenta
-  (`#C44DCC`) / Copper (`#E77C56`)** — magenta-with-copper clears Meridian's
-  purple-with-gold under the pairing rule. Motif: brewing stand silhouette in the stone
-  frame. No HUD slot (effects already have vanilla HUD icons — respect them).
-- **Integration potential:** Tribulation witches throw Apothecary potions at high tiers
-  and shard debuffs become curable via specific brews (consumer-side, guarded);
-  Mercantile cleric trades brewing ingredients by reputation; Prosperity injects rare
-  reagents at distance; Meridian boundary is the one to police (potion effects vs.
-  enchant effects must never share definitions).
-- **Verdict: High**, second only because its silo is smaller than Husbandry's and the
-  Meridian-adjacent "magic" territory needs more careful fencing.
+This profile (working name *Apothecary*) graduated through the admission gate as
+**Distillation**, the sixth member — the name the member chose within the register.
+Its silo boundary, integrations (matrix #16–#19), palette, and no-HUD-slot decision
+now live with the member: see §1, §3.1, §3.3, §5.2–§5.3, and
+`../distillation/design/`. The boundary the profile drew stands verbatim in the
+member's own vision: enchantment effects are Meridian's (the two magics never share
+definitions), Tribulation's debuffs are consumed but never redefined, and drops/loot
+belong to the world and Prosperity.
 
 ### 3. Tempest — weather & sky. **Priority: Med.**
 
@@ -741,7 +748,7 @@ ranked:
   loot injections). Weak as a consumer.
 - **Verdict: Med.** Great provider surface and clean silo, but highest un-vanilla risk in
   the shortlist — every feature needs the "could Mojang have shipped this?" test applied
-  twice. Sequence after Husbandry/Apothecary.
+  twice. Sequence after Husbandry.
 
 ### 4. Stratum — mining & geology. **Priority: Med-Low.**
 
@@ -773,9 +780,10 @@ ranked:
 
 Vitality — sleep, rest, and the passage of night — entered through this gate as
 **Respite**, the fifth member, without appearing on the original survey; the gate, not
-the list, is what admits a member. Remaining candidates:
+the list, is what admits a member. Brewing & status effects entered as
+**Distillation**, the sixth. Remaining candidates:
 
-**Husbandry → Apothecary → Tempest**, with Stratum held until
+**Husbandry → Tempest**, with Stratum held until
 its three-way boundary contract is drafted and Expedition on the Mojang-watchlist. Each
 follows the same admission path: DESIGN.md + SPEC.md first (the Prosperity model proved
 this works), API designed from day one, no HUD slot unless it carries persistent ambient
