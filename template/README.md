@@ -3,8 +3,10 @@
 One template, every mod site. A member repo holds **only content and colors**
 (`site/` directory); this template turns it into the full static site at build
 time via [Eleventy](https://www.11ty.dev/) + Nunjucks. Output is plain HTML +
-CDN Tailwind — identical in character to the hand-written sites it replaces,
-with full SEO/OG support.
+a Tailwind stylesheet compiled at build time (no CDN, no client-side JS
+required for styling), with full SEO/OG support. Utilities reference the theme
+CSS variables, so each mod's colors apply via a small inline `:root` block
+without recompiling per theme.
 
 ## How a mod uses it
 
@@ -79,6 +81,9 @@ keep the JSON readable).
 
 ### Block types
 
+A block whose `type` isn't in this table fails the build with an error naming
+the page and section — content never silently renders as nothing.
+
 | type | shape | renders |
 |---|---|---|
 | `prose` | `{ html: [str], wide? }` | paragraphs |
@@ -102,4 +107,5 @@ Header nav + mobile menu (from `nav`), the cross-mod Concord footer strip
 updates every site's footer on the next rebuild), the home page `<title>`
 (`Name — Tagline`, single-sourced from `members.json`; other pages keep their
 own `metaTitle`; the tagline is also exposed to templates as `tagline`),
-canonical/OG/Twitter meta, `sitemap.xml`, `robots.txt`, `CNAME`.
+canonical/OG/Twitter meta, a themed `404.html` (served by GitHub Pages for
+unknown paths), `sitemap.xml`, `robots.txt`, `CNAME`.
