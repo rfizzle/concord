@@ -148,10 +148,11 @@ that guard protects the hard pixel edges, so don't work around it. If an upscale
 tier looks too blocky for its use, author the next native tier down rather than
 switching to smooth scaling (smoothing breaks the pixel-art aesthetic).
 
-A grid too large or too regular to hand-type (a 128/256 master, rings/rays/
-gradients, or embedding an existing raster) is authored as a **generator** —
-an `art/glyphs/<name>.gen.py` that emits the `.glyph`, both committed. See
-"Generated specs" in the `mc-textures` skill.
+To spec an existing raster master, run `glyph.py --from-png master.png` — it
+emits a `.glyph` that re-renders pixel-identical. A grid too large or too
+regular to hand-type (a 128/256 master, rings/rays/gradients) is authored as a
+**generator** — an `art/glyphs/<name>.gen.py` that emits the `.glyph`, both
+committed. See "Generated specs" in the `mc-textures` skill.
 
 ## Mode: animation
 

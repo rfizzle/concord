@@ -25,6 +25,12 @@ integer multiple of the native grid), the honest way to fill the large tiers of
 a 16/32/64/128/256 size ladder from a native master — for static glyphs and
 animated strips alike.
 
+`--from-png IN.png` runs the pipeline in reverse: it transcribes a finished
+raster master into a .glyph spec (transparent pixels -> '.', each distinct
+color -> a legend token with a raw-hex entry) so a texture that predates its
+spec joins the repeatability rule. The emitted spec re-renders pixel-identical
+— verified before it is written.
+
 Zero dependencies: every PNG/APNG is encoded with the stdlib (`zlib` + manual
 chunks), so this runs anywhere Python 3 does, no `pip install` required.
 
@@ -64,6 +70,7 @@ USAGE
     python3 .ai/skills/mc-textures/scripts/glyph.py - < SPEC.glyph             # spec on stdin
     python3 .ai/skills/mc-textures/scripts/glyph.py SPEC.glyph --preview-scale 24 --no-preview
     python3 .ai/skills/mc-textures/scripts/glyph.py SPEC.glyph --tile-preview  # + 2×2 tiled seam check (block textures)
+    python3 .ai/skills/mc-textures/scripts/glyph.py --from-png MASTER.png      # raster -> .glyph spec (transcription)
     python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors              # dump the named palette
 
 Every render also prints read-back stats (opaque color count, edge margin vs
@@ -135,6 +142,15 @@ NAMED_COLORS = {
 TRANSPARENT = (0, 0, 0, 0)
 DEFAULT_FRAMETIME = 6  # ticks (0.3s) — a calm, readable default pulse
 _DIRECTIVES = ("grid:", "frame:")
+
+# Legend chars handed out by --from-png transcription, in this order. Excludes
+# '.' (transparent), '#' (comment), ':' (directive-shaped rows), and whitespace.
+TOKEN_POOL = "".join(dict.fromkeys(
+    "@$%&*+=oOxX0123456789"
+    "abcdefghijklmnpqrstuvwyz"
+    "ABCDEFGHIJKLMNPQRSTUVWYZ"
+    "?!~^<>()[]{}|/-_"
+))
 
 
 class SpecError(ValueError):
@@ -405,6 +421,147 @@ def scale_nearest(pixels, width, height, factor):
     return out, width * factor, height * factor
 
 
+def read_png(path):
+    """Decode an 8-bit PNG to a row-major RGBA pixel list (stdlib only).
+
+    Handles the color types real masters use — gray, RGB, palette (+tRNS),
+    gray+alpha, RGBA — and all five scanline filters. Non-interlaced only.
+    Returns (pixels, width, height).
+    """
+    data = Path(path).read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SpecError(f"{path}: not a PNG file")
+    width = height = bit_depth = color_type = interlace = None
+    plte, trns, idat = None, None, bytearray()
+    pos = 8
+    while pos + 8 <= len(data):
+        (length,) = struct.unpack(">I", data[pos:pos + 4])
+        tag = data[pos + 4:pos + 8]
+        chunk = data[pos + 8:pos + 8 + length]
+        pos += 12 + length
+        if tag == b"IHDR":
+            width, height, bit_depth, color_type, _, _, interlace = struct.unpack(
+                ">IIBBBBB", chunk)
+        elif tag == b"PLTE":
+            plte = [tuple(chunk[i:i + 3]) for i in range(0, len(chunk), 3)]
+        elif tag == b"tRNS":
+            trns = chunk
+        elif tag == b"IDAT":
+            idat += chunk
+        elif tag == b"IEND":
+            break
+    if width is None:
+        raise SpecError(f"{path}: missing IHDR chunk")
+    if bit_depth != 8:
+        raise SpecError(f"{path}: only 8-bit PNGs are supported (bit depth {bit_depth})")
+    if interlace:
+        raise SpecError(f"{path}: interlaced (Adam7) PNGs are not supported — re-export non-interlaced")
+    channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}.get(color_type)
+    if channels is None:
+        raise SpecError(f"{path}: unsupported PNG color type {color_type}")
+
+    raw = zlib.decompress(bytes(idat))
+    stride = width * channels
+    if len(raw) != height * (stride + 1):
+        raise SpecError(f"{path}: corrupt PNG (scanline data is the wrong length)")
+    pixels = []
+    prev = bytearray(stride)
+    at = 0
+    for _y in range(height):
+        ftype = raw[at]
+        line = bytearray(raw[at + 1:at + 1 + stride])
+        at += 1 + stride
+        if ftype == 1:    # Sub
+            for i in range(channels, stride):
+                line[i] = (line[i] + line[i - channels]) & 0xFF
+        elif ftype == 2:  # Up
+            for i in range(stride):
+                line[i] = (line[i] + prev[i]) & 0xFF
+        elif ftype == 3:  # Average
+            for i in range(stride):
+                a = line[i - channels] if i >= channels else 0
+                line[i] = (line[i] + ((a + prev[i]) >> 1)) & 0xFF
+        elif ftype == 4:  # Paeth
+            for i in range(stride):
+                a = line[i - channels] if i >= channels else 0
+                b = prev[i]
+                c = prev[i - channels] if i >= channels else 0
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pred = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                line[i] = (line[i] + pred) & 0xFF
+        elif ftype != 0:
+            raise SpecError(f"{path}: unknown PNG filter type {ftype}")
+        prev = line
+        for x in range(width):
+            o = x * channels
+            if color_type == 6:
+                pixels.append((line[o], line[o + 1], line[o + 2], line[o + 3]))
+            elif color_type == 2:
+                pixels.append((line[o], line[o + 1], line[o + 2], 255))
+            elif color_type == 0:
+                g = line[o]
+                pixels.append((g, g, g, 255))
+            elif color_type == 4:
+                g = line[o]
+                pixels.append((g, g, g, line[o + 1]))
+            else:  # 3: palette
+                idx = line[o]
+                if plte is None or idx >= len(plte):
+                    raise SpecError(f"{path}: palette index {idx} out of range")
+                r, g, b = plte[idx]
+                a = trns[idx] if trns is not None and idx < len(trns) else 255
+                pixels.append((r, g, b, a))
+    return pixels, width, height
+
+
+def transcribe_png(in_path, out_path):
+    """Turn a raster PNG master into a .glyph spec (the --from-png path).
+
+    Fully transparent pixels become '.'; every distinct remaining color gets
+    the next TOKEN_POOL char in first-seen order with a raw-hex legend entry
+    (#RRGGBB, or #RRGGBBAA when partial alpha exists). The emitted spec
+    re-renders pixel-identical to the input. Returns (size, color_count).
+    """
+    pixels, w, h = read_png(in_path)
+    if w != h:
+        raise SpecError(f"{in_path}: glyph frames must be square (got {w}×{h})")
+    order = []
+    for p in pixels:
+        if p[3] != 0 and p not in order:
+            order.append(p)
+    if len(order) > len(TOKEN_POOL):
+        raise SpecError(
+            f"{in_path}: {len(order)} distinct opaque colors exceed the "
+            f"{len(TOKEN_POOL)}-token legend pool — quantize the master first "
+            f"(pixel art wants ≲50 colors)")
+    tokens = {p: TOKEN_POOL[i] for i, p in enumerate(order)}
+
+    def hexc(p):
+        if p[3] == 255:
+            return "#{:02x}{:02x}{:02x}".format(*p[:3])
+        return "#{:02x}{:02x}{:02x}{:02x}".format(*p)
+
+    lines = [f"# transcribed from {Path(in_path).name} by glyph.py --from-png",
+             f"size: {w}", "", "legend:", "  . transparent"]
+    lines += [f"  {tokens[p]} {hexc(p)}" for p in order]
+    lines += ["", "frame:"]
+    for y in range(h):
+        lines.append("  " + "".join(
+            "." if pixels[y * w + x][3] == 0 else tokens[pixels[y * w + x]]
+            for x in range(w)))
+    text = "\n".join(lines) + "\n"
+
+    # Round-trip self-check: the emitted spec must rebuild the exact pixels.
+    legend, frames_rows, declared_size, _anim, _used = parse_spec(text)
+    rebuilt, _size = build_frames(legend, frames_rows, declared_size)
+    if rebuilt[0] != pixels:
+        raise SpecError(f"{in_path}: internal error — transcription is not pixel-identical")
+
+    Path(out_path).write_text(text)
+    return w, len(order)
+
+
 def make_tiled(pixels, size, reps=2):
     """Repeat a frame reps×reps with no separator — the seam/corner check for
     tiling block textures (adjacent copies must join invisibly)."""
@@ -534,6 +691,12 @@ def main(argv=None):
                          "strip — the packaging for a texture your own code binds and "
                          "advances (custom render type, HUD icon, GUI blit), which a "
                          "strip+.mcmeta can be reinterpreted and broken by")
+    ap.add_argument("--from-png", action="store_true",
+                    help="reverse direction: transcribe the given raster PNG "
+                         "master into a .glyph spec (default: alongside the "
+                         "input with a .glyph suffix). Transparent pixels "
+                         "become '.', each distinct color gets a legend token; "
+                         "the emitted spec re-renders pixel-identical")
     ap.add_argument("--tile-preview", action="store_true",
                     help="also write a 2×2 tiled preview (<name>@2x2.png) — the "
                          "seam/corner check for tiling block textures")
@@ -549,6 +712,18 @@ def main(argv=None):
 
     if not args.spec:
         ap.error("a spec path (or '-' for stdin) is required")
+
+    if args.from_png:
+        in_path = Path(args.spec)
+        out = Path(args.out) if args.out else in_path.with_suffix(".glyph")
+        try:
+            size, ncolors = transcribe_png(in_path, out)
+        except (SpecError, OSError) as e:
+            print(f"glyph: {e}", file=sys.stderr)
+            return 1
+        print(f"  wrote {out}  ({size}×{size}, {ncolors} colors + transparent, "
+              f"round-trip verified pixel-identical)")
+        return 0
 
     if args.spec == "-":
         text = sys.stdin.read()

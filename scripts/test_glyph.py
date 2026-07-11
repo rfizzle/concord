@@ -143,6 +143,137 @@ class AnalyzeTests(unittest.TestCase):
         self.assertFalse(any("mixes accents" in w for w in warns))
 
 
+def build_png(rows, width, height, color_type, channels, filters,
+              plte=None, trns=None, bit_depth=8, interlace=0):
+    """Encode a PNG from raw (unfiltered) scanline byte rows, applying the
+    given per-row filter types — exercises every decoder unfilter path."""
+    raw = bytearray()
+    prev = bytearray(width * channels)
+    for y, row in enumerate(rows):
+        f = filters[y % len(filters)]
+        raw.append(f)
+        enc = bytearray(row)
+        for i in range(len(row)):
+            a = row[i - channels] if i >= channels else 0
+            b = prev[i]
+            c = prev[i - channels] if i >= channels else 0
+            if f == 1:
+                enc[i] = (row[i] - a) & 0xFF
+            elif f == 2:
+                enc[i] = (row[i] - b) & 0xFF
+            elif f == 3:
+                enc[i] = (row[i] - ((a + b) >> 1)) & 0xFF
+            elif f == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pred = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                enc[i] = (row[i] - pred) & 0xFF
+        raw += enc
+        prev = row
+    body = b"\x89PNG\r\n\x1a\n" + glyph._png_chunk(
+        b"IHDR", struct.pack(">IIBBBBB", width, height, bit_depth, color_type, 0, 0, interlace))
+    if plte is not None:
+        body += glyph._png_chunk(b"PLTE", bytes(b for rgb in plte for b in rgb))
+    if trns is not None:
+        body += glyph._png_chunk(b"tRNS", bytes(trns))
+    body += glyph._png_chunk(b"IDAT", zlib.compress(bytes(raw)))
+    body += glyph._png_chunk(b"IEND", b"")
+    return body
+
+
+class FromPngTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = pathlib.Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_rgba_round_trip(self):
+        legend, frames, size, anim, used = glyph.parse_spec(STATIC_SPEC)
+        frames_px, n = glyph.build_frames(legend, frames, size)
+        src = self.dir / "m.png"
+        glyph.write_png(src, frames_px[0], n, n)
+        rc, out, err = run_main(["--from-png", str(src)])
+        self.assertEqual(rc, 0, err)
+        self.assertIn("pixel-identical", out)
+        legend2, frames2, size2, _, _ = glyph.parse_spec((self.dir / "m.glyph").read_text())
+        px2, n2 = glyph.build_frames(legend2, frames2, size2)
+        self.assertEqual(px2[0], frames_px[0])
+
+    def test_all_filters_decode(self):
+        # 4×5 RGBA with one row per filter type 0-4.
+        rows = [bytearray((x * 40 + y * 25) % 256 for x in range(4 * 4)) for y in range(5)]
+        data = build_png(rows, 4, 5, color_type=6, channels=4, filters=[0, 1, 2, 3, 4])
+        p = self.dir / "f.png"
+        p.write_bytes(data)
+        px, w, h = glyph.read_png(p)
+        self.assertEqual((w, h), (4, 5))
+        for y, row in enumerate(rows):
+            for x in range(4):
+                self.assertEqual(px[y * 4 + x], tuple(row[x * 4:x * 4 + 4]), f"({x},{y})")
+
+    def test_rgb_and_gray_get_opaque_alpha(self):
+        rows = [bytearray([10, 20, 30, 200, 100, 50])]  # 2×1 RGB
+        p = self.dir / "rgb.png"
+        p.write_bytes(build_png(rows, 2, 1, color_type=2, channels=3, filters=[0]))
+        px, _, _ = glyph.read_png(p)
+        self.assertEqual(px, [(10, 20, 30, 255), (200, 100, 50, 255)])
+        rows = [bytearray([0, 128, 255])]  # 3×1 grayscale
+        p = self.dir / "gray.png"
+        p.write_bytes(build_png(rows, 3, 1, color_type=0, channels=1, filters=[0]))
+        px, _, _ = glyph.read_png(p)
+        self.assertEqual(px, [(0, 0, 0, 255), (128, 128, 128, 255), (255, 255, 255, 255)])
+
+    def test_palette_with_trns(self):
+        rows = [bytearray([0, 1]), bytearray([1, 0])]  # 2×2, indices into PLTE
+        p = self.dir / "pal.png"
+        p.write_bytes(build_png(rows, 2, 2, color_type=3, channels=1, filters=[0],
+                                plte=[(255, 0, 0), (0, 255, 0)], trns=[0, 255]))
+        px, _, _ = glyph.read_png(p)
+        self.assertEqual(px[0], (255, 0, 0, 0))    # tRNS makes index 0 transparent
+        self.assertEqual(px[1], (0, 255, 0, 255))
+
+    def test_rejections(self):
+        rows = [bytearray([0, 0, 0, 255] * 2)]  # 2×1 RGBA — not square
+        p = self.dir / "ns.png"
+        p.write_bytes(build_png(rows, 2, 1, color_type=6, channels=4, filters=[0]))
+        with self.assertRaises(glyph.SpecError):
+            glyph.transcribe_png(p, self.dir / "ns.glyph")
+        p16 = self.dir / "deep.png"
+        p16.write_bytes(build_png(rows, 2, 1, color_type=6, channels=4,
+                                  filters=[0], bit_depth=16))
+        with self.assertRaises(glyph.SpecError):
+            glyph.read_png(p16)
+        pi = self.dir / "il.png"
+        pi.write_bytes(build_png(rows, 2, 1, color_type=6, channels=4,
+                                 filters=[0], interlace=1))
+        with self.assertRaises(glyph.SpecError):
+            glyph.read_png(pi)
+        notpng = self.dir / "x.png"
+        notpng.write_bytes(b"hello")
+        with self.assertRaises(glyph.SpecError):
+            glyph.read_png(notpng)
+
+    def test_too_many_colors_rejected(self):
+        n = 16  # 256 unique opaque colors > pool
+        px = [(x * 16 % 256, y * 16 % 256, (x ^ y) * 16 % 256, 255)
+              for y in range(n) for x in range(n)]
+        p = self.dir / "noisy.png"
+        glyph.write_png(p, px, n, n)
+        with self.assertRaises(glyph.SpecError) as cm:
+            glyph.transcribe_png(p, self.dir / "noisy.glyph")
+        self.assertIn("quantize", str(cm.exception))
+
+    def test_partial_alpha_survives(self):
+        px = [(255, 0, 0, 128), (0, 0, 0, 0), (0, 0, 0, 0), (255, 0, 0, 128)]
+        p = self.dir / "pa.png"
+        glyph.write_png(p, px, 2, 2)
+        glyph.transcribe_png(p, self.dir / "pa.glyph")
+        text = (self.dir / "pa.glyph").read_text()
+        self.assertIn("#ff000080", text)
+
+
 class RenderTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

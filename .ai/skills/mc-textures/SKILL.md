@@ -84,6 +84,7 @@ G=.ai/skills/mc-textures/scripts/glyph.py
 python3 $G SPEC.glyph                  # render + preview
 python3 $G --list-colors              # named palette
 python3 $G SPEC.glyph --scale-to 128 -o out-128.png   # upscaled master
+python3 $G --from-png MASTER.png      # raster -> .glyph spec (transcription)
 ```
 
 Always **read the rendered `@Nx` preview back** and judge it honestly against the motif,
@@ -103,18 +104,18 @@ hand-patch its emitted grid. Two flavors:
 - **Procedural** — the script computes pixels mathematically (draw the ring, place the
   rays, dither the gradient) and assigns legend chars itself. Most generated logos and
   icons are this.
-- **Image transcription** — the script turns a finished raster master into a spec. Read
-  pixels with ImageMagick (`convert art/<name>.png -depth 8 txt:-`, a subprocess — no
-  Python imaging dependency) and parse the `x,y: (r,g,b,a)` lines. Fully transparent
-  pixels (`a == 0`) become `.`; each remaining distinct color is assigned the next char
-  from a fixed single-char token pool, in first-seen order, with an assert that the pool
-  is big enough. Legend colors are emitted as raw hex (`#RRGGBB`, or `#RRGGBBAA` when
-  partial alpha exists) — the named-token rule governs hand-authored accents, not
-  transcribed masters. Assert the source is square and emit `size:` from its width.
+- **Image transcription** — `glyph.py --from-png art/<name>.png` turns a finished raster
+  master into a spec directly (stdlib PNG decode, no external tools; square, 8-bit,
+  non-interlaced). Fully transparent pixels become `.`; each remaining distinct color is
+  assigned the next char from a fixed token pool, in first-seen order. Legend colors are
+  emitted as raw hex (`#RRGGBB`, or `#RRGGBBAA` when partial alpha exists) — the
+  named-token rule governs hand-authored accents, not transcribed masters. The emitted
+  spec re-renders pixel-identical to the input, verified before it is written. A custom
+  `.gen.py` reads pixels itself only when transcription composes with procedure —
+  stamping a raster into a computed frame.
 
-A transcription generator is how a raster that predates its spec joins the repeatability
-rule: run it once, review the emitted `.glyph` renders pixel-identically, and from then
-on the spec (plus its generator) is the source of truth.
+Transcription is how a raster that predates its spec joins the repeatability rule: run
+it once, review the emitted `.glyph`, and from then on the spec is the source of truth.
 
 ## Animated textures: pick the packaging by who animates it
 
