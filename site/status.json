@@ -1,0 +1,156 @@
+{
+  "generated": "2026-07-11",
+  "totals": {
+    "members": 8,
+    "released": 4,
+    "downloads": 15,
+    "followers": 1,
+    "openIssues": 44
+  },
+  "members": [
+    {
+      "id": "meridian",
+      "name": "Meridian",
+      "url": "https://meridian.rfizzle.com",
+      "repo": "rfizzle/meridian",
+      "status": "released",
+      "layoutMigrated": true,
+      "release": {
+        "tag": "v1.0.0",
+        "date": "2026-07-01"
+      },
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-10"
+      },
+      "openIssues": 8,
+      "modrinth": null
+    },
+    {
+      "id": "mercantile",
+      "name": "Mercantile",
+      "url": "https://mercantile.rfizzle.com",
+      "repo": "rfizzle/mercantile",
+      "status": "released",
+      "layoutMigrated": true,
+      "release": {
+        "tag": "v1.0.0",
+        "date": "2026-07-01"
+      },
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-10"
+      },
+      "openIssues": 2,
+      "modrinth": {
+        "slug": "mercantile-villager-overhaul",
+        "downloads": 15,
+        "followers": 1
+      }
+    },
+    {
+      "id": "tribulation",
+      "name": "Tribulation",
+      "url": "https://tribulation.rfizzle.com",
+      "repo": "rfizzle/tribulation",
+      "status": "released",
+      "layoutMigrated": false,
+      "release": {
+        "tag": "v1.0.0",
+        "date": "2026-07-01"
+      },
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-11"
+      },
+      "openIssues": 0,
+      "modrinth": null
+    },
+    {
+      "id": "prosperity",
+      "name": "Prosperity",
+      "url": "https://prosperity.rfizzle.com",
+      "repo": "rfizzle/prosperity",
+      "status": "released",
+      "layoutMigrated": false,
+      "release": {
+        "tag": "v1.0.0",
+        "date": "2026-07-01"
+      },
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-10"
+      },
+      "openIssues": 1,
+      "modrinth": null
+    },
+    {
+      "id": "respite",
+      "name": "Respite",
+      "url": "https://respite.rfizzle.com",
+      "repo": "rfizzle/respite",
+      "status": "in-development",
+      "layoutMigrated": true,
+      "release": null,
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-11"
+      },
+      "openIssues": 6,
+      "modrinth": null
+    },
+    {
+      "id": "distillation",
+      "name": "Distillation",
+      "url": "https://distillation.rfizzle.com",
+      "repo": "rfizzle/distillation",
+      "status": "in-development",
+      "layoutMigrated": true,
+      "release": null,
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-11"
+      },
+      "openIssues": 9,
+      "modrinth": null
+    },
+    {
+      "id": "cultivation",
+      "name": "Cultivation",
+      "url": "https://cultivation.rfizzle.com",
+      "repo": "rfizzle/cultivation",
+      "status": "in-development",
+      "layoutMigrated": true,
+      "release": null,
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-11"
+      },
+      "openIssues": 12,
+      "modrinth": null
+    },
+    {
+      "id": "instinct",
+      "name": "Instinct",
+      "url": "https://instinct.rfizzle.com",
+      "repo": "rfizzle/instinct",
+      "status": "in-development",
+      "layoutMigrated": true,
+      "release": null,
+      "ci": {
+        "status": "in_progress",
+        "conclusion": null,
+        "date": "2026-07-11"
+      },
+      "openIssues": 6,
+      "modrinth": null
+    }
+  ]
+}

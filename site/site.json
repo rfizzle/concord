@@ -9,7 +9,7 @@
   "defaultBranch": "master",
   "copyright": "© 2025-2026 rfizzle. Concord is not affiliated with Mojang Studios or Microsoft.",
   "footerMeta": "Minecraft 1.21.1 · Fabric",
-  "nav": ["index", "about"],
+  "nav": ["index", "status", "about"],
   "theme": {
     "accent": "#C9B79A",
     "accentDark": "#A89578",
