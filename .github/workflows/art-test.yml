@@ -1,0 +1,39 @@
+# Guards the vendored art renderers: whenever glyph.py, sfx.py, their tests, or
+# the reference example specs change, run the renderer unit tests so a
+# regression can't merge — every member repo receives these scripts via
+# `make sync`, so a break here breaks the whole suite's art pipeline. Hermetic:
+# stdlib-only synthesis/rasterization, no ffmpeg required (the tests accept the
+# WAV fallback when the Ogg encode is unavailable).
+name: Art renderer tests
+
+on:
+  pull_request:
+    paths:
+      - ".ai/skills/mc-textures/scripts/glyph.py"
+      - ".ai/skills/mc-textures/examples/**"
+      - ".ai/skills/mc-audio/scripts/sfx.py"
+      - ".ai/skills/mc-audio/examples/**"
+      - "scripts/test_glyph.py"
+      - "scripts/test_sfx.py"
+      - ".github/workflows/art-test.yml"
+  push:
+    branches: [master]
+    paths:
+      - ".ai/skills/mc-textures/scripts/glyph.py"
+      - ".ai/skills/mc-textures/examples/**"
+      - ".ai/skills/mc-audio/scripts/sfx.py"
+      - ".ai/skills/mc-audio/examples/**"
+      - "scripts/test_glyph.py"
+      - "scripts/test_sfx.py"
+      - ".github/workflows/art-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run renderer unit tests
+        run: python3 -m unittest scripts.test_glyph scripts.test_sfx

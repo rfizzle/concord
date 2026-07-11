@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test help
+.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test art-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -15,6 +15,7 @@ help:
 	@echo "gitignore-check  show which sibling .gitignore regions would change (no writes)"
 	@echo "stubs-check    fail if any sibling member workflow stub drifts from workflow-stubs.json"
 	@echo "stubs-test     run the workflow-stub checker's unit tests"
+	@echo "art-test       run the glyph + sfx renderer unit tests"
 
 catalog:
 	@$(PY) scripts/gen-skills-catalog.py
@@ -54,3 +55,9 @@ stubs-check:
 
 stubs-test:
 	@$(PY) -m unittest scripts.test_check_workflow_stubs
+
+# Guard the vendored art renderers (.ai/skills/mc-textures/scripts/glyph.py and
+# .ai/skills/mc-audio/scripts/sfx.py) — every member repo receives these via
+# `make sync`, so a regression here breaks the whole suite's art pipeline.
+art-test:
+	@$(PY) -m unittest scripts.test_glyph scripts.test_sfx

@@ -63,7 +63,12 @@ USAGE
     python3 .ai/skills/mc-textures/scripts/glyph.py SPEC.glyph -o art/marker.png
     python3 .ai/skills/mc-textures/scripts/glyph.py - < SPEC.glyph             # spec on stdin
     python3 .ai/skills/mc-textures/scripts/glyph.py SPEC.glyph --preview-scale 24 --no-preview
+    python3 .ai/skills/mc-textures/scripts/glyph.py SPEC.glyph --tile-preview  # + 2×2 tiled seam check (block textures)
     python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors              # dump the named palette
+
+Every render also prints read-back stats (opaque color count, edge margin vs
+full bleed, largest single-tone region) and warns on quality-bar violations:
+a big flat fill, a half-bled edge, or a legend mixing two mods' accents.
 """
 
 import argparse
@@ -159,16 +164,18 @@ def parse_color(token):
 
 
 def parse_spec(text):
-    """Parse a glyph spec into (legend, frames, declared_size, anim).
+    """Parse a glyph spec into (legend, frames, declared_size, anim, used_tokens).
 
     `frames` is a list of grids; each grid is a list of row strings.
     `anim` carries frametime / interpolate directives (may be empty).
+    `used_tokens` is the set of NAMED_COLORS tokens the legend referenced.
     """
     legend = {}
     frames = []          # list of grids (each a list of row strings)
     current = None       # the grid currently being filled
     declared_size = None
     anim = {}
+    used_tokens = set()
     mode = None          # None | "legend" | "grid"
 
     def flush():
@@ -234,6 +241,8 @@ def parse_spec(text):
             if len(char) != 1:
                 raise SpecError(f"line {lineno}: legend key must be one character: {char!r}")
             legend[char] = parse_color(color)
+            if color.strip().lower() in NAMED_COLORS:
+                used_tokens.add(color.strip().lower())
         else:
             raise SpecError(
                 f"line {lineno}: unexpected content before a 'legend:' or 'frame:' "
@@ -244,7 +253,7 @@ def parse_spec(text):
     if not frames or all(not f for f in frames):
         raise SpecError("spec has no frame grids (need a 'frame:' or 'grid:' section)")
     legend.setdefault(".", TRANSPARENT)
-    return legend, frames, declared_size, anim
+    return legend, frames, declared_size, anim, used_tokens
 
 
 def build_frames(legend, frames_rows, declared_size):
@@ -396,6 +405,90 @@ def scale_nearest(pixels, width, height, factor):
     return out, width * factor, height * factor
 
 
+def make_tiled(pixels, size, reps=2):
+    """Repeat a frame reps×reps with no separator — the seam/corner check for
+    tiling block textures (adjacent copies must join invisibly)."""
+    out = []
+    for y in range(size * reps):
+        for x in range(size * reps):
+            out.append(pixels[(y % size) * size + (x % size)])
+    return out, size * reps
+
+
+def _largest_flat_region(pixels, size):
+    """Largest 4-connected region of one opaque color. Returns (count, color)."""
+    seen = [False] * (size * size)
+    best, best_color = 0, None
+    for start in range(size * size):
+        if seen[start] or pixels[start][3] == 0:
+            continue
+        color = pixels[start]
+        seen[start] = True
+        stack, count = [start], 0
+        while stack:
+            j = stack.pop()
+            count += 1
+            x, y = j % size, j // size
+            for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                if 0 <= nx < size and 0 <= ny < size:
+                    k = ny * size + nx
+                    if not seen[k] and pixels[k] == color:
+                        seen[k] = True
+                        stack.append(k)
+        if count > best:
+            best, best_color = count, color
+    return best, best_color
+
+
+def analyze(frames_px, size, used_tokens):
+    """Objective read-back stats mirroring the mc-textures quality bar.
+
+    Returns (lines, warnings): human-readable stat lines plus the subset of
+    findings that deserve a stderr warning.
+    """
+    lines, warnings = [], []
+
+    opaque_colors = {p for px in frames_px for p in px if p[3] != 0}
+    lines.append(f"colors:   {len(opaque_colors)} opaque")
+
+    ring = [frames_px[0][y * size + x]
+            for y in range(size) for x in range(size)
+            if x in (0, size - 1) or y in (0, size - 1)]
+    ring_opaque = sum(1 for p in ring if p[3] != 0)
+    if ring_opaque == 0:
+        lines.append("edge:     transparent 1px margin (sprite)")
+    elif ring_opaque == len(ring):
+        lines.append("edge:     full bleed on all four edges (block/tile)")
+    else:
+        lines.append(f"edge:     mixed — {ring_opaque}/{len(ring)} edge px opaque")
+        warnings.append(
+            "edge is neither a clean transparent margin (sprite) nor a full "
+            "bleed (block) — pick one deliberately")
+
+    flat, flat_color, opaque_count = 0, None, 0
+    for px in frames_px:
+        cnt, col = _largest_flat_region(px, size)
+        if cnt > flat:
+            flat, flat_color = cnt, col
+            opaque_count = sum(1 for p in px if p[3] != 0)
+    if opaque_count:
+        pct = 100.0 * flat / opaque_count
+        hexc = "#{:02x}{:02x}{:02x}".format(*flat_color[:3]) if flat_color else "-"
+        lines.append(f"flat:     largest single-tone region {flat} px, {hexc} (~{pct:.0f}% of opaque)")
+        if size >= 32 and flat >= 40 and pct >= 30:
+            warnings.append(
+                f"a {flat}px single-tone region (~{pct:.0f}% of the opaque area) reads "
+                f"as a flat fill at {size}px — give that surface a tonal ramp")
+
+    prefixes = {t.split(".", 1)[0] for t in used_tokens if "." in t}
+    if len(prefixes) > 1:
+        warnings.append(
+            f"legend mixes accents from {' and '.join(sorted(prefixes))} — "
+            f"a mod's accents never appear in another mod's glyph")
+
+    return lines, warnings
+
+
 def render_ascii(pixels, width, height):
     """A terminal preview: filled block for opaque cells, space for transparent."""
     lines = []
@@ -405,6 +498,22 @@ def render_ascii(pixels, width, height):
             row.append("·" if pixels[y * width + x][3] == 0 else "█")
         lines.append("".join(row))
     return "\n".join(lines)
+
+
+def emit_review(out, frames_px, size, used_tokens, args):
+    """The read-back block after a render: tile preview, stats, warnings."""
+    if args.tile_preview:
+        tiled, tsize = make_tiled(frames_px[0], size)
+        factor = max(1, args.preview_scale // 2)
+        tpx, tw, th = scale_nearest(tiled, tsize, tsize, factor)
+        tile_path = out.with_name(f"{out.stem}@2x2{out.suffix}")
+        write_png(tile_path, tpx, tw, th)
+        print(f"  wrote {tile_path}  ({tw}×{th} 2×2 tiling preview — check the seams and the shared corner)")
+    lines, warnings = analyze(frames_px, size, used_tokens)
+    for ln in lines:
+        print(f"  {ln}")
+    for w in warnings:
+        print(f"glyph: warning: {w}", file=sys.stderr)
 
 
 def main(argv=None):
@@ -425,6 +534,9 @@ def main(argv=None):
                          "strip — the packaging for a texture your own code binds and "
                          "advances (custom render type, HUD icon, GUI blit), which a "
                          "strip+.mcmeta can be reinterpreted and broken by")
+    ap.add_argument("--tile-preview", action="store_true",
+                    help="also write a 2×2 tiled preview (<name>@2x2.png) — the "
+                         "seam/corner check for tiling block textures")
     ap.add_argument("--no-preview", action="store_true", help="skip the scaled preview PNG")
     ap.add_argument("--list-colors", action="store_true", help="print the named palette and exit")
     args = ap.parse_args(argv)
@@ -447,7 +559,7 @@ def main(argv=None):
         default_out = spec_path.with_suffix(".png")
 
     try:
-        legend, frames_rows, declared_size, anim = parse_spec(text)
+        legend, frames_rows, declared_size, anim, used_tokens = parse_spec(text)
         frames_px, size = build_frames(legend, frames_rows, declared_size)
     except SpecError as e:
         print(f"glyph: {e}", file=sys.stderr)
@@ -501,6 +613,7 @@ def main(argv=None):
             preview = out.with_name(f"{out.stem}@{args.preview_scale}x{out.suffix}")
             write_png(preview, spx, sw, sh)
             print(f"  wrote {preview}  ({sw}×{sh} preview)")
+        emit_review(out, frames_px, size, used_tokens, args)
         return 0
 
     # animated: a vertical strip + .mcmeta sidecar (vanilla atlas animates it), or,
@@ -542,6 +655,7 @@ def main(argv=None):
         write_apng(anim_preview, scaled, ssz, ssz, ft)
         print(f"  wrote {anim_preview}  ({ssz}×{ssz} animated preview, {nframes} frames @ {ft} ticks)")
 
+    emit_review(out, frames_px, size, used_tokens, args)
     return 0
 
 
