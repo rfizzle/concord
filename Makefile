@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test art-test help
+.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test art-test status status-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -16,6 +16,8 @@ help:
 	@echo "stubs-check    fail if any sibling member workflow stub drifts from workflow-stubs.json"
 	@echo "stubs-test     run the workflow-stub checker's unit tests"
 	@echo "art-test       run the glyph + sfx renderer unit tests"
+	@echo "status         regenerate site/status.json + the status page from the public APIs"
+	@echo "status-test    run the status generator's unit tests"
 
 catalog:
 	@$(PY) scripts/gen-skills-catalog.py
@@ -55,6 +57,16 @@ stubs-check:
 
 stubs-test:
 	@$(PY) -m unittest scripts.test_check_workflow_stubs
+
+# Regenerate the suite status dashboard (site/status.json, site/pages/status.json,
+# and the landing "suite-status" section) from the public GitHub and Modrinth
+# APIs. The nightly status.yml workflow runs the same script and commits the
+# result when the data changed.
+status:
+	@$(PY) scripts/gen-status.py
+
+status-test:
+	@$(PY) -m unittest scripts.test_gen_status
 
 # Guard the vendored art renderers (.ai/skills/mc-textures/scripts/glyph.py and
 # .ai/skills/mc-audio/scripts/sfx.py) — every member repo receives these via
