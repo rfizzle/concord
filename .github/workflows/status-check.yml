@@ -1,0 +1,28 @@
+# Guards the suite status generator: whenever gen-status.py or its tests
+# change, run the unit tests so a regression can't merge — the nightly
+# status.yml workflow runs this script unattended and commits its output.
+name: Status generator tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/gen-status.py"
+      - "scripts/test_gen_status.py"
+      - ".github/workflows/status-check.yml"
+  push:
+    branches: [master]
+    paths:
+      - "scripts/gen-status.py"
+      - "scripts/test_gen_status.py"
+      - ".github/workflows/status-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run status generator unit tests
+        run: python3 -m unittest scripts.test_gen_status
