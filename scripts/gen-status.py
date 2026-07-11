@@ -28,6 +28,8 @@ Run from the concord repo root:
 from __future__ import annotations
 
 import datetime
+import html
+import http.client
 import json
 import os
 import pathlib
@@ -61,7 +63,7 @@ def http_fetch(url: str, headers: dict[str, str] | None = None) -> tuple[int, ob
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as err:
         return err.code, None
-    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+    except (urllib.error.URLError, http.client.HTTPException, TimeoutError, ValueError, OSError):
         return 0, None
 
 
@@ -118,7 +120,7 @@ def fetch_member(member: dict, fetch) -> dict:
     store = (member.get("store") or {}).get("modrinth") or {}
     lookup = store.get("id") or store.get("slug")
     if lookup:
-        code, data = fetch(f"{MODRINTH_API}/project/{lookup}", None)
+        code, data = fetch(f"{MODRINTH_API}/project/{urllib.parse.quote(lookup, safe='')}", None)
         if code == 200 and isinstance(data, dict):
             modrinth = {
                 "slug": data.get("slug") or store.get("slug"),
@@ -207,7 +209,10 @@ def member_row(m: dict) -> list[str]:
         if m["status"] == "released"
         else "<span class='text-ash'>in development</span>"
     )
-    version = m["release"]["tag"] if m["release"] else DASH
+    # tag and slug arrive from API responses (member repos and their Modrinth
+    # projects are owner-controlled, but escape anyway — the template renders
+    # cells with | safe).
+    version = html.escape(m["release"]["tag"]) if m["release"] else DASH
     released = (m["release"] or {}).get("date") or DASH
     if m["ci"]:
         actions = f"https://github.com/{m['repo']}/actions/workflows/ci.yml"
@@ -219,8 +224,9 @@ def member_row(m: dict) -> list[str]:
     else:
         ci = DASH
     if m["modrinth"] and isinstance(m["modrinth"].get("downloads"), int):
+        slug = html.escape(str(m["modrinth"]["slug"]))
         downloads = (
-            f"<a class='{LINK_CLASS}' href='https://modrinth.com/mod/{m['modrinth']['slug']}'>"
+            f"<a class='{LINK_CLASS}' href='https://modrinth.com/mod/{slug}'>"
             f"{m['modrinth']['downloads']:,}</a>"
         )
     else:
@@ -231,13 +237,9 @@ def member_row(m: dict) -> list[str]:
         if isinstance(m["openIssues"], int)
         else DASH
     )
-    if m["layoutMigrated"] is True:
-        layout = "migrated"
-    elif m["layoutMigrated"] is False:
-        layout = "pending"
-    else:
-        layout = DASH
-    return [name, status, version, released, ci, downloads, issues, layout]
+    # Conformance state (layoutMigrated) stays in the raw site/status.json;
+    # it is maintainer data, not a visitor-facing column.
+    return [name, status, version, released, ci, downloads, issues]
 
 
 def render_status_page(status: dict) -> dict:
@@ -246,7 +248,7 @@ def render_status_page(status: dict) -> dict:
         "nowrapHeaders": True,
         "headers": [
             "Member", "Status", "Version", "Released",
-            "CI", "Downloads", "Open issues", "Layout",
+            "CI", "Downloads", "Open issues",
         ],
         "rows": [member_row(m) for m in status["members"]],
         "note": (
@@ -300,21 +302,34 @@ def write_json(path: pathlib.Path, doc: dict) -> None:
     path.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def load_previous(path: pathlib.Path) -> dict | None:
+    """The committed status file, or None when absent or unparseable — a
+    corrupt previous file must not wedge the nightly run; it gets overwritten."""
+    if not path.exists():
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        return doc if isinstance(doc, dict) else None
+    except ValueError:
+        return None
+
+
 def main() -> int:
     if not MEMBERS_JSON.exists():
         print("members.json not found — run from the concord repo root.", file=sys.stderr)
         return 2
+    # Parse every input before writing any output, so a malformed file can
+    # never leave a torn half-written tree behind.
     members_doc = json.loads(MEMBERS_JSON.read_text(encoding="utf-8"))
+    index_doc = json.loads(INDEX_PAGE_JSON.read_text(encoding="utf-8"))
+    previous = load_previous(STATUS_JSON)
+
     data = build_status(members_doc, http_fetch)
-    previous = (
-        json.loads(STATUS_JSON.read_text(encoding="utf-8")) if STATUS_JSON.exists() else None
-    )
     today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
     status = {"generated": resolve_generated(data, previous, today), **data}
 
     write_json(STATUS_JSON, status)
     write_json(STATUS_PAGE_JSON, render_status_page(status))
-    index_doc = json.loads(INDEX_PAGE_JSON.read_text(encoding="utf-8"))
     if patch_index(index_doc, status):
         write_json(INDEX_PAGE_JSON, index_doc)
     print(f"wrote {STATUS_JSON} and {STATUS_PAGE_JSON} (data last changed {status['generated']})")

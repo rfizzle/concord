@@ -11,10 +11,13 @@ so no network is touched. Run with:
 from __future__ import annotations
 
 import copy
+import http.client
 import importlib.util
 import json
 import pathlib
+import tempfile
 import unittest
+import unittest.mock
 import urllib.parse
 
 _HERE = pathlib.Path(__file__).resolve().parent
@@ -197,13 +200,53 @@ class RenderTests(unittest.TestCase):
         self.assertIn("1,234", row[5])
         self.assertIn("modrinth.com/mod/meridian-enchanting-overhaul", row[5])
         self.assertIn("/issues'>8</a>", row[6])
-        self.assertEqual(row[7], "migrated")
 
     def test_degraded_member_row_renders_dashes(self):
         row = gen.member_row(gen.fetch_member(RESPITE, make_fetch({})))
         self.assertIn("in development", row[1])
-        self.assertEqual(row[2:7], [gen.DASH] * 5)
-        self.assertEqual(row[7], "pending")
+        self.assertEqual(row[2:], [gen.DASH] * 5)
+
+    def test_conformance_not_rendered_publicly(self):
+        page = gen.render_status_page(self._status())
+        self.assertNotIn("Layout", json.dumps(page))
+        self.assertNotIn("migrated", json.dumps(page))
+
+    def test_api_values_are_html_escaped(self):
+        hostile = dict(MERIDIAN_LIVE)
+        hostile[_release_url("meridian")] = (
+            200,
+            {"tag_name": "v1<img src=x>", "published_at": "2026-07-01T00:00:00Z"},
+        )
+        hostile[_modrinth_url("qywREjYt")] = (
+            200,
+            {"slug": "x' onmouseover='y", "downloads": 3, "followers": 0},
+        )
+        row = gen.member_row(gen.fetch_member(MERIDIAN, make_fetch(hostile)))
+        self.assertNotIn("<img src=x>", row[2])
+        self.assertIn("&lt;img", row[2])
+        self.assertNotIn("onmouseover='y", row[5])
+
+    def test_empty_member_list_renders(self):
+        data = gen.build_status({"members": []}, make_fetch({}))
+        page = gen.render_status_page({"generated": "2026-07-11", **data})
+        table = page["sections"][1]["blocks"][0]
+        self.assertEqual(table["rows"], [])
+        cards = page["sections"][0]["blocks"][0]
+        self.assertEqual(cards["items"][0]["title"], gen.DASH)
+        self.assertEqual(cards["items"][1]["title"], "0 of 0")
+
+    def test_member_without_store_or_conformance_keys(self):
+        bare = {
+            "id": "tempest",
+            "name": "Tempest",
+            "url": "https://tempest.rfizzle.com",
+            "status": "in-development",
+        }
+        m = gen.fetch_member(bare, make_fetch({}))
+        self.assertIsNone(m["modrinth"])
+        self.assertIsNone(m["layoutMigrated"])
+        row = gen.member_row(m)
+        self.assertEqual(len(row), 7)
 
     def test_page_note_carries_generated_date(self):
         page = gen.render_status_page(self._status())
@@ -217,6 +260,40 @@ class RenderTests(unittest.TestCase):
 
     def test_page_is_json_serializable(self):
         json.dumps(gen.render_status_page(self._status()))
+
+
+class HttpFetchTests(unittest.TestCase):
+    def test_truncated_body_returns_null_instead_of_raising(self):
+        # A connection dropped mid-body raises http.client.IncompleteRead,
+        # which is an HTTPException, not a URLError/OSError — the best-effort
+        # contract requires it to degrade to (0, None), not kill the run.
+        with unittest.mock.patch.object(
+            gen.urllib.request, "urlopen",
+            side_effect=http.client.IncompleteRead(b""),
+        ):
+            self.assertEqual(gen.http_fetch("https://api.example/x"), (0, None))
+
+
+class FileIoTests(unittest.TestCase):
+    def test_write_json_format(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "out.json"
+            gen.write_json(path, {"dash": gen.DASH})
+            text = path.read_text(encoding="utf-8")
+            self.assertTrue(text.endswith("\n"))
+            self.assertIn(gen.DASH, text)  # ensure_ascii=False, not —
+            self.assertEqual(json.loads(text), {"dash": gen.DASH})
+
+    def test_load_previous_tolerates_missing_and_corrupt_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "status.json"
+            self.assertIsNone(gen.load_previous(path))
+            path.write_text("{ not json", encoding="utf-8")
+            self.assertIsNone(gen.load_previous(path))
+            path.write_text('["not a dict"]', encoding="utf-8")
+            self.assertIsNone(gen.load_previous(path))
+            path.write_text('{"generated": "2026-07-01"}', encoding="utf-8")
+            self.assertEqual(gen.load_previous(path), {"generated": "2026-07-01"})
 
 
 class PatchIndexTests(unittest.TestCase):

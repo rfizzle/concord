@@ -15,9 +15,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: suite-status
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
       actions: write
@@ -40,5 +45,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/status.json site/pages/status.json site/pages/index.json
           git commit -m "chore(status): refresh suite status"
+          # A human push landing since checkout would make this push
+          # non-fast-forward; rebase the one status commit on top of it.
+          git pull --rebase --autostash origin master
           git push
-          gh workflow run site.yml --ref master
+          # The commit already landed; a transient dispatch failure must not
+          # fail the run — the site refreshes on the next change instead.
+          gh workflow run site.yml --ref master \
+            || echo "::warning::site rebuild dispatch failed; the site refreshes on the next site/ change"
