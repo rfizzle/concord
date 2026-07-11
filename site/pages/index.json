@@ -2,12 +2,12 @@
   "type": "home",
   "nav": "Home",
   "metaTitle": "Concord — Modular Overhauls for Minecraft",
-  "metaDescription": "Concord is a collection of four independent Minecraft 1.21.1 Fabric mods, each overhauling one vanilla system — enchanting, villagers, difficulty, and loot. Install one or all; they stand alone and light up together.",
+  "metaDescription": "Concord is a collection of independent Minecraft 1.21.1 Fabric mods, each overhauling one vanilla system — four core overhauls of enchanting, villagers, difficulty, and loot, with more in development. Install one or all; they stand alone and light up together.",
   "ogTitle": "Concord — Modular Overhauls for Minecraft",
-  "ogDescription": "Four independent Fabric mods, one escalating survival loop. Enchanting, villagers, difficulty, and loot — each overhauled, none required.",
+  "ogDescription": "Independent Fabric mods, one escalating survival loop. Enchanting, villagers, difficulty, and loot at the core — each overhauled, none required.",
   "hero": {
-    "lede": "Four independent Minecraft mods. One escalating survival loop.",
-    "sub": "Concord takes the vanilla systems the game shipped shallow — enchanting, villagers, difficulty, loot — and gives each its own mod to overhaul it. Install one. Install all. Every mod stands alone, and together they light each other up — never a hard dependency.",
+    "lede": "Four core Minecraft mods. One escalating survival loop.",
+    "sub": "Concord takes the vanilla systems the game shipped shallow — enchanting, villagers, difficulty, loot — and gives each its own mod to overhaul it. More overhauls are in development alongside the core four. Install one. Install all. Every mod stands alone, and together they light each other up — never a hard dependency.",
     "buttons": [
       {
         "label": "Meet the mods",
@@ -71,7 +71,7 @@
     },
     {
       "id": "mods",
-      "title": "The four mods",
+      "title": "The core four",
       "lede": "Each completes one vanilla system. Each ships and updates on its own.",
       "blocks": [
         {
@@ -186,7 +186,7 @@
               ]
             },
             {
-              "title": "44",
+              "title": "43",
               "html": [
                 "Open issues across the suite"
               ]

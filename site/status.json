@@ -5,7 +5,7 @@
     "released": 4,
     "downloads": 15,
     "followers": 1,
-    "openIssues": 44
+    "openIssues": 43
   },
   "members": [
     {
@@ -22,9 +22,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-10"
+        "date": "2026-07-11"
       },
-      "openIssues": 8,
+      "openIssues": 7,
       "modrinth": null
     },
     {
@@ -145,8 +145,8 @@
       "layoutMigrated": true,
       "release": null,
       "ci": {
-        "status": "in_progress",
-        "conclusion": null,
+        "status": "completed",
+        "conclusion": "success",
         "date": "2026-07-11"
       },
       "openIssues": 6,
