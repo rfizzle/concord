@@ -2,16 +2,27 @@
   "type": "home",
   "nav": "Home",
   "metaTitle": "Concord — Modular Overhauls for Minecraft",
-  "metaDescription": "Concord is a collection of four independent Minecraft 1.21.1 Fabric mods, each overhauling one vanilla system — enchanting, villagers, difficulty, and loot. Install one or all; they stand alone and light up together.",
+  "metaDescription": "Concord is a collection of independent Minecraft 1.21.1 Fabric mods, each overhauling one vanilla system — four core overhauls of enchanting, villagers, difficulty, and loot, with more in development. Install one or all; they stand alone and light up together.",
   "ogTitle": "Concord — Modular Overhauls for Minecraft",
-  "ogDescription": "Four independent Fabric mods, one escalating survival loop. Enchanting, villagers, difficulty, and loot — each overhauled, none required.",
+  "ogDescription": "Independent Fabric mods, one escalating survival loop. Enchanting, villagers, difficulty, and loot at the core — each overhauled, none required.",
   "hero": {
-    "lede": "Four independent Minecraft mods. One escalating survival loop.",
-    "sub": "Concord takes the vanilla systems the game shipped shallow — enchanting, villagers, difficulty, loot — and gives each its own mod to overhaul it. Install one. Install all. Every mod stands alone, and together they light each other up — never a hard dependency.",
+    "lede": "Four core Minecraft mods. One escalating survival loop.",
+    "sub": "Concord takes the vanilla systems the game shipped shallow — enchanting, villagers, difficulty, loot — and gives each its own mod to overhaul it. More overhauls are in development alongside the core four. Install one. Install all. Every mod stands alone, and together they light each other up — never a hard dependency.",
     "buttons": [
-      { "label": "Meet the mods", "href": "#mods", "primary": true },
-      { "label": "The vision", "href": "/about.html" },
-      { "label": "GitHub", "href": "https://github.com/rfizzle/concord", "external": true }
+      {
+        "label": "Meet the mods",
+        "href": "#mods",
+        "primary": true
+      },
+      {
+        "label": "The vision",
+        "href": "/about.html"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/rfizzle/concord",
+        "external": true
+      }
     ]
   },
   "sections": [
@@ -29,22 +40,30 @@
             {
               "title": "Survive",
               "titleTone": "bone",
-              "html": ["The world pushes back the longer and farther you survive. <span class='text-ash'>— Tribulation</span>"]
+              "html": [
+                "The world pushes back the longer and farther you survive. <span class='text-ash'>— Tribulation</span>"
+              ]
             },
             {
               "title": "Enchant",
               "titleTone": "bone",
-              "html": ["Enchanting becomes a system you build toward, not a slot machine. <span class='text-ash'>— Meridian</span>"]
+              "html": [
+                "Enchanting becomes a system you build toward, not a slot machine. <span class='text-ash'>— Meridian</span>"
+              ]
             },
             {
               "title": "Trade",
               "titleTone": "bone",
-              "html": ["Villagers become people you have a history with. <span class='text-ash'>— Mercantile</span>"]
+              "html": [
+                "Villagers become people you have a history with. <span class='text-ash'>— Mercantile</span>"
+              ]
             },
             {
               "title": "Discover",
               "titleTone": "bone",
-              "html": ["Every chest is worth opening, for every player who finds it. <span class='text-ash'>— Prosperity</span>"]
+              "html": [
+                "Every chest is worth opening, for every player who finds it. <span class='text-ash'>— Prosperity</span>"
+              ]
             }
           ]
         }
@@ -52,7 +71,7 @@
     },
     {
       "id": "mods",
-      "title": "The four mods",
+      "title": "The core four",
       "lede": "Each completes one vanilla system. Each ships and updates on its own.",
       "blocks": [
         {
@@ -110,15 +129,21 @@
           "items": [
             {
               "title": "Independent",
-              "html": ["Every mod is fully functional on its own. Remove one and you lose exactly its features — nothing else breaks. A server can adopt the collection one mod at a time."]
+              "html": [
+                "Every mod is fully functional on its own. Remove one and you lose exactly its features — nothing else breaks. A server can adopt the collection one mod at a time."
+              ]
             },
             {
               "title": "Interoperable",
-              "html": ["Installed together, siblings detect each other and light up extra integration through read-only public APIs and Fabric events — never a hard dependency, never a shared jar."]
+              "html": [
+                "Installed together, siblings detect each other and light up extra integration through read-only public APIs and Fabric events — never a hard dependency, never a shared jar."
+              ]
             },
             {
               "title": "No bloat",
-              "html": ["Each mod overhauls one domain and stays in its lane: no new dimension, nothing another mod must load, and multiplayer-fair by design."]
+              "html": [
+                "Each mod overhauls one domain and stays in its lane: no new dimension, nothing another mod must load, and multiplayer-fair by design."
+              ]
             }
           ]
         }
@@ -134,6 +159,44 @@
             "Every member publishes a small, stable, read-only <code class='text-accent2'>com.rfizzle.&lt;mod&gt;.api</code> package plus a Fabric event surface. Integration is soft-dependency only — <code class='text-accent2'>modCompileOnly</code> + <code class='text-accent2'>isModLoaded</code> guards — so a third-party mod can integrate with any member using the exact pattern the siblings use. There are no private handshakes.",
             "The shared API and HUD standards, the design system, and the build tooling all live in the <a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/concord' target='_blank' rel='noopener noreferrer'>concord repository</a>."
           ]
+        }
+      ]
+    },
+    {
+      "id": "suite-status",
+      "title": "Suite status",
+      "band": true,
+      "lede": "The collection at a glance. Numbers refresh nightly from the GitHub and Modrinth APIs.",
+      "blocks": [
+        {
+          "type": "cards",
+          "mdColumns": 3,
+          "lgColumns": 3,
+          "items": [
+            {
+              "title": "15",
+              "html": [
+                "Downloads across the collection"
+              ]
+            },
+            {
+              "title": "4 of 8",
+              "html": [
+                "Members released"
+              ]
+            },
+            {
+              "title": "43",
+              "html": [
+                "Open issues across the suite"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "html": "Per-member detail — versions, CI, downloads, open work — on the <a class='text-accent hover:text-accent2 underline' href='/status.html'>status page</a>.",
+          "center": true
         }
       ]
     }

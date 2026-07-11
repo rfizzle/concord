@@ -1,0 +1,55 @@
+# Nightly suite status refresh. Reads members.json and queries the public
+# GitHub and Modrinth APIs (no secrets — GITHUB_TOKEN only raises the rate
+# limit), regenerating site/status.json, the status dashboard page, and the
+# landing page's suite-status section. Commits only when the data actually
+# changed. A push made with GITHUB_TOKEN never re-triggers site.yml on its
+# own (GitHub suppresses workflow runs for token-initiated pushes), so the
+# job dispatches the site rebuild explicitly after committing.
+name: Suite status
+
+on:
+  schedule:
+    - cron: "43 5 * * *" # daily, 05:43 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: suite-status
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Regenerate status data
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/gen-status.py
+      - name: Commit and rebuild the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- site/; then
+            echo "status data unchanged — nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/status.json site/pages/status.json site/pages/index.json
+          git commit -m "chore(status): refresh suite status"
+          # A human push landing since checkout would make this push
+          # non-fast-forward; rebase the one status commit on top of it.
+          git pull --rebase --autostash origin master
+          git push
+          # The commit already landed; a transient dispatch failure must not
+          # fail the run — the site refreshes on the next change instead.
+          gh workflow run site.yml --ref master \
+            || echo "::warning::site rebuild dispatch failed; the site refreshes on the next site/ change"
