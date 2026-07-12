@@ -1,0 +1,69 @@
+# Detects members that have fallen behind the suite toolchain pinned in
+# propagate/versions-common.properties (Minecraft, Fabric Loader, Fabric API,
+# Loom, Java). Fetches each member's gradle.properties and versions-common.properties
+# fresh via the GitHub API (the members aren't checked out in CI) into a temp
+# mirror, then runs the same checker as `make toolchain-check`. Fails the run
+# when a member pins a governed key to a stale value; adoption-gap notes (a pin
+# not yet sourced from the suite file) are informational and pass.
+#
+# Reuses CONCORD_DISPATCH_TOKEN (the propagate credential) for read access to
+# member repos. Runs weekly and on demand — not on push/PR — so a member that
+# intentionally lags mid-migration (its concord-sync PR left open) doesn't block
+# unrelated pull requests.
+name: Member toolchain drift
+
+on:
+  schedule:
+    - cron: "31 6 * * 1" # Mondays, 06:31 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Fetch member properties
+        env:
+          GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/members"
+          # Assign first so a jq failure trips errexit (a bare `for x in $(jq…)`
+          # would swallow it and iterate zero times, passing green having checked
+          # nothing).
+          ids=$(jq -r '.members[].id' members.json)
+          [ -n "$ids" ] || { echo "::error::no member ids in members.json"; exit 1; }
+          infra_fail=0
+          for id in $ids; do
+            dir="$root/$id"
+            mkdir -p "$dir"
+            # gradle.properties always exists; versions-common.properties only
+            # once the member has merged the concord-sync PR. A 404 on either is
+            # not an infra failure — the checker treats an absent file as "not
+            # pinned here" and compares whatever is present.
+            for file in gradle.properties versions-common.properties; do
+              if content=$(gh api "repos/rfizzle/$id/contents/$file" --jq '.content' 2>err.txt); then
+                if ! printf '%s' "$content" | base64 -d > "$dir/$file"; then
+                  echo "::error::base64 decode failed for $id/$file"
+                  infra_fail=1
+                fi
+              elif grep -qi 'HTTP 404\|Not Found' err.txt; then
+                echo "::notice::$id/$file absent (404) — skipped"
+              else
+                # Auth/rate-limit/network/repo-not-found: an infra failure, not
+                # drift. Surface it distinctly so a transient error can't
+                # masquerade as a member with no pins and skew the report.
+                echo "::error::fetch failed for $id/$file (not a 404): $(cat err.txt)"
+                infra_fail=1
+              fi
+            done
+          done
+          if [ "$infra_fail" -ne 0 ]; then
+            echo "::error::infrastructure failures fetching member properties — aborting before the drift check to avoid false positives"
+            exit 1
+          fi
+      - name: Check for drift
+        run: python3 scripts/check-toolchain-drift.py --root "$RUNNER_TEMP/members"
