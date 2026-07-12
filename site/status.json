@@ -1,11 +1,11 @@
 {
-  "generated": "2026-07-11",
+  "generated": "2026-07-12",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 15,
+    "downloads": 16,
     "followers": 1,
-    "openIssues": 43
+    "openIssues": 8
   },
   "members": [
     {
@@ -22,9 +22,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-11"
+        "date": "2026-07-12"
       },
-      "openIssues": 7,
+      "openIssues": 5,
       "modrinth": null
     },
     {
@@ -46,7 +46,7 @@
       "openIssues": 2,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 15,
+        "downloads": 16,
         "followers": 1
       }
     },
@@ -96,12 +96,8 @@
       "status": "in-development",
       "layoutMigrated": true,
       "release": null,
-      "ci": {
-        "status": "completed",
-        "conclusion": "success",
-        "date": "2026-07-11"
-      },
-      "openIssues": 6,
+      "ci": null,
+      "openIssues": null,
       "modrinth": null
     },
     {
@@ -112,12 +108,8 @@
       "status": "in-development",
       "layoutMigrated": true,
       "release": null,
-      "ci": {
-        "status": "completed",
-        "conclusion": "success",
-        "date": "2026-07-11"
-      },
-      "openIssues": 9,
+      "ci": null,
+      "openIssues": null,
       "modrinth": null
     },
     {
@@ -128,12 +120,8 @@
       "status": "in-development",
       "layoutMigrated": true,
       "release": null,
-      "ci": {
-        "status": "completed",
-        "conclusion": "success",
-        "date": "2026-07-11"
-      },
-      "openIssues": 12,
+      "ci": null,
+      "openIssues": null,
       "modrinth": null
     },
     {
@@ -144,12 +132,8 @@
       "status": "in-development",
       "layoutMigrated": true,
       "release": null,
-      "ci": {
-        "status": "completed",
-        "conclusion": "success",
-        "date": "2026-07-11"
-      },
-      "openIssues": 6,
+      "ci": null,
+      "openIssues": null,
       "modrinth": null
     }
   ]
