@@ -20,6 +20,7 @@ is scaffolded from it before any code exists.
 ├── CLAUDE.md                  # symlink → AGENTS.md (Tribulation pattern)
 ├── Makefile                   # task shortcuts wrapping gradle
 ├── build.gradle / settings.gradle / gradle.properties
+├── versions-common.properties # suite toolchain pins — concord-owned, synced
 ├── gradlew / gradlew.bat / gradle/
 │
 ├── .ai/                       # AI working area (committed)

@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test art-test status status-test sync-test help
+.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test status status-test sync-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -15,6 +15,8 @@ help:
 	@echo "gitignore-check  show which sibling .gitignore regions would change (no writes)"
 	@echo "stubs-check    fail if any sibling member workflow stub drifts from workflow-stubs.json"
 	@echo "stubs-test     run the workflow-stub checker's unit tests"
+	@echo "toolchain-check  fail if any sibling member is behind propagate/versions-common.properties"
+	@echo "toolchain-test   run the toolchain-drift checker's unit tests"
 	@echo "art-test       run the glyph + sfx renderer unit tests"
 	@echo "status         regenerate site/status.json + the status page from the public APIs"
 	@echo "status-test    run the status generator's unit tests"
@@ -58,6 +60,17 @@ stubs-check:
 
 stubs-test:
 	@$(PY) -m unittest scripts.test_check_workflow_stubs
+
+# Diff each sibling member's effective toolchain pins (versions-common.properties
+# precedence over gradle.properties) against the canonical suite pins in
+# propagate/versions-common.properties. Exits non-zero when a member pins a
+# governed key to a stale value (CI runs the same check over freshly-fetched
+# member properties).
+toolchain-check:
+	@$(PY) scripts/check-toolchain-drift.py --root ..
+
+toolchain-test:
+	@$(PY) -m unittest scripts.test_check_toolchain_drift
 
 # Regenerate the suite status dashboard (site/status.json, site/pages/status.json,
 # and the landing "suite-status" section) from the public GitHub and Modrinth

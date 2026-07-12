@@ -11,8 +11,9 @@
 #   2. File sync (PR-based) — concord-owned payloads are proposed to every member
 #      via a single `concord-sync` pull request, because member default branches
 #      are protected and reject direct commits. Each run stages onto the branch:
-#        - everything under propagate/ (e.g. .github/ISSUE_TEMPLATE/*.yml) at the
-#          same relative path — only wholly concord-owned files belong here; files
+#        - everything under propagate/ (e.g. .github/ISSUE_TEMPLATE/*.yml and
+#          versions-common.properties, the suite toolchain pins) at the same
+#          relative path — only wholly concord-owned files belong here; files
 #          repos customize (.gitignore, Makefile) stay copy-paste-by-hand;
 #        - AGENTS.md's <!-- concord:NAME:start/end --> regions, rewritten from
 #          AGENTS-COMMON.md (repo-owned prose outside the markers is untouched; a

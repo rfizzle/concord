@@ -63,6 +63,10 @@ duplicated).
       `gametest`, `test`), `fabric.mod.json` (mod id, icon, empty
       entrypoints), and Mojang mappings — `make build` is green and the
       client launches.
+- [ ] The suite toolchain pins come from the concord-owned
+      `versions-common.properties` (loaded in `settings.gradle`), not inlined —
+      `gradle.properties` holds only this repo's own values. See the
+      `mc-gradle-builds` skill, "Suite toolchain pins."
 - [ ] One trivial gametest and one trivial JUnit test exist and pass, so the
       CI wiring is exercised before real features depend on it.
 - [ ] Coverage is wired the suite way from day one: the JaCoCo agent attached
