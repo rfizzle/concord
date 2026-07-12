@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test art-test status status-test help
+.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test art-test status status-test sync-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -18,6 +18,7 @@ help:
 	@echo "art-test       run the glyph + sfx renderer unit tests"
 	@echo "status         regenerate site/status.json + the status page from the public APIs"
 	@echo "status-test    run the status generator's unit tests"
+	@echo "sync-test      run the concord-sync PR script's integration tests"
 
 catalog:
 	@$(PY) scripts/gen-skills-catalog.py
@@ -69,7 +70,14 @@ status-test:
 	@$(PY) -m unittest scripts.test_gen_status
 
 # Guard the vendored art renderers (.ai/skills/mc-textures/scripts/glyph.py and
-# .ai/skills/mc-audio/scripts/sfx.py) — every member repo receives these via
-# `make sync`, so a regression here breaks the whole suite's art pipeline.
+# .ai/skills/mc-audio/scripts/sfx.py) — every member repo receives these via the
+# concord-sync propagate PR (or `make sync` locally), so a regression here breaks
+# the whole suite's art pipeline.
 art-test:
 	@$(PY) -m unittest scripts.test_glyph scripts.test_sfx
+
+# Exercise scripts/open-sync-pr.sh — which stages concord-owned files onto each
+# member's concord-sync PR — against a mock gh: add/update/delete of the vendored
+# .ai/skills + .ai/commands trees and the .concord-rev provenance stamp.
+sync-test:
+	@$(PY) -m unittest scripts.test_open_sync_pr

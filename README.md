@@ -62,7 +62,13 @@ stub granting more is the sharp edge.
 ### Syncing skills & commands
 
 Skills and slash commands are edited in this repo and vendored into each mod
-repo. The standard Makefile target (copy into new member repos):
+repo. Propagation is automatic: when `.ai/skills/**` or `.ai/commands/**` change
+on `master`, `propagate.yml` stages the trees onto each member's `concord-sync`
+PR (`scripts/open-sync-pr.sh`), mirroring the `rsync -a --delete` semantics below
+— concord-dropped files are removed and `.ai/skills/.concord-rev` is stamped with
+the source concord commit. Merging the PR adopts the change. `make sync` is the
+local convenience for working ahead of that PR — the standard member Makefile
+target (copy into new member repos):
 
 ```make
 CONCORD_DIR ?= ../concord
@@ -76,7 +82,8 @@ sync:
 ```
 
 `.ai/skills/` and `.ai/commands/` in a mod repo are wholly owned by the sync
-(`--delete` propagates removals); `.concord-rev` records provenance. Claude Code
+(`--delete` propagates removals, whether run locally or by the `concord-sync`
+PR); `.concord-rev` records provenance. Claude Code
 loads them through `.claude/skills` → `.ai/skills` and `.claude/commands` →
 `.ai/commands` symlinks, so the vendored skills and slash commands (like
 `/glyph`) work in every member repo. A repo needing a repo-local skill or
