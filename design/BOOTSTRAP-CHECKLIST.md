@@ -65,6 +65,10 @@ duplicated).
       client launches.
 - [ ] One trivial gametest and one trivial JUnit test exist and pass, so the
       CI wiring is exercised before real features depend on it.
+- [ ] Coverage is wired the suite way from day one: the JaCoCo agent attached
+      to `runGametest` and a `jacocoMergedReport` task merging unit + gametest
+      execution data (snippets in the `mc-gradle-builds` skill), so the
+      coverage number is honest before the first real feature lands.
 - [ ] `AGENTS.md` per the Tribulation skeleton with the "Suite standards
       (Concord)" section (snippet in concord's README) and the
       `<!-- concord:managed:start/end -->` marker pair seeded; `CLAUDE.md` is
