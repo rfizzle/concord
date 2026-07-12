@@ -111,8 +111,10 @@ propagate automatically, no new markers needed.
 
 ### `.ai/` — AI working area
 Committed. `skills/` and `commands/` are **vendored from the concord repo** —
-edit them in concord, refresh with `make sync` (both directories are
-wholly owned by the sync; `.concord-rev` records the source SHA). Claude Code
+edit them in concord; the `concord-sync` PR proposes refreshes automatically when
+they change on concord's `master`, or run `make sync` locally to work ahead of it
+(both directories are wholly owned by the sync — removals propagate; `.concord-rev`
+records the source SHA). Claude Code
 reaches them via `.claude/skills` → `.ai/skills` and `.claude/commands` →
 `.ai/commands` symlinks, so vendored skills and slash commands (like `/glyph`)
 work here. The generated `skills/CATALOG.md`
