@@ -184,6 +184,110 @@
         if (d) d.removeAttribute('open');
       });
     });
+
+    // Sortable data tables (blocks.njk `table` with sortable columns).
+    // Progressive enhancement: header <button>s do nothing until wired here, so
+    // the table is fully usable in source order without JS.
+    document.querySelectorAll('table[data-sortable-table]').forEach(function (table) {
+      var tbody = table.tBodies[0];
+      var headRow = table.tHead && table.tHead.rows[0];
+      if (!tbody || !headRow) return;
+
+      function romanToInt(str) {
+        var map = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+        var s = str.toUpperCase().replace(/[^IVXLCDM]/g, '');
+        if (!s) return NaN;
+        var total = 0, prev = 0;
+        for (var i = s.length - 1; i >= 0; i--) {
+          var v = map[s.charAt(i)];
+          if (v < prev) { total -= v; } else { total += v; prev = v; }
+        }
+        return total;
+      }
+
+      // The comparable key for a cell: an explicit data-sort wins, else the
+      // column's strategy reads the visible text. Numbers/order-ranks come back
+      // as numbers; everything else as a lowercased string.
+      function keyFor(cell, type, order) {
+        var explicit = cell.hasAttribute('data-sort');
+        var raw = explicit ? cell.getAttribute('data-sort') : (cell.textContent || '').trim();
+        if (type === 'number') {
+          var m = raw.replace(/[,\s]/g, '').match(/-?\d+(\.\d+)?/);
+          return m ? parseFloat(m[0]) : NaN;
+        }
+        if (type === 'roman') {
+          var n = explicit ? parseFloat(raw) : NaN;
+          return isNaN(n) ? romanToInt(raw) : n;
+        }
+        if (type === 'order' && order) {
+          for (var i = 0; i < order.length; i++) {
+            if (order[i].toLowerCase() === raw.toLowerCase()) return i;
+          }
+          return order.length; // unknown values sort after all known tiers
+        }
+        return raw.toLowerCase();
+      }
+
+      // Numbers first (NaN last), then strings by locale. Mixed types can't
+      // occur within a column, but guard anyway so a stray NaN sorts to the end.
+      function compare(a, b) {
+        var an = typeof a === 'number', bn = typeof b === 'number';
+        if (an && bn) {
+          if (isNaN(a)) return isNaN(b) ? 0 : 1;
+          if (isNaN(b)) return -1;
+          return a - b;
+        }
+        if (an) return -1;
+        if (bn) return 1;
+        return String(a).localeCompare(String(b));
+      }
+
+      function sortBy(colIndex, type, order, dir) {
+        var keyed = Array.prototype.map.call(tbody.rows, function (row, i) {
+          return { row: row, i: i, key: keyFor(row.cells[colIndex], type, order) };
+        });
+        keyed.sort(function (x, y) {
+          var c = compare(x.key, y.key);
+          if (c === 0) c = x.i - y.i; // stable: preserve source order on ties
+          return dir === 'desc' ? -c : c;
+        });
+        keyed.forEach(function (k) { tbody.appendChild(k.row); });
+      }
+
+      function specFor(btn) {
+        var order = null, attr = btn.getAttribute('data-sort-order');
+        if (attr) { try { order = JSON.parse(attr); } catch (e) { order = null; } }
+        return { type: btn.getAttribute('data-sort-type') || 'text', order: order };
+      }
+
+      var headers = Array.prototype.slice.call(headRow.cells);
+      headers.forEach(function (th, colIndex) {
+        var btn = th.querySelector('button.th-sort');
+        if (!btn) return;
+        var spec = specFor(btn);
+        btn.addEventListener('click', function () {
+          var dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
+          headers.forEach(function (h) {
+            if (h.hasAttribute('aria-sort')) h.setAttribute('aria-sort', 'none');
+          });
+          th.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
+          sortBy(colIndex, spec.type, spec.order, dir);
+        });
+      });
+
+      var dc = table.getAttribute('data-default-sort-col');
+      if (dc !== null) {
+        var ci = parseInt(dc, 10);
+        var th = headers[ci];
+        var btn = th && th.querySelector('button.th-sort');
+        if (btn) {
+          var dir = table.getAttribute('data-default-sort-dir') === 'desc' ? 'desc' : 'asc';
+          var spec = specFor(btn);
+          th.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
+          sortBy(ci, spec.type, spec.order, dir);
+        }
+      }
+    });
   </script>
 </body>
 </html>

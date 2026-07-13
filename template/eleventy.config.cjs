@@ -26,12 +26,58 @@ const BLOCK_TYPES = new Set([
   "list", "steps", "faq", "examples", "panel",
 ]);
 
+// Sort strategies a sortable table column may declare. `text` compares
+// case-insensitively; `number` extracts the first number from the cell;
+// `roman` reads Roman numerals as integers; `order` ranks by position in an
+// explicit list (for tiers like Common < Uncommon < Rare). A per-cell
+// `{ html, sort }` value overrides whatever the strategy would compute.
+const SORT_TYPES = new Set(["text", "number", "roman", "order"]);
+
+// Resolve a table block's terse `sort`/`sortable`/`defaultSort` authoring into
+// the `sortCols` array blocks.njk renders from, failing the build on any
+// misconfiguration (unknown strategy, `order` without a list, default-sort
+// pointed at a missing or unsortable column).
+function normalizeTable(b, where) {
+  b.sortable = !!(b.sortable || b.sort || b.defaultSort);
+  if (!b.sortable) return;
+  const headers = b.headers || [];
+  const specs = b.sort || [];
+  if (specs.length > headers.length) {
+    throw new Error(`table in ${where}: sort has ${specs.length} entries but there are only ${headers.length} headers`);
+  }
+  b.sortCols = headers.map((_, i) => {
+    let s = specs[i];
+    if (s === false || s === null) return { sortable: false };
+    if (s === undefined) s = { type: "text" };
+    if (typeof s === "string") s = { type: s };
+    if (!SORT_TYPES.has(s.type)) {
+      throw new Error(`table in ${where}: unknown sort type "${s.type}" for column ${i} — one of ${[...SORT_TYPES].join(", ")}`);
+    }
+    if (s.type === "order" && !Array.isArray(s.order)) {
+      throw new Error(`table in ${where}: sort type "order" for column ${i} needs an "order" array of values low-to-high`);
+    }
+    return { sortable: true, type: s.type, order: s.order || null };
+  });
+  if (b.defaultSort) {
+    const c = b.defaultSort.column;
+    if (typeof c !== "number" || c < 0 || c >= headers.length) {
+      throw new Error(`table in ${where}: defaultSort.column ${c} is out of range (0–${headers.length - 1})`);
+    }
+    if (!b.sortCols[c].sortable) {
+      throw new Error(`table in ${where}: defaultSort.column ${c} ("${headers[c]}") is marked non-sortable`);
+    }
+  }
+}
+
 function validateBlocks(blocks, where) {
   for (const b of blocks || []) {
     if (!BLOCK_TYPES.has(b.type)) {
       throw new Error(
         `Unknown block type "${b.type}" in ${where} — known types: ${[...BLOCK_TYPES].join(", ")}`
       );
+    }
+    if (b.type === "table") {
+      normalizeTable(b, where);
     }
     if (b.type === "sub") {
       validateBlocks(b.blocks, `${where} > sub "${b.title}"`);

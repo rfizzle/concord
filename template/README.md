@@ -89,7 +89,7 @@ the page and section — content never silently renders as nothing.
 | `prose` | `{ html: [str], wide? }` | paragraphs |
 | `note` | `{ html, center? }` | small smoke-colored footnote |
 | `sub` | `{ id?, title, intro?, blocks: [...] }` | h3 subsection (recursive) |
-| `table` | `{ headers: [str], rows: [[str]], note?, nowrapHeaders?, bottomGap? }` | styled data table |
+| `table` | `{ headers: [str], rows: [[cell]], note?, nowrapHeaders?, bottomGap?, sortable?, sort?, defaultSort? }` | styled data table (optionally sortable) |
 | `code` | `{ code, tone?: "bone"\|"accent2", label?, small?, bottomGap?, topGap? }` | standalone code block |
 | `cards` | `{ mdColumns?, lgColumns?, leftAccent?, hoverAccent?, titleSize?, items: [card] }` | card grid |
 | `list` | `{ ordered?, items: [str], spacing? }` | bullet / numbered list |
@@ -99,6 +99,50 @@ the page and section — content never silently renders as nothing.
 | `panel` | `{ title, items: [str] }` | single framed panel |
 
 Card item: `{ id?, icon?, title, titleTone?: "accent"\|"bone", badge?, html: [str], bullets?: [str], bulletSpacing?, code?, note? }`.
+
+### Sortable tables
+
+Set `sortable: true` on a `table` to make its headers click-to-sort. Sorting is
+a progressive enhancement — without JavaScript the table renders in source
+order and stays fully readable; the script only adds the reordering.
+
+Each column decides *how* it sorts via a `sort` array parallel to `headers`.
+An entry may be:
+
+- `"text"` — case-insensitive alphabetical (the default for any column when
+  `sort` is omitted or the entry is missing).
+- `"number"` — the first number found in the cell (`"+5%"` → `5`); non-numeric
+  cells sort last.
+- `"roman"` — Roman numerals read as integers, so `I < V < VII` (not `I < V <
+  VII` alphabetically, which would be wrong).
+- `{ "type": "order", "order": ["Common", "Uncommon", "Rare", "Very Rare"] }` —
+  rank by position in an explicit list, for tiers that aren't alphabetical.
+  Values not in the list sort after every listed tier.
+- `false` — this column is not sortable (no button).
+
+Set `defaultSort: { "column": 0, "dir": "asc" }` to sort on load (`dir` defaults
+to `"asc"`). A build error is raised for an unknown sort type, an `order`
+strategy with no list, or a `defaultSort` pointing at a missing or non-sortable
+column.
+
+When a cell's visible text isn't its true sort value (an icon, a formatted
+label), give that cell an explicit key: write it as `{ "html": "…", "sort":
+"…" }` instead of a bare string. Mixed bare-string and object cells in the same
+row are fine.
+
+```jsonc
+{
+  "type": "table",
+  "sortable": true,
+  "headers": ["Enchantment", "Max", "Rarity", "Effect"],
+  "sort": ["text", "roman", { "type": "order", "order": ["Common", "Uncommon", "Rare", "Very Rare"] }, false],
+  "defaultSort": { "column": 0, "dir": "asc" },
+  "rows": [
+    ["Sharpness", "V", "Common", "Increases melee damage"],
+    ["Protection", "IV", "Common", "Reduces most damage"]
+  ]
+}
+```
 
 ## Generated for free
 

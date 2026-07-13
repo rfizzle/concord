@@ -22,18 +22,31 @@
   </article>
 {%- elif b.type == "table" -%}
   <div class="overflow-x-auto{% if b.bottomGap %} mb-4{% endif %}">
-    <table class="w-full text-xs md:text-sm border border-elevated rounded-md">
+    <table class="w-full text-xs md:text-sm border border-elevated rounded-md{% if b.sortable %} tbl-sortable{% endif %}"{% if b.sortable %} data-sortable-table{% if b.defaultSort %} data-default-sort-col="{{ b.defaultSort.column }}" data-default-sort-dir="{{ b.defaultSort.dir | default('asc') }}"{% endif %}{% endif %}>
       <thead class="bg-card text-bone">
         <tr>
           {%- for h in b.headers %}
-          <th class="text-left py-2 px-3 border-b border-elevated{% if b.nowrapHeaders %} whitespace-nowrap{% endif %}">{{ h | safe }}</th>
+          {%- if b.sortable and b.sortCols[loop.index0].sortable -%}
+          {%- set col = b.sortCols[loop.index0] -%}
+          <th class="text-left border-b border-elevated{% if b.nowrapHeaders %} whitespace-nowrap{% endif %}" scope="col" aria-sort="none">
+            <button type="button" class="th-sort" data-sort-type="{{ col.type }}"{% if col.order %} data-sort-order='{{ col.order | dump | safe }}'{% endif %}>
+              <span>{{ h | safe }}</span>
+              <span class="th-sort-ind" aria-hidden="true"></span>
+            </button>
+          </th>
+          {%- else -%}
+          <th class="text-left py-2 px-3 border-b border-elevated{% if b.nowrapHeaders %} whitespace-nowrap{% endif %}"{% if b.sortable %} scope="col"{% endif %}>{{ h | safe }}</th>
+          {%- endif -%}
           {%- endfor %}
         </tr>
       </thead>
       <tbody class="text-ash">
         {%- for row in b.rows %}
         <tr class="border-t border-elevated/40 hover:bg-card/50">
-          {%- for cell in row %}<td class="px-3 py-2">{{ cell | safe }}</td>{% endfor %}
+          {%- for cell in row -%}
+          {%- if cell.html is defined -%}<td class="px-3 py-2"{% if cell.sort is defined %} data-sort="{{ cell.sort }}"{% endif %}>{{ cell.html | safe }}</td>
+          {%- else -%}<td class="px-3 py-2">{{ cell | safe }}</td>{%- endif -%}
+          {%- endfor %}
         </tr>
         {%- endfor %}
       </tbody>

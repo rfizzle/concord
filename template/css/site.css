@@ -41,3 +41,31 @@ details > summary::-webkit-details-marker { display: none; }
 
 /* Accent-tinted drop shadow on the hero logo. */
 .hero-logo-shadow { filter: drop-shadow(0 0 30px rgba(var(--glow-rgb), 0.3)); }
+
+/* Sortable data tables (blocks.njk `table` with sortable columns). Progressive
+   enhancement: the header buttons are plain buttons that do nothing until the
+   base.njk script wires them, so the table still renders in source order with
+   no JS. The direction indicator is driven entirely by the th's aria-sort. */
+.th-sort {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.th-sort:hover { color: var(--color-accent); }
+.th-sort:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.th-sort-ind::before {
+  content: '\2195'; /* ↕ unsorted */
+  font-size: 0.85em;
+  opacity: 0.35;
+}
+[aria-sort="ascending"] .th-sort-ind::before { content: '\2191'; opacity: 1; color: var(--color-accent); }
+[aria-sort="descending"] .th-sort-ind::before { content: '\2193'; opacity: 1; color: var(--color-accent); }
