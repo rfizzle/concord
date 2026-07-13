@@ -67,8 +67,8 @@
       "tagline": "Make the night count.",
       "url": "https://respite.rfizzle.com",
       "store": {
-        "modrinth": { "slug": "respite-vitality-overhaul" },
-        "curseforge": { "slug": "respite-vitality-overhaul" }
+        "modrinth": { "id": "Mz4an5lJ", "slug": "respite-vitality-overhaul" },
+        "curseforge": { "id": "1608507", "slug": "respite-vitality-overhaul" }
       },
       "status": "in-development",
       "conformance": {
