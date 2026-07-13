@@ -64,7 +64,7 @@ stub granting more is the sharp edge.
 Skills and slash commands are edited in this repo and vendored into each mod
 repo. Propagation is automatic: when `.ai/skills/**` or `.ai/commands/**` change
 on `master`, `propagate.yml` stages the trees onto each member's `concord-sync`
-PR (`scripts/open-sync-pr.sh`), mirroring the `rsync -a --delete` semantics below
+PR (`scripts/open-sync-pr.py`), mirroring the `rsync -a --delete` semantics below
 — concord-dropped files are removed and `.ai/skills/.concord-rev` is stamped with
 the source concord commit. Merging the PR adopts the change. `make sync` is the
 local convenience for working ahead of that PR — the standard member Makefile

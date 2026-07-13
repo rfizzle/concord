@@ -89,7 +89,7 @@ status-test:
 art-test:
 	@$(PY) -m unittest scripts.test_glyph scripts.test_sfx
 
-# Exercise scripts/open-sync-pr.sh — which stages concord-owned files onto each
+# Exercise scripts/open-sync-pr.py — which stages concord-owned files onto each
 # member's concord-sync PR — against a mock gh: add/update/delete of the vendored
 # .ai/skills + .ai/commands trees and the .concord-rev provenance stamp.
 sync-test:

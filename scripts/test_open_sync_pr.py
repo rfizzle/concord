@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration tests for scripts/open-sync-pr.sh.
+"""Integration tests for scripts/open-sync-pr.py.
 
 The script proposes concord-owned files onto each member's `concord-sync` PR by
 calling `gh`. These tests drive it against a mock `gh` that serves a synthetic
@@ -12,8 +12,10 @@ matter for the vendored .ai/skills / .ai/commands trees:
   C. non-skill    — a stale issue template opens a PR, but .concord-rev is NOT
                     bumped (its stamp tracks the vendored tree, nothing else).
 
-The mock applies `-q` filters through the real jq, exactly as gh does, so the
-script's jq expressions are exercised for real.
+The script diffs by comparing each desired file's git blob SHA against the
+member's default-branch tree, so the mock serves that tree with real
+`git hash-object` blob ids and drift is expressed by perturbing a path's tree
+SHA — exactly how a genuinely divergent member would present.
 """
 import base64
 import json
@@ -116,8 +118,10 @@ def _synced_member():
     contents[".ai/skills/.concord-rev"] = {"content": GH_SHA + "\n", "sha": "revsha"}
     for p in _tracked("propagate"):
         dest = p[len("propagate/"):]
+        sha = _blob_sha(os.path.join(ROOT, p))
         contents[dest] = {"content": open(os.path.join(ROOT, p), encoding="utf-8").read(),
-                          "sha": "t_" + dest}
+                          "sha": sha}
+        tree[dest] = sha
     return {"repo": "rfizzle/testmember", "default_branch": "master",
             "head_sha": "deadbeef" * 5, "tree_sha": "cafef00d" * 5,
             "contents": contents, "tree": tree}
@@ -144,7 +148,7 @@ class OpenSyncPRTest(unittest.TestCase):
         env["ACTIONS_LOG"] = log_path
         env["GITHUB_SHA"] = GH_SHA
         env["GH_TOKEN"] = "x"
-        p = subprocess.run(["bash", "scripts/open-sync-pr.sh", "rfizzle/testmember"],
+        p = subprocess.run(["python3", "scripts/open-sync-pr.py", "rfizzle/testmember"],
                            cwd=ROOT, env=env, capture_output=True, text=True)
         self.assertEqual(p.returncode, 0, f"script failed:\n{p.stdout}\n{p.stderr}")
         if os.path.exists(log_path):
@@ -163,7 +167,7 @@ class OpenSyncPRTest(unittest.TestCase):
         create, update = ".ai/commands/glyph.md", ".ai/skills/CATALOG.md"
         stale = ".ai/skills/mc-obsolete/SKILL.md"
         del st["contents"][create], st["tree"][create]        # member missing -> create
-        st["contents"][update]["content"] += "\nDRIFT\n"       # member stale -> update
+        st["tree"][update] = "driftsha"                        # member stale -> update
         st["tree"][stale] = "stalesha"                          # concord dropped -> delete
         st["contents"][stale] = {"content": "x", "sha": "stalesha"}
         st["contents"][".ai/skills/.concord-rev"]["content"] = "0" * 40 + "\n"
@@ -189,7 +193,7 @@ class OpenSyncPRTest(unittest.TestCase):
     def test_non_skill_change_does_not_bump_rev(self):
         st = _synced_member()
         tmpl = _tracked("propagate")[0][len("propagate/"):]
-        st["contents"][tmpl]["content"] += "\n# drift\n"
+        st["tree"][tmpl] = "tmpldrift"
         _, a = self.run_sync(st)
         self.assertIn(tmpl, a["put"], "the stale template must be re-staged")
         self.assertNotIn(".ai/skills/.concord-rev", a["put"],

@@ -1,21 +1,21 @@
-# Guards scripts/open-sync-pr.sh — the script propagate.yml runs to stage
+# Guards scripts/open-sync-pr.py — the script propagate.yml runs to stage
 # concord-owned files (issue templates, AGENTS.md/.gitignore regions, and the
 # vendored .ai/skills + .ai/commands trees) onto each member's concord-sync PR.
 # A regression here writes wrong content — or wrong deletions — across every
 # member repo, so exercise the add/update/delete and .concord-rev logic against a
-# mock gh before it can merge. Hermetic: no network, jq + python3 only.
+# mock gh before it can merge. Hermetic: no network, python3 only.
 name: Sync PR script tests
 
 on:
   pull_request:
     paths:
-      - "scripts/open-sync-pr.sh"
+      - "scripts/open-sync-pr.py"
       - "scripts/test_open_sync_pr.py"
       - ".github/workflows/sync-pr-test.yml"
   push:
     branches: [master]
     paths:
-      - "scripts/open-sync-pr.sh"
+      - "scripts/open-sync-pr.py"
       - "scripts/test_open_sync_pr.py"
       - ".github/workflows/sync-pr-test.yml"
 

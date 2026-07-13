@@ -23,7 +23,7 @@
 #          member and .ai/skills/.concord-rev records the source concord commit.
 #      The branch is reset to the default head each run, so the PR diff is exactly
 #      concord's desired changes; with nothing to change, no PR is opened. Logic
-#      lives in scripts/open-sync-pr.sh.
+#      lives in scripts/open-sync-pr.py.
 #
 # Requires a repo secret CONCORD_DISPATCH_TOKEN. Without it the workflow fails
 # gracefully per-repo.
@@ -52,7 +52,7 @@ on:
       - ".ai/skills/**"
       - ".ai/commands/**"
       - "scripts/inject-agents-regions.py"
-      - "scripts/open-sync-pr.sh"
+      - "scripts/open-sync-pr.py"
   workflow_dispatch:
 
 jobs:
@@ -101,4 +101,4 @@ jobs:
       - name: Propose concord-owned files to rfizzle/${{ matrix.repo }}
         env:
           GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
-        run: bash scripts/open-sync-pr.sh "rfizzle/${{ matrix.repo }}"
+        run: python3 scripts/open-sync-pr.py "rfizzle/${{ matrix.repo }}"

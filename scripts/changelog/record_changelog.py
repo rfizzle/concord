@@ -11,7 +11,7 @@ notes here keeps the in-repo history complete.
 
 Member default branches require a pull request (0 approvals, 0 checks), so a
 direct push is impossible: the file is staged on a changelog/vX.Y.Z branch via
-the Contents API (the same mechanism as open-sync-pr.sh) and the PR is merged
+the Contents API (the same mechanism as open-sync-pr.py) and the PR is merged
 with GITHUB_TOKEN — no branch-protection bypass and no extra secret.
 
 Idempotent. It no-ops when the version is already recorded: a hand-authored file
