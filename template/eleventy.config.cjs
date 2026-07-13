@@ -187,7 +187,7 @@ module.exports = function (eleventyConfig) {
   --color-accent-dark: #a89578;
   --color-accent2: #e8e0d4;
   --color-accent2-bright: #f4eee2;
-  --font-mono: "SF Mono", "Cascadia Code", "Fira Code", Consolas, ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Fira Code", Consolas, ui-monospace, monospace;
 }
 `);
     execFileSync(
