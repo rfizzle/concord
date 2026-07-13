@@ -14,7 +14,7 @@
           "lgColumns": 3,
           "items": [
             {
-              "title": "16",
+              "title": "17",
               "html": [
                 "Downloads across the collection"
               ]
@@ -26,7 +26,7 @@
               ]
             },
             {
-              "title": "8",
+              "title": "18",
               "html": [
                 "Open issues across the suite"
               ]
@@ -58,7 +58,7 @@
               "2026-07-01",
               "<a href='https://github.com/rfizzle/meridian/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/meridian/actions/workflows/ci.yml/badge.svg?branch=master' alt='Meridian CI status'></a>",
               "—",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/meridian/issues'>5</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/meridian/issues'>12</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://mercantile.rfizzle.com'>Mercantile</a>",
@@ -66,8 +66,8 @@
               "v1.0.0",
               "2026-07-01",
               "<a href='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml/badge.svg?branch=master' alt='Mercantile CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>16</a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/mercantile/issues'>2</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>17</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/mercantile/issues'>5</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://tribulation.rfizzle.com'>Tribulation</a>",
@@ -124,7 +124,7 @@
               "—"
             ]
           ],
-          "note": "Downloads count each member's Modrinth listing; members without a public listing yet show —. Refreshed nightly from the GitHub and Modrinth APIs · data last changed 2026-07-12."
+          "note": "Downloads count each member's Modrinth listing; members without a public listing yet show —. Refreshed nightly from the GitHub and Modrinth APIs · data last changed 2026-07-13."
         }
       ]
     }
