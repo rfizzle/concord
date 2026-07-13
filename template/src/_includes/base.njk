@@ -39,6 +39,11 @@
   <!-- Icons -->
   <link rel="icon" type="image/png" href="/icon.png">
   <link rel="apple-touch-icon" href="/icon.png">
+
+  <!-- Preload the body weight of the self-hosted monospace (declared in
+       site.css) so above-the-fold text paints in JetBrains Mono without a
+       swap flash. crossorigin is required for font fetches even same-origin. -->
+  <link rel="preload" href="/css/fonts/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/tailwind.css">
   {#- Tailwind utilities are compiled at build time (eleventy.config.cjs) and
       reference these variables, so the mod's theme applies here without a
