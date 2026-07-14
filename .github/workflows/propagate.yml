@@ -1,6 +1,6 @@
 # Concord — template & file propagation.
 #
-# Two propagation mechanisms, one workflow:
+# Three propagation mechanisms, one workflow:
 #
 #   1. Site rebuilds — when the shared site template (or the member registry)
 #      changes, dispatch a `concord-template-updated` event to every member AND
@@ -25,6 +25,13 @@
 #      concord's desired changes; with nothing to change, no PR is opened. Logic
 #      lives in scripts/open-sync-pr.py.
 #
+#   3. Issue labels — the shared label taxonomy (labels.json) is reconciled onto
+#      every member via the labels API: missing labels created, drifted
+#      color/description updated in place, unlisted labels (GitHub's defaults,
+#      dependabot's, repo-local ones) left untouched. Nothing is committed and no
+#      PR is opened — labels are GitHub-side config, not tracked files. Logic
+#      lives in scripts/sync-labels.py.
+#
 # Requires a repo secret CONCORD_DISPATCH_TOKEN. Without it the workflow fails
 # gracefully per-repo.
 #
@@ -32,10 +39,11 @@
 # member repo, so its blast radius if leaked is the whole suite:
 #   1. Preferred: a GitHub App installed on the member repos, minting a
 #      short-lived installation token per run (Contents RW, Pull requests RW,
-#      Actions write). Short TTL + per-repo scoping beats a standing secret.
+#      Issues RW, Actions write). Short TTL + per-repo scoping beats a standing
+#      secret.
 #   2. Otherwise: a FINE-GRAINED PAT scoped to exactly the member repos with
-#      Contents RW, Pull requests RW, Actions write, AND an expiry set (rotate
-#      on schedule).
+#      Contents RW, Pull requests RW, Issues RW, Actions write, AND an expiry set
+#      (rotate on schedule).
 # Do NOT use a classic `repo`-scoped PAT: it grants far more than needed across
 # every repo the owner can touch and never expires.
 name: Propagate template to member sites
@@ -51,8 +59,10 @@ on:
       - "gitignore-common"
       - ".ai/skills/**"
       - ".ai/commands/**"
+      - "labels.json"
       - "scripts/inject-agents-regions.py"
       - "scripts/open-sync-pr.py"
+      - "scripts/sync-labels.py"
   workflow_dispatch:
 
 jobs:
@@ -102,3 +112,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
         run: python3 scripts/open-sync-pr.py "rfizzle/${{ matrix.repo }}"
+
+  labels:
+    needs: members
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJson(needs.members.outputs.repos) }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Reconcile shared labels on rfizzle/${{ matrix.repo }}
+        env:
+          GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
+        run: python3 scripts/sync-labels.py "rfizzle/${{ matrix.repo }}"

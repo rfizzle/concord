@@ -1,0 +1,33 @@
+# Guards scripts/sync-labels.py — the script propagate.yml runs to reconcile the
+# shared issue-label taxonomy (labels.json) onto every member via the labels API.
+# A regression here writes wrong colors/descriptions — or, worse, the wrong
+# create/update decision — across every member repo, so exercise the
+# create/update/in-sync/never-delete logic against a mock gh, and validate the
+# manifest, before it can merge. Hermetic: no network, python3 only.
+name: Label sync script tests
+
+on:
+  pull_request:
+    paths:
+      - "labels.json"
+      - "scripts/sync-labels.py"
+      - "scripts/test_sync_labels.py"
+      - ".github/workflows/labels-test.yml"
+  push:
+    branches: [master]
+    paths:
+      - "labels.json"
+      - "scripts/sync-labels.py"
+      - "scripts/test_sync_labels.py"
+      - ".github/workflows/labels-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run label-sync tests
+        run: python3 -m unittest scripts.test_sync_labels
