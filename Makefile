@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test status status-test sync-test help
+.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test status status-test sync-test labels-check labels-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -21,6 +21,8 @@ help:
 	@echo "status         regenerate site/status.json + the status page from the public APIs"
 	@echo "status-test    run the status generator's unit tests"
 	@echo "sync-test      run the concord-sync PR script's integration tests"
+	@echo "labels-check   report which shared labels would change on a repo (labels-check REPO=owner/name)"
+	@echo "labels-test    run the label-sync script's unit tests"
 
 catalog:
 	@$(PY) scripts/gen-skills-catalog.py
@@ -94,3 +96,13 @@ art-test:
 # .ai/skills + .ai/commands trees and the .concord-rev provenance stamp.
 sync-test:
 	@$(PY) -m unittest scripts.test_open_sync_pr
+
+# Reconcile one repo's issue labels to the shared labels.json manifest (create
+# missing, update drifted color/description, never delete). propagate.yml runs
+# the same script across every member; --check reports drift without writing.
+#   make labels-check REPO=rfizzle/meridian
+labels-check:
+	@$(PY) scripts/sync-labels.py $(REPO) --check
+
+labels-test:
+	@$(PY) -m unittest scripts.test_sync_labels
