@@ -66,6 +66,11 @@ if base.endswith("/labels") and method == "GET":
     sys.stdout.write(json.dumps(STATE["labels"] if page == 1 else []))
     sys.exit(0)
 if base.endswith("/labels") and method == "POST":
+    if fields["name"] in STATE.get("conflict", []):
+        # Simulate a create that races an existing label — GitHub answers 422.
+        sys.stdout.write(json.dumps({"message": "Validation Failed",
+                                     "errors": [{"code": "already_exists"}]}))
+        sys.exit(1)
     log({"action": "create", "name": fields["name"], "color": fields["color"],
          "description": fields.get("description", "")})
     sys.stdout.write("{}"); sys.exit(0)
@@ -90,11 +95,11 @@ class SyncLabelsTest(unittest.TestCase):
             f.write(GH_MOCK)
         os.chmod(self.gh, 0o755)
 
-    def run_sync(self, labels):
+    def run_sync(self, labels, conflict=None):
         state_path = os.path.join(self.tmp, "member_state.json")
         log_path = os.path.join(self.tmp, "actions.log")
         with open(state_path, "w") as f:
-            json.dump({"labels": labels}, f)
+            json.dump({"labels": labels, "conflict": conflict or []}, f)
         if os.path.exists(log_path):
             os.remove(log_path)
         env = dict(os.environ)
@@ -155,6 +160,17 @@ class SyncLabelsTest(unittest.TestCase):
         self.assertFalse(a["create"])
         self.assertFalse(a["update"])
 
+    def test_create_conflict_falls_through_to_update(self):
+        # jules is absent from the member, so the script tries to create it — but
+        # the create races and GitHub returns 422 already-exists. The run must
+        # reconcile it with a PATCH and still exit 0, not abort the member.
+        state = [l for l in _clone(MANIFEST) if l["name"] != "jules"]
+        p, a = self.run_sync(state, conflict=["jules"])
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn("jules", a["create"], "the raced create is not logged as a success")
+        self.assertIn("jules", a["update"], "a 422 create must fall through to a PATCH")
+        self.assertEqual(a["update"]["jules"]["new_name"], "jules")
+
     def test_case_insensitive_recase_in_place(self):
         state = _clone(MANIFEST)
         target = next(l for l in state if l["name"] == "jules")
@@ -201,6 +217,16 @@ class ManifestValidationTest(unittest.TestCase):
         path = self._write({"labels": []})
         with self.assertRaises(SystemExit):
             sync_labels.load_manifest(path)
+
+    def test_rejects_overlong_description(self):
+        path = self._write({"labels": [
+            {"name": "x", "color": "1d76db", "description": "z" * 101}]})
+        with self.assertRaises(SystemExit):
+            sync_labels.load_manifest(path)
+
+    def test_missing_manifest_is_clean_exit(self):
+        with self.assertRaises(SystemExit):
+            sync_labels.load_manifest("/nonexistent/labels.json")
 
 
 if __name__ == "__main__":

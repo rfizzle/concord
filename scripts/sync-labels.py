@@ -57,18 +57,31 @@ def _looks_not_found(text: str) -> bool:
     return "not found" in low or "404" in text
 
 
+def _looks_already_exists(text: str) -> bool:
+    low = text.lower()
+    return "already_exists" in low or "already exists" in low
+
+
+# Returned by gh(..., allow_exists=True) when a create hit a label that already
+# exists — a race with a concurrent run, or a retried create whose first attempt
+# actually landed. The caller reconciles it with a PATCH instead of failing.
+EXISTS = object()
+
+
 def gh(
     endpoint: str,
     *,
     method: str | None = None,
     fields: dict[str, str] | None = None,
     allow_missing: bool = False,
+    allow_exists: bool = False,
 ):
     """Call `gh api`, returning the parsed JSON response.
 
     Retries transient failures (rate limits, 5xx, malformed bodies) with capped
     exponential backoff. `allow_missing` turns a 404 into a None return instead
-    of an error — used for optional reads.
+    of an error — used for optional reads. `allow_exists` turns a 422
+    "already exists" into the EXISTS sentinel — used for creates that raced.
     """
     argv = ["gh", "api", endpoint]
     if method:
@@ -91,6 +104,8 @@ def gh(
             combined = proc.stdout + proc.stderr
             if allow_missing and _looks_not_found(combined):
                 return None
+            if allow_exists and _looks_already_exists(combined):
+                return EXISTS
             last = combined.strip() or f"gh exited {proc.returncode}"
         if attempt + 1 < MAX_ATTEMPTS:
             delay = min(BACKOFF_CAP, BACKOFF_BASE * (2 ** attempt))
@@ -102,8 +117,11 @@ def gh(
 def load_manifest(path: str = MANIFEST) -> list[dict[str, str]]:
     """Read and validate labels.json — a bad manifest must fail loudly, not
     silently propagate garbage to every member."""
-    with open(path, encoding="utf-8") as handle:
-        data = json.load(handle)
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError:
+        raise SystemExit(f"{path}: manifest not found (run from the concord repo root)")
     labels = data.get("labels") if isinstance(data, dict) else None
     if not isinstance(labels, list) or not labels:
         raise SystemExit(f"{path}: expected a non-empty 'labels' array")
@@ -123,6 +141,8 @@ def load_manifest(path: str = MANIFEST) -> list[dict[str, str]]:
             raise SystemExit(f"{path}: {name!r} color must be a 6-digit hex string without '#', got {color!r}")
         if not isinstance(desc, str):
             raise SystemExit(f"{path}: {name!r} description must be a string")
+        if len(desc) > 100:
+            raise SystemExit(f"{path}: {name!r} description exceeds GitHub's 100-character limit ({len(desc)})")
     return labels
 
 
@@ -136,7 +156,9 @@ def list_labels(repo: str) -> dict[str, dict]:
         if not isinstance(batch, list) or not batch:
             break
         for label in batch:
-            existing[label["name"].lower()] = label
+            name = label.get("name")
+            if name:
+                existing[name.lower()] = label
         if len(batch) < 100:
             break
         page += 1
@@ -182,15 +204,23 @@ def main(argv: list[str]) -> int:
     if check:
         return 1  # drift present — a non-zero exit for local CI-style guarding
 
-    for label in to_create:
-        gh(f"repos/{repo}/labels", method="POST", fields={
-            "name": label["name"], "color": label["color"],
-            "description": label["description"]})
-    for current, label in to_update:
-        name = urllib.parse.quote(current["name"], safe="")
+    def patch_label(current_name: str, label: dict[str, str]) -> None:
+        name = urllib.parse.quote(current_name, safe="")
         gh(f"repos/{repo}/labels/{name}", method="PATCH", fields={
             "new_name": label["name"], "color": label["color"],
             "description": label["description"]})
+
+    for label in to_create:
+        result = gh(f"repos/{repo}/labels", method="POST", fields={
+            "name": label["name"], "color": label["color"],
+            "description": label["description"]}, allow_exists=True)
+        # The label already existed — a concurrent run, or a retried create whose
+        # first attempt landed. Reconcile it in place so the run stays idempotent
+        # instead of aborting the member mid-reconcile.
+        if result is EXISTS:
+            patch_label(label["name"], label)
+    for current, label in to_update:
+        patch_label(current["name"], label)
 
     print(f"{repo}: {len(to_create)} created, {len(to_update)} updated")
     return 0
