@@ -132,7 +132,7 @@ gh api -X PUT repos/rfizzle/$MOD/pages -f cname="$MOD.rfizzle.com"
 issue labels, and `propagate.yml` reconciles it onto every member: missing
 labels created, drifted color/description updated in place, and any label not
 in the manifest (a repo-local one, dependabot's) left untouched — nothing is
-ever deleted. So this section is a mirror of the manifest, not a place to apply
+ever deleted. So this section is a summary of the manifest, not a place to apply
 labels by hand; edit `labels.json`, not the repos.
 
 GitHub's nine default labels stay (the manifest pins `bug` to GitHub's own
@@ -155,9 +155,11 @@ coding agent.
 | `blocked` | `#e11d21` | Blocked on an upstream fix or another issue |
 | `compat` | `#c5def5` | Third-party (non-Concord) mod compatibility |
 
-A fresh repo picks these up on the next `propagate.yml` run; to apply or refresh
-them on demand, run the same script the workflow does (needs `GH_TOKEN` with
-Issues: write), or `--check` to preview the drift without writing:
+`propagate.yml` only reconciles repos listed in `members.json`, so an admitted
+member picks these up on the next run. A repo still being bootstrapped (not yet
+in the registry) gets them by running the same script the workflow does — the
+one manual label step, at Phase 3 — needing `GH_TOKEN` with Issues: write. Pass
+`--check` to preview the drift without writing:
 
 ```bash
 python3 scripts/sync-labels.py rfizzle/$MOD           # from the concord repo root
@@ -199,10 +201,13 @@ done
 # The labels row lists each repo's non-default labels; compare against the suite
 # set in labels.json (propagate.yml keeps them in sync — a mismatch means the
 # workflow has not run there yet, or the repo carries an extra local label).
+# labels.json also pins `bug`, but this jq subtracts it as one of the nine
+# defaults, so it won't appear in this row.
 ```
 
 Expected: squash-only merging with `PR_TITLE`/`COMMIT_MESSAGES`, branch
 deletion on merge, the §3 protection shape, read-only workflow token with PR
 approval allowed, the three secrets (release tokens may lag until first
 release), workflow-built Pages on the custom domain, and the suite labels from
-[`labels.json`](../labels.json) in the final list.
+[`labels.json`](../labels.json) (minus the pinned `bug` default) in the final
+list.

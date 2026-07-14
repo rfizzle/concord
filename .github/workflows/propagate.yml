@@ -27,8 +27,8 @@
 #
 #   3. Issue labels — the shared label taxonomy (labels.json) is reconciled onto
 #      every member via the labels API: missing labels created, drifted
-#      color/description updated in place, unlisted labels (GitHub's defaults,
-#      dependabot's, repo-local ones) left untouched. Nothing is committed and no
+#      color/description updated in place, unlisted labels (dependabot's or any
+#      repo-local one) left untouched. Nothing is committed and no
 #      PR is opened — labels are GitHub-side config, not tracked files. Logic
 #      lives in scripts/sync-labels.py.
 #

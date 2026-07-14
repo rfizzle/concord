@@ -89,8 +89,12 @@ duplicated).
       [`REPO-SETTINGS.md`](REPO-SETTINGS.md) — merge policy, `master`
       protection, Actions permissions, and the `CLAUDE_CODE_OAUTH_TOKEN` secret
       (release-time items like store tokens and the §7 security features wait
-      for Phase 5 and the release). The suite issue labels are reconciled from
-      [`labels.json`](../labels.json) by `propagate.yml`, not applied here.
+      for Phase 5 and the release).
+- [ ] Suite issue labels applied — `python3 scripts/sync-labels.py rfizzle/$MOD`
+      from the concord repo (`GH_TOKEN` needs Issues: write). This is the one
+      manual label step; once the repo joins `members.json` at Phase 4,
+      `propagate.yml` keeps them reconciled from
+      [`labels.json`](../labels.json).
 - [ ] CI is green on the empty skeleton.
 
 ## Phase 4 — Suite admission
