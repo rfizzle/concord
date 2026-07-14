@@ -1,11 +1,13 @@
 # Repo Settings Standard — GitHub-side configuration for every member
 
 [`REPO-LAYOUT.md`](../REPO-LAYOUT.md) governs what lives in a member repo's
-tree; this document governs the GitHub settings wrapped around it. No sync
-machinery propagates these — this checklist is the enforcement. Apply it when
-bootstrapping a repo ([`BOOTSTRAP-CHECKLIST.md`](BOOTSTRAP-CHECKLIST.md) Phase
-3 links here) and audit against it with the script in §8. Every `gh` snippet
-takes the mod id as `$MOD` (repo name == mod id).
+tree; this document governs the GitHub settings wrapped around it. This
+checklist is the enforcement for all of them except the issue labels (§6),
+which `propagate.yml` reconciles automatically from
+[`labels.json`](../labels.json). Apply it when bootstrapping a repo
+([`BOOTSTRAP-CHECKLIST.md`](BOOTSTRAP-CHECKLIST.md) Phase 3 links here) and
+audit against it with the script in §8. Every `gh` snippet takes the mod id as
+`$MOD` (repo name == mod id).
 
 ## 1. General
 
@@ -126,25 +128,42 @@ gh api -X PUT repos/rfizzle/$MOD/pages -f cname="$MOD.rfizzle.com"
 
 ## 6. Issue labels
 
-GitHub's nine default labels stay; five suite labels join them. The first
-three drive the issue lifecycle in
-[`AGENTS-COMMON.md`](../AGENTS-COMMON.md) (`needs-spec` fires
-`claude-spec.yml`, which swaps it for `ready` or `open-questions`).
+[`labels.json`](../labels.json) is the single source of truth for the suite's
+issue labels, and `propagate.yml` reconciles it onto every member: missing
+labels created, drifted color/description updated in place, and any label not
+in the manifest (a repo-local one, dependabot's) left untouched — nothing is
+ever deleted. So this section is a summary of the manifest, not a place to apply
+labels by hand; edit `labels.json`, not the repos.
+
+GitHub's nine default labels stay (the manifest pins `bug` to GitHub's own
+color and description so a fresh repo is never without it); the suite labels
+below join them. The lifecycle four drive the issue flow in
+[`AGENTS-COMMON.md`](../AGENTS-COMMON.md) — `needs-spec` fires `claude-spec.yml`,
+which swaps it for `ready` or `open-questions`, and `jules` hands off to the
+coding agent.
 
 | Label | Color | Purpose |
 |---|---|---|
 | `needs-spec` | `#1d76db` | Issue needs a spec — triggers `claude-spec.yml` |
-| `ready` | `#0e8a16` | Spec complete, no open questions — implementable |
-| `open-questions` | `#d93f0b` | Spec has open questions needing a human ruling |
+| `ready` | `#0e8a16` | Spec complete, no open questions — ready to implement |
+| `open-questions` | `#d93f0b` | Spec raised open questions needing a human ruling |
 | `jules` | `#5319e7` | Hands the issue to Jules for a draft PR |
-| `integration` | `#1d76db` | Cross-mod integration work (suite `VISION.md` matrix) |
+| `integration` | `#0052cc` | Cross-mod (Concord) integration / compat work |
+| `exploratory` | `#c2e0c6` | Exploratory / not-yet-committed change; needs playtesting |
+| `regression` | `#b60205` | Worked in a previous release, now broken |
+| `balance` | `#fbca04` | Gameplay balance / tuning adjustment |
+| `blocked` | `#e11d21` | Blocked on an upstream fix or another issue |
+| `compat` | `#c5def5` | Third-party (non-Concord) mod compatibility |
+
+`propagate.yml` only reconciles repos listed in `members.json`, so an admitted
+member picks these up on the next run. A repo still being bootstrapped (not yet
+in the registry) gets them by running the same script the workflow does — the
+one manual label step, at Phase 3 — needing `GH_TOKEN` with Issues: write. Pass
+`--check` to preview the drift without writing:
 
 ```bash
-gh label create needs-spec     -R rfizzle/$MOD -c 1d76db -d "Issue needs a spec"
-gh label create ready          -R rfizzle/$MOD -c 0e8a16 -d "Spec complete, ready to implement"
-gh label create open-questions -R rfizzle/$MOD -c d93f0b -d "Spec has open questions"
-gh label create jules          -R rfizzle/$MOD -c 5319e7 -d "Assigned to Jules"
-gh label create integration    -R rfizzle/$MOD -c 1d76db -d "Cross-mod integration"
+python3 scripts/sync-labels.py rfizzle/$MOD           # from the concord repo root
+python3 scripts/sync-labels.py rfizzle/$MOD --check   # report drift, write nothing
 ```
 
 ## 7. Security (public repos)
@@ -178,10 +197,17 @@ for MOD in meridian mercantile tribulation prosperity respite distillation culti
   gh api repos/rfizzle/$MOD/pages --jq '{build_type, cname}'
   gh api repos/rfizzle/$MOD/labels --jq '[.[].name] - ["bug","documentation","duplicate","enhancement","good first issue","help wanted","invalid","question","wontfix"]'
 done
+
+# The labels row lists each repo's non-default labels; compare against the suite
+# set in labels.json (propagate.yml keeps them in sync — a mismatch means the
+# workflow has not run there yet, or the repo carries an extra local label).
+# labels.json also pins `bug`, but this jq subtracts it as one of the nine
+# defaults, so it won't appear in this row.
 ```
 
 Expected: squash-only merging with `PR_TITLE`/`COMMIT_MESSAGES`, branch
 deletion on merge, the §3 protection shape, read-only workflow token with PR
 approval allowed, the three secrets (release tokens may lag until first
-release), workflow-built Pages on the custom domain, and exactly the five
-suite labels in the final list.
+release), workflow-built Pages on the custom domain, and the suite labels from
+[`labels.json`](../labels.json) (minus the pinned `bug` default) in the final
+list.

@@ -1,0 +1,59 @@
+{
+  "labels": [
+    {
+      "name": "bug",
+      "color": "d73a4a",
+      "description": "Something isn't working"
+    },
+    {
+      "name": "needs-spec",
+      "color": "1d76db",
+      "description": "Issue needs a spec — triggers claude-spec.yml"
+    },
+    {
+      "name": "ready",
+      "color": "0e8a16",
+      "description": "Spec complete, no open questions — ready to implement"
+    },
+    {
+      "name": "open-questions",
+      "color": "d93f0b",
+      "description": "Spec raised open questions — answer inline, then apply jules"
+    },
+    {
+      "name": "jules",
+      "color": "5319e7",
+      "description": "Hand off to the Jules coding agent for a draft PR"
+    },
+    {
+      "name": "integration",
+      "color": "0052cc",
+      "description": "Cross-mod (Concord) integration / compat work"
+    },
+    {
+      "name": "exploratory",
+      "color": "c2e0c6",
+      "description": "Exploratory / not-yet-committed feature or change; needs playtesting before adoption"
+    },
+    {
+      "name": "regression",
+      "color": "b60205",
+      "description": "Worked in a previous release, now broken"
+    },
+    {
+      "name": "balance",
+      "color": "fbca04",
+      "description": "Gameplay balance / tuning adjustment"
+    },
+    {
+      "name": "blocked",
+      "color": "e11d21",
+      "description": "Blocked on an upstream fix or another issue"
+    },
+    {
+      "name": "compat",
+      "color": "c5def5",
+      "description": "Third-party (non-Concord) mod compatibility"
+    }
+  ]
+}
