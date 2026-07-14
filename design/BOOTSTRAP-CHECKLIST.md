@@ -87,9 +87,10 @@ duplicated).
       [`workflow-stubs.json`](../workflow-stubs.json).
 - [ ] The repo's GitHub settings match
       [`REPO-SETTINGS.md`](REPO-SETTINGS.md) — merge policy, `master`
-      protection, Actions permissions, the `CLAUDE_CODE_OAUTH_TOKEN` secret,
-      and the five suite labels (release-time items like store tokens and the
-      §7 security features wait for Phase 5 and the release).
+      protection, Actions permissions, and the `CLAUDE_CODE_OAUTH_TOKEN` secret
+      (release-time items like store tokens and the §7 security features wait
+      for Phase 5 and the release). The suite issue labels are reconciled from
+      [`labels.json`](../labels.json) by `propagate.yml`, not applied here.
 - [ ] CI is green on the empty skeleton.
 
 ## Phase 4 — Suite admission
