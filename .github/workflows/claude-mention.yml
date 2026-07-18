@@ -71,7 +71,7 @@ jobs:
       # without a JDK + Gradle on the runner, any ./gradlew invocation fails
       # before Claude's allowlist even matters.
       - name: Set up JDK 21
-        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           distribution: temurin
           java-version: 21
@@ -84,7 +84,7 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@a92e7c70a4da9793dc164451d829089dc057a464 # v1
+        uses: anthropics/claude-code-action@700e7f8316990de46bed556429765647af760efc # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Standing guidance so review fixes converge instead of spawning a
