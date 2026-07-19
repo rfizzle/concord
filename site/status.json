@@ -1,11 +1,11 @@
 {
-  "generated": "2026-07-18",
+  "generated": "2026-07-19",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 42,
+    "downloads": 51,
     "followers": 1,
-    "openIssues": 10
+    "openIssues": 9
   },
   "members": [
     {
@@ -41,12 +41,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-13"
+        "date": "2026-07-19"
       },
       "openIssues": 3,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 42,
+        "downloads": 51,
         "followers": 1
       }
     },
@@ -64,9 +64,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-13"
+        "date": "2026-07-19"
       },
-      "openIssues": 1,
+      "openIssues": 0,
       "modrinth": null
     },
     {
