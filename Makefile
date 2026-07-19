@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test status status-test sync-test labels-check labels-test release-test help
+.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test status status-test sync-test labels-check labels-test release-test gametest-check gametest-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -24,6 +24,8 @@ help:
 	@echo "labels-check   report which shared labels would change on a repo (labels-check REPO=owner/name)"
 	@echo "labels-test    run the label-sync script's unit tests"
 	@echo "release-test   run the release publisher's unit tests"
+	@echo "gametest-check report members whose gametest suite is misregistered"
+	@echo "gametest-test  run the gametest-manifest checker's unit tests"
 
 catalog:
 	@$(PY) scripts/gen-skills-catalog.py
@@ -110,3 +112,9 @@ labels-test:
 
 release-test:
 	@$(PY) -m unittest scripts.test_publish
+
+gametest-check:
+	@$(PY) scripts/check-gametest-manifest.py
+
+gametest-test:
+	@$(PY) -m unittest scripts.test_check_gametest_manifest
