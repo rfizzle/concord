@@ -65,7 +65,8 @@ is scaffolded from it before any code exists.
 ├── src/                       # code only — Loom split source sets
 │   ├── main/                  #   server + common
 │   ├── client/                #   client-only
-│   ├── gametest/              #   Fabric gametests (not in jar)
+│   ├── gametest/              #   Fabric gametests + their manifest and
+│   │                          #   fixtures (not in jar)
 │   └── test/                  #   JUnit
 │
 └── .github/                   # CI, issue/PR templates
