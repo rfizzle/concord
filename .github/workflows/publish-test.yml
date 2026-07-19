@@ -1,0 +1,35 @@
+# Guards scripts/release/publish.py — the script mod-release.yml runs to push a
+# member's jar and its listing metadata to Modrinth and CurseForge. The failure
+# mode this covers is silent: resolving the wrong fabric.mod.json publishes a
+# release with every optional dependency dropped, and nothing in the release
+# reports it. A mod with gametests ships two manifests, so exercise the resolver
+# against that layout before it can merge. Hermetic: no network, python3 only.
+name: Release publisher tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/release/publish.py"
+      - "scripts/test_publish.py"
+      - ".github/workflows/publish-test.yml"
+  push:
+    branches: [master]
+    paths:
+      - "scripts/release/publish.py"
+      - "scripts/test_publish.py"
+      - ".github/workflows/publish-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      # publish.py imports requests at module scope, so the test module cannot
+      # load it without the dependency present.
+      - name: Install dependencies
+        run: python3 -m pip install --user requests
+      - name: Run release publisher tests
+        run: python3 -m unittest scripts.test_publish
