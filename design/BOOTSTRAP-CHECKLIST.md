@@ -63,6 +63,10 @@ duplicated).
       `gametest`, `test`), `fabric.mod.json` (mod id, icon, empty
       entrypoints), and Mojang mappings — `make build` is green and the
       client launches.
+- [ ] A second manifest at `src/gametest/resources/fabric.mod.json` declaring a
+      `<modid>-gametest` mod, holding the `fabric-gametest` entrypoints and
+      carrying a literal version. Entrypoints in the shipped manifest break
+      `runServer`; see the `mc-mod-testing` skill, "Registering the suite."
 - [ ] The suite toolchain pins come from the concord-owned
       `versions-common.properties` (loaded in `settings.gradle`), not inlined —
       `gradle.properties` holds only this repo's own values. See the
