@@ -25,6 +25,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import pathlib
 import sys
 import time
 
@@ -73,10 +74,23 @@ def find_jar() -> str:
 
 
 def find_fabric_mod_json() -> str | None:
+    """Locate the shipped manifest, which is the only one carrying release metadata.
+
+    A mod with gametests ships a second manifest at src/gametest/resources for its
+    separate <modid>-gametest mod. That one declares no suggests/recommends, and
+    "src/gametest" sorts ahead of "src/main", so a naive first-match would silently
+    publish with no optional dependencies at all.
+    """
     explicit = env("FABRIC_MOD_JSON")
     if explicit and os.path.isfile(explicit):
         return explicit
-    matches = sorted(glob.glob("**/resources/fabric.mod.json", recursive=True))
+    canonical = os.path.join("src", "main", "resources", "fabric.mod.json")
+    if os.path.isfile(canonical):
+        return canonical
+    matches = [
+        m for m in sorted(glob.glob("**/resources/fabric.mod.json", recursive=True))
+        if "gametest" not in pathlib.PurePath(m).parts
+    ]
     return matches[0] if matches else None
 
 
