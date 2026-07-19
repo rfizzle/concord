@@ -1,0 +1,31 @@
+# Guards scripts/check-gametest-manifest.py — the checker that reports members
+# declaring fabric-gametest entrypoints in their shipped manifest instead of a
+# gametest-source-set-local one. The bug it looks for is invisible in a released
+# jar and only breaks dev run sets, so the checker is the thing keeping it from
+# creeping back; exercise its drift/note classification before it can merge.
+# Hermetic: no network, python3 only.
+name: Gametest manifest checker tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/check-gametest-manifest.py"
+      - "scripts/test_check_gametest_manifest.py"
+      - ".github/workflows/gametest-manifest-check.yml"
+  push:
+    branches: [master]
+    paths:
+      - "scripts/check-gametest-manifest.py"
+      - "scripts/test_check_gametest_manifest.py"
+      - ".github/workflows/gametest-manifest-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run gametest manifest checker tests
+        run: python3 -m unittest scripts.test_check_gametest_manifest

@@ -1,0 +1,88 @@
+# Detects members registering their Fabric gametests from the shipped
+# src/main/resources/fabric.mod.json instead of a gametest-source-set-local one.
+# Entrypoints in the shipped manifest break every dev run set — loom's dev
+# runtime instantiates each declared class on launch and no default run set
+# carries the gametest source set — while a released jar stays unaffected, so
+# nothing surfaces until someone runs runServer. Fetches each member's two
+# manifests and its gametest source paths fresh via the GitHub API (the members
+# aren't checked out in CI) into a temp mirror, then runs the same checker as
+# `make gametest-check`.
+#
+# Reuses CONCORD_DISPATCH_TOKEN (the propagate credential) for read access to
+# member repos. Runs weekly and on demand — not on push/PR — so a member
+# mid-migration doesn't block unrelated pull requests.
+name: Member gametest manifest drift
+
+on:
+  schedule:
+    - cron: "44 6 * * 1" # Mondays, 06:44 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Mirror member manifests and gametest sources
+        env:
+          GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/members"
+          # Assign first so a jq failure trips errexit (a bare `for x in $(jq…)`
+          # would swallow it and iterate zero times, passing green having checked
+          # nothing).
+          ids=$(jq -r '.members[].id' members.json)
+          [ -n "$ids" ] || { echo "::error::no member ids in members.json"; exit 1; }
+          infra_fail=0
+          for id in $ids; do
+            dir="$root/$id"
+            mkdir -p "$dir"
+            # The shipped manifest always exists; the companion one only once the
+            # member has adopted the split. A 404 on either is a finding for the
+            # checker, not an infra failure.
+            for file in src/main/resources/fabric.mod.json src/gametest/resources/fabric.mod.json; do
+              if content=$(gh api "repos/rfizzle/$id/contents/$file" --jq '.content' 2>err.txt); then
+                mkdir -p "$dir/$(dirname "$file")"
+                if ! printf '%s' "$content" | base64 -d > "$dir/$file"; then
+                  echo "::error::base64 decode failed for $id/$file"
+                  infra_fail=1
+                fi
+              elif grep -qi 'HTTP 404\|Not Found' err.txt; then
+                echo "::notice::$id/$file absent (404)"
+              else
+                # Auth/rate-limit/network/repo-not-found: an infra failure, not
+                # drift. Surface it distinctly so a transient error can't
+                # masquerade as a member with no gametests and skew the report.
+                echo "::error::fetch failed for $id/$file (not a 404): $(cat err.txt)"
+                infra_fail=1
+              fi
+            done
+            # The checker only needs to know whether gametest sources exist, so
+            # mirror their paths as empty files rather than fetching contents.
+            if tree=$(gh api "repos/rfizzle/$id/git/trees/HEAD?recursive=1" 2>err.txt); then
+              if [ "$(printf '%s' "$tree" | jq -r '.truncated')" = "true" ]; then
+                echo "::error::$id tree listing truncated — gametest sources may be undercounted"
+                infra_fail=1
+              fi
+              printf '%s' "$tree" \
+                | jq -r '.tree[] | select(.type == "blob") | .path' \
+                | grep -E '^src/gametest/java/.*\.java$' \
+                | while read -r path; do
+                    mkdir -p "$dir/$(dirname "$path")"
+                    : > "$dir/$path"
+                  done || true
+            else
+              echo "::error::tree listing failed for $id: $(cat err.txt)"
+              infra_fail=1
+            fi
+          done
+          if [ "$infra_fail" -ne 0 ]; then
+            echo "::error::infrastructure failures mirroring member files — aborting before the check to avoid false positives"
+            exit 1
+          fi
+      - name: Check gametest registration
+        run: python3 scripts/check-gametest-manifest.py --root "$RUNNER_TEMP/members"
