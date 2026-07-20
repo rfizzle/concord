@@ -275,7 +275,7 @@ tasks.register('verifyDatagenIdempotent') {
                              : lines.join('\n')
         }
 
-        def statusResult = runGit(['git', 'status', '--porcelain', '--', genDir])
+        def statusResult = runGit(['git', '--no-optional-locks', 'status', '--porcelain', '--', genDir])
         def statusExit = statusResult.result.get().exitValue
         if (statusExit != 0) {
             throw new GradleException(
@@ -285,8 +285,10 @@ tasks.register('verifyDatagenIdempotent') {
         def dirty = statusResult.standardOutput.asText.get().trim()
         if (!dirty.isEmpty()) {
             throw new GradleException(
-                    'src/main/generated/ changed after runDatagen:\n' + firstLines(dirty) +
-                    '\nRun ./gradlew runDatagen, then git add and commit the results.')
+                    'src/main/generated/ differs from the committed tree after runDatagen:\n' +
+                    firstLines(dirty) +
+                    '\nRun ./gradlew runDatagen, then commit the results ' +
+                    '(staged-but-uncommitted output also fails this check).')
         }
     }
 }
@@ -308,6 +310,22 @@ Each guard above earns its place:
   stdout rather than an exit code also means no exit value has to be
   reserved for "differences found", and unlike `git diff HEAD` it
   works in a repository with no commits yet.
+- **The remedy names a commit, not a `git add`.** Because the check
+  reports the index as well as the worktree, staged-but-uncommitted
+  output fails it, and for that shape staging is already done — a
+  message asking for `git add` leaves the developer re-running a step
+  that changes nothing. Instructing a commit is the one action that
+  clears every drift shape the check reports.
+- **`--no-optional-locks` keeps a read-only check from taking a
+  write lock.** `git status` rewrites `.git/index` when cached stat
+  info is stale, which is precisely the state `runDatagen` leaves
+  behind after rewriting every file under the generated directory.
+  With `org.gradle.parallel=true`, or a developer's IDE or git GUI
+  polling the same repository, that is an avoidable `index.lock`
+  contention window in a task that only ever reads. The flag is git's
+  documented form for tooling that inspects state without intending
+  to write, and it is a global option — it goes before the
+  subcommand, not after it.
 - **Separate git's failure from datagen's drift.** Any nonzero exit is
   git itself failing, and surfaces git's stderr instead of being
   relabelled as drift. A bare `!= 0` check tells the user to commit
