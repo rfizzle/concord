@@ -245,27 +245,70 @@ loom {
 
 ## Idempotency verification
 
-Add a CI-friendly task that runs datagen and asserts no git diff in the generated directory:
+Add a CI-friendly task that runs datagen and asserts the generated directory has neither tracked diffs nor untracked files:
 
 ```groovy
 tasks.register('verifyDatagenIdempotent') {
-    description = 'Runs datagen and asserts no tracked diffs in src/main/generated/'
+    description = 'Runs datagen and asserts no tracked diffs or untracked files in src/main/generated/'
     group = 'verification'
     dependsOn 'runDatagen'
+    notCompatibleWithConfigurationCache('shells out to git against live working-tree state')
     doLast {
         def genDir = file('src/main/generated').absolutePath
-        def diffResult = providers.exec {
-            commandLine 'git', 'diff', '--exit-code', genDir
-            ignoreExitValue = true
+        def runGit = { List<String> argv ->
+            try {
+                def out = providers.exec {
+                    commandLine argv
+                    ignoreExitValue = true
+                }
+                out.result.get() // force resolution so a failure to start lands in the catch
+                return out
+            } catch (Exception e) {
+                throw new GradleException(
+                        'verifyDatagenIdempotent needs git on PATH to compare ' +
+                        'src/main/generated/ against the index, and could not run it: ' +
+                        e.message, e)
+            }
         }
-        if (diffResult.result.get().exitValue != 0) {
+        def firstLines = { String text -> text.trim().readLines().take(5).join('\n') }
+
+        def diffResult = runGit(['git', 'diff', '--quiet', '--', genDir])
+        def diffExit = diffResult.result.get().exitValue
+        if (diffExit == 1) {
             throw new GradleException(
                     'src/main/generated/ has unstaged changes after runDatagen. ' +
                     'Run ./gradlew runDatagen and commit the results.')
+        } else if (diffExit != 0) {
+            throw new GradleException(
+                    "git diff failed with exit ${diffExit} while checking src/main/generated/:\n" +
+                    firstLines(diffResult.standardError.asText.get()))
+        }
+
+        def untrackedResult = runGit(['git', 'ls-files', '--others', '--exclude-standard', genDir])
+        def untrackedExit = untrackedResult.result.get().exitValue
+        if (untrackedExit != 0) {
+            throw new GradleException(
+                    "git ls-files failed with exit ${untrackedExit} while checking " +
+                    "src/main/generated/:\n" +
+                    firstLines(untrackedResult.standardError.asText.get()))
+        }
+        def untracked = untrackedResult.standardOutput.asText.get().trim()
+        if (!untracked.isEmpty()) {
+            throw new GradleException(
+                    'src/main/generated/ has untracked files after runDatagen:\n' + untracked +
+                    '\nRun ./gradlew runDatagen, then git add and commit the results.')
         }
     }
 }
 ```
+
+Each guard above earns its place:
+
+- **The `--` separator is required.** Without it git parses the path as a revision-or-path and aborts with exit 128 (`ambiguous argument`) whenever `src/main/generated/` is neither tracked nor present — the steady state before a `fabric-datagen` entrypoint is declared. With it, a missing directory is an empty pathspec and exits 0.
+- **Discriminate the exit code.** `git diff --quiet` uses 1 for "differences found" and reserves other nonzero codes for git's own failures. A bare `!= 0` check relabels a broken git as datagen drift, telling the user to commit results that do not exist. `--quiet` implies `--exit-code` while suppressing the patch body, which nothing here reads.
+- **Force the lazy resolution inside the `try`.** `providers.exec` starts the process on the first result read, so wrapping only the `providers.exec` call catches nothing. `ignoreExitValue` covers a nonzero exit, not a process that never starts — without `out.result.get()` inside the `try`, an absent git binary surfaces as a bare process-start exception naming neither datagen nor a remedy.
+- **Cap git's stderr.** Outside a working tree git falls back toward `--no-index` and dumps its full usage text, which would otherwise be inlined wholesale into the exception message.
+- **Guard `ls-files` too.** A failing `ls-files` writes nothing to stdout, so an unchecked result reads as "no untracked files" — a verification task reporting clean because its tool broke.
 
 ## Convention tags
 
