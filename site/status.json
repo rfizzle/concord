@@ -1,11 +1,11 @@
 {
-  "generated": "2026-07-20",
+  "generated": "2026-07-21",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 53,
+    "downloads": 56,
     "followers": 1,
-    "openIssues": 11
+    "openIssues": 19
   },
   "members": [
     {
@@ -24,7 +24,7 @@
         "conclusion": "success",
         "date": "2026-07-20"
       },
-      "openIssues": 3,
+      "openIssues": 2,
       "modrinth": null
     },
     {
@@ -43,10 +43,10 @@
         "conclusion": "success",
         "date": "2026-07-20"
       },
-      "openIssues": 4,
+      "openIssues": 3,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 53,
+        "downloads": 56,
         "followers": 1
       }
     },
@@ -66,7 +66,7 @@
         "conclusion": "success",
         "date": "2026-07-20"
       },
-      "openIssues": 1,
+      "openIssues": 0,
       "modrinth": null
     },
     {
@@ -85,7 +85,7 @@
         "conclusion": "success",
         "date": "2026-07-20"
       },
-      "openIssues": 2,
+      "openIssues": 1,
       "modrinth": null
     },
     {
@@ -112,8 +112,12 @@
       "status": "in-development",
       "layoutMigrated": true,
       "release": null,
-      "ci": null,
-      "openIssues": null,
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-20"
+      },
+      "openIssues": 2,
       "modrinth": null
     },
     {
@@ -124,8 +128,12 @@
       "status": "in-development",
       "layoutMigrated": true,
       "release": null,
-      "ci": null,
-      "openIssues": null,
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-20"
+      },
+      "openIssues": 5,
       "modrinth": null
     },
     {
@@ -136,8 +144,12 @@
       "status": "in-development",
       "layoutMigrated": true,
       "release": null,
-      "ci": null,
-      "openIssues": null,
+      "ci": {
+        "status": "completed",
+        "conclusion": "success",
+        "date": "2026-07-20"
+      },
+      "openIssues": 5,
       "modrinth": null
     }
   ]
