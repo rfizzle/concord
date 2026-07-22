@@ -1,9 +1,9 @@
 {
-  "generated": "2026-07-21",
+  "generated": "2026-07-22",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 56,
+    "downloads": 60,
     "followers": 1,
     "openIssues": 19
   },
@@ -46,7 +46,7 @@
       "openIssues": 3,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 56,
+        "downloads": 60,
         "followers": 1
       }
     },
