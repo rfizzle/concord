@@ -48,9 +48,11 @@ every member mod conforms to, and (eventually) the collection landing site serve
 
 The reusable workflows assume every member repo provides: repo name == mod id ==
 jar prefix (`build/libs/<mod>-<version>.jar`), and gradle tasks `build` (compile +
-unit tests + jar), `jacocoTestReport` (XML at
-`build/reports/jacoco/test/jacocoTestReport.xml`), `runGametest` (JUnit XML at
-`build/junit-gametest.xml`), and `printVersion`. Secrets per repo:
+unit tests + jar), `runGametest` (JUnit XML at `build/junit-gametest.xml`),
+`jacocoMergedReport` (merged unit + gametest coverage XML at
+`build/reports/jacoco/jacocoMergedReport/jacocoMergedReport.xml`), and
+`printVersion`. `verifyDatagenIdempotent` runs where a member defines it and is
+skipped where it doesn't. Secrets per repo:
 `CLAUDE_CODE_OAUTH_TOKEN` (for the Claude workflows).
 Each mod repo's stubs declare only triggers, concurrency, and permissions — the
 stub bodies are documented at the top of each reusable workflow. The `uses:` ref
