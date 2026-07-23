@@ -424,10 +424,12 @@ jobs:
           fi
 
       - name: Checkout concord scripts
+        if: ${{ !cancelled() }}
         # The publish and changelog-record scripts live in concord, but the job
         # runs in the member checkout — pull them into .concord (same pattern as
-        # build-site.yml). Unconditional: the record step below runs even when
-        # platform publish is skipped, and it needs the script too.
+        # build-site.yml). Runs whenever the job isn't cancelled — including after
+        # a platform publish fails — because the record step below still runs then
+        # and needs the script.
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: rfizzle/concord
@@ -478,6 +480,12 @@ jobs:
         # secret. continue-on-error keeps a record-keeping hiccup from red-X'ing
         # an already-published release. The script is stdlib-only, so it needs no
         # pip install / setup-python.
+        #
+        # Runs even when a platform publish failed (!cancelled()), so a release
+        # that reached GitHub but failed at Modrinth/CurseForge still lands its
+        # in-repo record instead of leaving a hole until a re-run. The script's
+        # own guards no-op when there is no release body to record.
+        if: ${{ !cancelled() }}
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
