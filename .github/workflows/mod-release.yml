@@ -27,12 +27,16 @@
 # published — the only order that works on repositories with immutable releases
 # enabled, where assets must be uploaded before a release is published.
 #
-# Re-runs are safe. The notes are cached on the tag, so a re-run restores the
-# exact same body (no second model spend), and each publish target skips work
-# that already landed: an existing published GitHub release and an existing
-# Modrinth version are detected and skipped. CurseForge is the last step, so it
-# only runs when it hasn't yet succeeded. A release that failed partway — e.g.
-# CurseForge alone — is completed cleanly by re-running the failed job.
+# Re-runs are safe and every surface shows identical notes. The published GitHub
+# release body is the source of truth for a tag: once it exists, a re-run reuses
+# that exact body for Modrinth, CurseForge, and the committed changelog instead
+# of regenerating it, so a re-run after the notes cache has evicted can't drift
+# (no second model spend either). The tag-keyed notes cache serves the same body
+# within its retention window. Each publish target skips work that already
+# landed: an existing published GitHub release and an existing Modrinth version
+# are detected and skipped, and CurseForge, the last step, only runs when it
+# hasn't yet succeeded. A release that failed partway — e.g. CurseForge alone —
+# is completed cleanly by re-running the failed job.
 #
 # Mod id defaults to the repository name — the suite convention is
 # repo name == mod id == jar prefix. Note generation reuses the suite's
@@ -192,9 +196,30 @@ jobs:
           path: /tmp/release-body.md
           key: release-notes-${{ github.ref_name }}
 
+      - name: Reuse published release body
+        id: published
+        if: steps.notescache.outputs.cache-hit != 'true'
+        # The published GitHub release body is the source of truth for a tag's
+        # notes. On a re-run after the notes cache has evicted, reuse that body
+        # verbatim rather than regenerating it, so Modrinth, CurseForge, and the
+        # committed changelogs/<version>.md stay identical to what GitHub shows.
+        # No published release yet on the first run, so generation proceeds below.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+               --json isDraft,body --jq 'select(.isDraft == false) | .body' \
+               > /tmp/published-body.md 2>/dev/null && [ -s /tmp/published-body.md ]; then
+            cp /tmp/published-body.md /tmp/release-body.md
+            echo "reused=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Reusing the published $GITHUB_REF_NAME release body"
+          else
+            echo "reused=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Detect manual changelog
         id: manual
-        if: steps.notescache.outputs.cache-hit != 'true'
+        if: steps.notescache.outputs.cache-hit != 'true' && steps.published.outputs.reused != 'true'
         # A hand-written changelogs/<version>.md is authoritative: when present it
         # is published verbatim and the model is not run. This lets a milestone
         # release (e.g. 1.0.0) ship curated notes instead of AI-rewritten PRs.
@@ -212,7 +237,7 @@ jobs:
           fi
 
       - name: Gather changelog source
-        if: steps.notescache.outputs.cache-hit != 'true' && steps.manual.outputs.present != 'true'
+        if: steps.notescache.outputs.cache-hit != 'true' && steps.published.outputs.reused != 'true' && steps.manual.outputs.present != 'true'
         # GitHub's own note generator is the factual ground truth — the real list
         # of merged PRs with the previous tag auto-detected. Claude rewrites it
         # below, and it is also the fallback body if the model is unavailable.
@@ -231,7 +256,7 @@ jobs:
 
       - name: Detect Claude auth
         id: auth
-        if: steps.notescache.outputs.cache-hit != 'true' && steps.manual.outputs.present != 'true'
+        if: steps.notescache.outputs.cache-hit != 'true' && steps.published.outputs.reused != 'true' && steps.manual.outputs.present != 'true'
         # secrets context is not usable in a step `if:`, so map presence of the
         # token to a step output the changelog steps can gate on.
         env:
@@ -321,7 +346,7 @@ jobs:
           fi
 
       - name: Assemble release body
-        if: steps.notescache.outputs.cache-hit != 'true'
+        if: steps.notescache.outputs.cache-hit != 'true' && steps.published.outputs.reused != 'true'
         # Always produces /tmp/release-body.md so the release step has a body
         # regardless of whether the model ran. A hand-written changelog wins when
         # present; otherwise the published notes are the AI's player-facing prose
