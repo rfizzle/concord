@@ -18,6 +18,7 @@ import os
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location(
@@ -120,6 +121,116 @@ class FindFabricModJsonTest(unittest.TestCase):
     def test_no_manifest_at_all_resolves_to_nothing(self):
         with member_tree(shipped=False):
             self.assertIsNone(publish.find_fabric_mod_json())
+
+
+class _FakeResponse:
+    def __init__(self, payload, ok=True):
+        self._payload = payload
+        self.ok = ok
+
+    def json(self):
+        return self._payload
+
+
+# A synthetic CurseForge catalogue: the environment group carries Client/Server,
+# and a decoy "bukkit" group carries a same-named 1.21.1 the upload API rejects,
+# so the type-group gating — not the bare name — is what must be exercised.
+_VERSION_TYPES = [
+    {"id": 1, "slug": "minecraft-1-21"},
+    {"id": 2, "slug": "modloader"},
+    {"id": 3, "slug": "environment"},
+    {"id": 4, "slug": "bukkit-1-21"},
+]
+_VERSIONS = [
+    {"id": 100, "gameVersionTypeID": 1, "name": "1.21.1"},
+    {"id": 101, "gameVersionTypeID": 2, "name": "Fabric"},
+    {"id": 102, "gameVersionTypeID": 3, "name": "Client"},
+    {"id": 103, "gameVersionTypeID": 3, "name": "Server"},
+    {"id": 104, "gameVersionTypeID": 4, "name": "1.21.1"},  # decoy, wrong group
+]
+
+
+def _fake_catalogue(versions=_VERSIONS, types=_VERSION_TYPES,
+                    versions_ok=True, types_ok=True):
+    def get(url, **_kwargs):
+        if url.endswith("/game/versions"):
+            return _FakeResponse(versions, ok=versions_ok)
+        if url.endswith("/game/version-types"):
+            return _FakeResponse(types, ok=types_ok)
+        raise AssertionError(f"unexpected URL {url}")
+    return get
+
+
+def _resolve(environment, **catalogue_kwargs):
+    with mock.patch.object(publish.requests, "get",
+                           _fake_catalogue(**catalogue_kwargs)):
+        return publish.curseforge_resolve_versions(
+            "token", ["1.21.1"], ["fabric"], environment)
+
+
+class CurseforgeEnvironmentNamesTest(unittest.TestCase):
+    def test_client_and_server_maps_to_both(self):
+        self.assertEqual(publish.curseforge_environment_names("client_and_server"),
+                         {"client", "server"})
+
+    def test_client_only_maps_to_client(self):
+        self.assertEqual(publish.curseforge_environment_names("client_only"),
+                         {"client"})
+
+    def test_server_only_variants_map_to_server(self):
+        self.assertEqual(publish.curseforge_environment_names("server_only"),
+                         {"server"})
+        self.assertEqual(publish.curseforge_environment_names("dedicated_server_only"),
+                         {"server"})
+
+    def test_client_only_server_optional_maps_to_both(self):
+        self.assertEqual(
+            publish.curseforge_environment_names("client_only_server_optional"),
+            {"client", "server"})
+
+    def test_empty_or_unknown_falls_back_to_both(self):
+        self.assertEqual(publish.curseforge_environment_names(""),
+                         {"client", "server"})
+        self.assertEqual(publish.curseforge_environment_names("something-new"),
+                         {"client", "server"})
+
+
+class CurseforgeResolveVersionsTest(unittest.TestCase):
+    def test_default_env_tags_minecraft_loader_and_both_environments(self):
+        # The regression: without an environment id CurseForge rejects with 1021.
+        self.assertEqual(_resolve("client_and_server"), [100, 101, 102, 103])
+
+    def test_client_only_omits_the_server_id(self):
+        ids = _resolve("client_only")
+        self.assertIn(102, ids)      # Client
+        self.assertNotIn(103, ids)   # Server
+
+    def test_server_only_variants_omit_the_client_id(self):
+        for value in ("server_only", "dedicated_server_only"):
+            ids = _resolve(value)
+            self.assertIn(103, ids, value)       # Server
+            self.assertNotIn(102, ids, value)    # Client
+
+    def test_client_only_server_optional_tags_both(self):
+        ids = _resolve("client_only_server_optional")
+        self.assertIn(102, ids)
+        self.assertIn(103, ids)
+
+    def test_decoy_same_named_version_in_wrong_group_is_ignored(self):
+        # 1.21.1 also exists under a bukkit group (id 104); only the minecraft one counts.
+        ids = _resolve("client_and_server")
+        self.assertIn(100, ids)
+        self.assertNotIn(104, ids)
+
+    def test_missing_environment_group_blocks_the_upload(self):
+        # A catalogue with no Client/Server entries must resolve to [] so the
+        # upload is blocked rather than rejected with error 1021.
+        no_env = [v for v in _VERSIONS if v["gameVersionTypeID"] != 3]
+        self.assertEqual(_resolve("client_and_server", versions=no_env), [])
+
+    def test_catalogue_fetch_failure_returns_none(self):
+        self.assertIsNone(_resolve("client_and_server", versions_ok=False))
+        self.assertIsNone(_resolve("client_and_server", types_ok=False))
 
 
 if __name__ == "__main__":

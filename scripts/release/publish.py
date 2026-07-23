@@ -16,9 +16,11 @@ platform slug differs from its Fabric id. They are best-effort: an unresolvable
 Modrinth slug is dropped, and a CurseForge upload that fails with relations is
 retried once without them, so a stale sibling slug never blocks a release.
 
-The Modrinth version's supported environment defaults to client_and_server (the
-suite is client+server mods) and is overridable per mod via the ENVIRONMENT
-input for the rare client-only or server-only member.
+The supported environment defaults to client_and_server (the suite is
+client+server mods) and is overridable per mod via the ENVIRONMENT input for the
+rare client-only or server-only member. It sets the Modrinth version's
+environment and selects the Client/Server ids CurseForge requires on every
+upload.
 """
 from __future__ import annotations
 
@@ -223,14 +225,33 @@ def modrinth_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
 
 # -------------------------------------------------------------- CurseForge ---
 
+def curseforge_environment_names(environment: str) -> set[str]:
+    """Map the Modrinth-style ENVIRONMENT input to CurseForge's Client/Server
+    environment pseudo-versions. CurseForge treats its environment group as
+    mandatory (error 1021 otherwise), so the result is never empty: an unknown
+    or unset value falls back to both sides, matching the suite default."""
+    value = environment.strip().lower()
+    client = value not in {"server_only", "dedicated_server_only"}
+    server = value != "client_only"
+    names = set()
+    if client:
+        names.add("client")
+    if server:
+        names.add("server")
+    return names or {"client", "server"}
+
+
 def curseforge_resolve_versions(token: str, game_versions: list[str],
-                                loaders: list[str]) -> list[int] | None:
-    """Resolve game-version and loader names to CurseForge numeric ids within
-    the correct version-type category. A name like "1.21.1" exists in several
-    categories (the real minecraft-1-21 entry plus bukkit/addon ones the upload
-    API rejects), so game versions are matched only under a "minecraft*" type
-    and loaders only under "modloader*". Returns None on a catalogue fetch
-    failure."""
+                                loaders: list[str],
+                                environment: str) -> list[int] | None:
+    """Resolve game-version, loader, and environment names to CurseForge numeric
+    ids within the correct version-type category. A name like "1.21.1" exists in
+    several categories (the real minecraft-1-21 entry plus bukkit/addon ones the
+    upload API rejects), so game versions are matched only under a "minecraft*"
+    type, loaders only under "modloader*", and the Client/Server pseudo-versions
+    only under "environment*". CurseForge rejects an upload that carries no
+    environment id (error 1021), so a resolve that finds none returns [] to block
+    the upload. Returns None on a catalogue fetch failure."""
     headers = {"X-Api-Token": token}
     versions = requests.get(f"{CURSEFORGE_API}/game/versions",
                             headers=headers, timeout=TIMEOUT)
@@ -242,7 +263,9 @@ def curseforge_resolve_versions(token: str, game_versions: list[str],
     slug_by_type = {t["id"]: t["slug"] for t in types.json()}
     want_versions = {name.lower() for name in game_versions}
     want_loaders = {name.lower() for name in loaders}
+    want_env = curseforge_environment_names(environment)
     ids = set()
+    env_ids = set()
     for version in versions.json():
         slug = slug_by_type.get(version["gameVersionTypeID"], "")
         name = version["name"].lower()
@@ -250,7 +273,13 @@ def curseforge_resolve_versions(token: str, game_versions: list[str],
             ids.add(version["id"])
         elif slug.startswith("modloader") and name in want_loaders:
             ids.add(version["id"])
-    return sorted(ids)
+        elif slug.startswith("environment") and name in want_env:
+            env_ids.add(version["id"])
+    if not env_ids:
+        error(f"No CurseForge environment id resolved for ENVIRONMENT="
+              f"{environment!r}; the upload would be rejected (error 1021)")
+        return []
+    return sorted(ids | env_ids)
 
 
 def curseforge_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
@@ -262,13 +291,15 @@ def curseforge_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
 
     game_versions = csv(env("GAME_VERSIONS"))
     loaders = csv(env("LOADERS"))
-    version_ids = curseforge_resolve_versions(token, game_versions, loaders)
+    environment = env("ENVIRONMENT")
+    version_ids = curseforge_resolve_versions(token, game_versions, loaders,
+                                              environment)
     if version_ids is None:
         error("Could not fetch the CurseForge game-version catalogues")
         return False
     if not version_ids:
-        error(f"Could not resolve any CurseForge version ids for "
-              f"{env('GAME_VERSIONS')} / {env('LOADERS')}")
+        error(f"Could not resolve the required CurseForge version ids for "
+              f"{env('GAME_VERSIONS')} / {env('LOADERS')} / {environment}")
         return False
     log(f"Resolved CurseForge version ids: {version_ids}")
 
