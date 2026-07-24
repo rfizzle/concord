@@ -14,7 +14,7 @@
           "lgColumns": 3,
           "items": [
             {
-              "title": "60",
+              "title": "65",
               "html": [
                 "Downloads across the collection"
               ]
@@ -26,7 +26,7 @@
               ]
             },
             {
-              "title": "23",
+              "title": "16",
               "html": [
                 "Open issues across the suite"
               ]
@@ -58,7 +58,7 @@
               "2026-07-01",
               "<a href='https://github.com/rfizzle/meridian/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/meridian/actions/workflows/ci.yml/badge.svg?branch=master' alt='Meridian CI status'></a>",
               "—",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/meridian/issues'>2</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/meridian/issues'>1</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://mercantile.rfizzle.com'>Mercantile</a>",
@@ -66,8 +66,8 @@
               "v1.0.0",
               "2026-07-01",
               "<a href='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml/badge.svg?branch=master' alt='Mercantile CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>60</a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/mercantile/issues'>3</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>62</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/mercantile/issues'>2</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://tribulation.rfizzle.com'>Tribulation</a>",
@@ -76,7 +76,7 @@
               "2026-07-01",
               "<a href='https://github.com/rfizzle/tribulation/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/tribulation/actions/workflows/ci.yml/badge.svg?branch=master' alt='Tribulation CI status'></a>",
               "—",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/tribulation/issues'>2</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/tribulation/issues'>1</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://prosperity.rfizzle.com'>Prosperity</a>",
@@ -84,8 +84,8 @@
               "v1.0.0",
               "2026-07-01",
               "<a href='https://github.com/rfizzle/prosperity/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/prosperity/actions/workflows/ci.yml/badge.svg?branch=master' alt='Prosperity CI status'></a>",
-              "—",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/prosperity/issues'>2</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/prosperity-loot-overhaul'>3</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/prosperity/issues'>1</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://respite.rfizzle.com'>Respite</a>",
@@ -94,7 +94,7 @@
               "—",
               "<a href='https://github.com/rfizzle/respite/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/respite/actions/workflows/ci.yml/badge.svg?branch=master' alt='Respite CI status'></a>",
               "—",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/respite/issues'>1</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/respite/issues'>0</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://distillation.rfizzle.com'>Distillation</a>",
@@ -103,7 +103,7 @@
               "—",
               "<a href='https://github.com/rfizzle/distillation/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/distillation/actions/workflows/ci.yml/badge.svg?branch=master' alt='Distillation CI status'></a>",
               "—",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/distillation/issues'>3</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/distillation/issues'>2</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://cultivation.rfizzle.com'>Cultivation</a>",
@@ -112,7 +112,7 @@
               "—",
               "<a href='https://github.com/rfizzle/cultivation/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/cultivation/actions/workflows/ci.yml/badge.svg?branch=master' alt='Cultivation CI status'></a>",
               "—",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/cultivation/issues'>5</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/cultivation/issues'>4</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://instinct.rfizzle.com'>Instinct</a>",
@@ -124,7 +124,7 @@
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/instinct/issues'>5</a>"
             ]
           ],
-          "note": "Downloads count each member's Modrinth listing; members without a public listing yet show —. Refreshed nightly from the GitHub and Modrinth APIs · data last changed 2026-07-23."
+          "note": "Downloads count each member's Modrinth listing; members without a public listing yet show —. Refreshed nightly from the GitHub and Modrinth APIs · data last changed 2026-07-24."
         }
       ]
     }

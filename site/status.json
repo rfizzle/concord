@@ -1,11 +1,11 @@
 {
-  "generated": "2026-07-23",
+  "generated": "2026-07-24",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 60,
+    "downloads": 65,
     "followers": 1,
-    "openIssues": 23
+    "openIssues": 16
   },
   "members": [
     {
@@ -22,9 +22,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-22"
+        "date": "2026-07-23"
       },
-      "openIssues": 2,
+      "openIssues": 1,
       "modrinth": null
     },
     {
@@ -41,12 +41,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-22"
+        "date": "2026-07-23"
       },
-      "openIssues": 3,
+      "openIssues": 2,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 60,
+        "downloads": 62,
         "followers": 1
       }
     },
@@ -64,9 +64,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-20"
+        "date": "2026-07-23"
       },
-      "openIssues": 2,
+      "openIssues": 1,
       "modrinth": null
     },
     {
@@ -83,10 +83,14 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-22"
+        "date": "2026-07-23"
       },
-      "openIssues": 2,
-      "modrinth": null
+      "openIssues": 1,
+      "modrinth": {
+        "slug": "prosperity-loot-overhaul",
+        "downloads": 3,
+        "followers": 0
+      }
     },
     {
       "id": "respite",
@@ -99,9 +103,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-22"
+        "date": "2026-07-23"
       },
-      "openIssues": 1,
+      "openIssues": 0,
       "modrinth": null
     },
     {
@@ -115,9 +119,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-22"
+        "date": "2026-07-23"
       },
-      "openIssues": 3,
+      "openIssues": 2,
       "modrinth": null
     },
     {
@@ -131,9 +135,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-22"
+        "date": "2026-07-23"
       },
-      "openIssues": 5,
+      "openIssues": 4,
       "modrinth": null
     },
     {
@@ -147,7 +151,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-22"
+        "date": "2026-07-23"
       },
       "openIssues": 5,
       "modrinth": null
