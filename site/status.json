@@ -1,11 +1,11 @@
 {
-  "generated": "2026-07-24",
+  "generated": "2026-07-25",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 65,
+    "downloads": 71,
     "followers": 1,
-    "openIssues": 16
+    "openIssues": 14
   },
   "members": [
     {
@@ -22,7 +22,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-23"
+        "date": "2026-07-25"
       },
       "openIssues": 1,
       "modrinth": null
@@ -41,12 +41,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-23"
+        "date": "2026-07-25"
       },
       "openIssues": 2,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 62,
+        "downloads": 67,
         "followers": 1
       }
     },
@@ -64,9 +64,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-23"
+        "date": "2026-07-25"
       },
-      "openIssues": 1,
+      "openIssues": 0,
       "modrinth": null
     },
     {
@@ -83,12 +83,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-23"
+        "date": "2026-07-25"
       },
       "openIssues": 1,
       "modrinth": {
         "slug": "prosperity-loot-overhaul",
-        "downloads": 3,
+        "downloads": 4,
         "followers": 0
       }
     },
@@ -103,7 +103,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-23"
+        "date": "2026-07-25"
       },
       "openIssues": 0,
       "modrinth": null
@@ -119,7 +119,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-23"
+        "date": "2026-07-25"
       },
       "openIssues": 2,
       "modrinth": null
@@ -135,7 +135,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-23"
+        "date": "2026-07-25"
       },
       "openIssues": 4,
       "modrinth": null
@@ -151,9 +151,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-23"
+        "date": "2026-07-25"
       },
-      "openIssues": 5,
+      "openIssues": 4,
       "modrinth": null
     }
   ]
