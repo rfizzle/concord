@@ -2,6 +2,10 @@
 # (art/icon-1024.png). Bronze-stone rim + brick disc + glowing keystone,
 # neutral parent identity. 32 native; upscales for favicon/header/apple-touch.
 size: 32
+kind: icon
+palette: free   # traced from the raster medallion master, so its tones are
+                # that painting's, not design-system accents
+ships: art/icon-128.png 128
 
 legend:
   . transparent

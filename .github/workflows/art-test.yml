@@ -1,9 +1,10 @@
 # Guards the vendored art renderers: whenever glyph.py, sfx.py, their tests, or
 # the reference example specs change, run the renderer unit tests so a
 # regression can't merge — every member repo receives these scripts via
-# `make sync`, so a break here breaks the whole suite's art pipeline. Hermetic:
-# stdlib-only synthesis/rasterization, no ffmpeg required (the tests accept the
-# WAV fallback when the Ogg encode is unavailable).
+# `make sync`, so a break here breaks the whole suite's art pipeline. Also runs
+# the repeatability checker's tests, since it is what holds shipped assets to
+# their specs. Hermetic: stdlib-only synthesis/rasterization, no ffmpeg required
+# (the cases that need an encoder skip themselves without one).
 name: Art renderer tests
 
 on:
@@ -15,6 +16,8 @@ on:
       - ".ai/skills/mc-audio/examples/**"
       - "scripts/test_glyph.py"
       - "scripts/test_sfx.py"
+      - "scripts/check-art-repeatability.py"
+      - "scripts/test_check_art_repeatability.py"
       - ".github/workflows/art-test.yml"
   push:
     branches: [master]
@@ -25,6 +28,8 @@ on:
       - ".ai/skills/mc-audio/examples/**"
       - "scripts/test_glyph.py"
       - "scripts/test_sfx.py"
+      - "scripts/check-art-repeatability.py"
+      - "scripts/test_check_art_repeatability.py"
       - ".github/workflows/art-test.yml"
 
 permissions:
@@ -36,4 +41,4 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Run renderer unit tests
-        run: python3 -m unittest scripts.test_glyph scripts.test_sfx
+        run: python3 -m unittest scripts.test_glyph scripts.test_sfx scripts.test_check_art_repeatability

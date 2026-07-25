@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test status status-test sync-test labels-check labels-test release-test gametest-check gametest-test help
+.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test art-verify art-verify-all status status-test sync-test labels-check labels-test release-test gametest-check gametest-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -18,6 +18,8 @@ help:
 	@echo "toolchain-check  fail if any sibling member is behind propagate/versions-common.properties"
 	@echo "toolchain-test   run the toolchain-drift checker's unit tests"
 	@echo "art-test       run the glyph + sfx renderer unit tests"
+	@echo "art-verify     re-render this repo's art specs and fail if a shipped asset drifted"
+	@echo "art-verify-all run art-verify across every sibling member repo"
 	@echo "status         regenerate site/status.json + the status page from the public APIs"
 	@echo "status-test    run the status generator's unit tests"
 	@echo "sync-test      run the concord-sync PR script's integration tests"
@@ -92,7 +94,16 @@ status-test:
 # concord-sync propagate PR (or `make sync` locally), so a regression here breaks
 # the whole suite's art pipeline.
 art-test:
-	@$(PY) -m unittest scripts.test_glyph scripts.test_sfx
+	@$(PY) -m unittest scripts.test_glyph scripts.test_sfx scripts.test_check_art_repeatability
+
+# Hold the art pipeline to its own repeatability rule: every art/ spec that
+# declares a `ships:` target is re-rendered and diffed against the asset that
+# shipped, so a hand-patched PNG or a stale .ogg fails instead of blending in.
+art-verify:
+	@$(PY) scripts/check-art-repeatability.py --root .
+
+art-verify-all:
+	@$(PY) scripts/check-art-repeatability.py --root .. --all-members
 
 # Exercise scripts/open-sync-pr.py — which stages concord-owned files onto each
 # member's concord-sync PR — against a mock gh: add/update/delete of the vendored
