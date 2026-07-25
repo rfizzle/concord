@@ -430,10 +430,12 @@ class CliTests(unittest.TestCase):
             self.assertTrue((self.dir / "blip.wav").exists())
 
     def test_missing_subtitle_warns(self):
+        # The exit code tracks whether the .ogg was written, which is a separate
+        # question from whether the cue drew a warning — so assert the warning.
         spec_path = self.dir / "s.sfx"
         spec_path.write_text(json.dumps({"layers": [{"freq": 440, "duration": 0.05}]}))
         rc, _, err = self._run([str(spec_path), "-o", str(self.dir / "s.ogg"), "--no-report"])
-        self.assertEqual(rc, 0)
+        self.assertEqual(rc, 0 if HAVE_FFMPEG else 1)
         self.assertIn("MISSING", err)
 
     def test_long_cue_warns(self):
@@ -443,7 +445,7 @@ class CliTests(unittest.TestCase):
             "layers": [{"freq": 100, "duration": 3.0}],
         }))
         rc, _, err = self._run([str(spec_path), "-o", str(self.dir / "l.ogg"), "--no-report"])
-        self.assertEqual(rc, 0)
+        self.assertEqual(rc, 0 if HAVE_FFMPEG else 1)
         self.assertIn("long for an SFX cue", err)
 
     def test_bad_spec_is_reported(self):
