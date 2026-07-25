@@ -560,12 +560,41 @@ class VerifyTests(unittest.TestCase):
 
         rc, out, _ = self._run(["--verify-all", str(art)])
         self.assertEqual(rc, 1)                      # linked cue not shipped yet
-        self.assertIn("1 verified, 1 drifted, 1 unlinked", out)
+        self.assertIn("1 verified, 1 drifted, 0 malformed, 0 blocked, 1 unlinked", out)
 
         self._run([str(linked), "-o", str(shipped), "--no-report"])
         rc, out, _ = self._run(["--verify-all", str(art), "-v"])
         self.assertEqual(rc, 0)
-        self.assertIn("1 verified, 0 drifted, 1 unlinked", out)
+        self.assertIn("1 verified, 0 drifted, 0 malformed, 0 blocked, 1 unlinked", out)
+
+    def test_verify_all_walks_subdirectories(self):
+        # A repo that sorts its cues into folders is the one that most needs
+        # the check; a top-level-only walk would green-light what it skipped.
+        art = self.dir / "art" / "audio"
+        (art / "ui").mkdir(parents=True)
+        shipped = self.dir / "assets" / "deep.ogg"
+        nested = art / "ui" / "deep.sfx"
+        nested.write_text(json.dumps({
+            "subtitle": "t.s.d", "seed": 1, "ships": str(shipped),
+            "layers": [{"freq": 660, "duration": 0.1}],
+        }))
+        self._run([str(nested), "-o", str(shipped), "--no-report"])
+        rc, out, _ = self._run(["--verify-all", str(art), "-v"])
+        self.assertEqual(rc, 0)
+        self.assertIn("1 verified", out)
+        self.assertIn("deep.sfx", out)
+
+    def test_a_malformed_cue_is_not_reported_as_drift(self):
+        art = self.dir / "art" / "audio"
+        art.mkdir(parents=True)
+        (art / "bad.sfx").write_text(
+            json.dumps({"ships": str(self.dir / "assets" / "bad.ogg"),
+                        "layers": []}))     # a cue with nothing in it
+        rc, out, _ = self._run(["--verify-all", str(art)])
+        self.assertEqual(rc, 1)
+        self.assertIn("BROKEN", out)
+        self.assertNotIn("DRIFT", out)
+        self.assertIn("0 verified, 0 drifted, 1 malformed, 0 blocked, 0 unlinked", out)
 
     def test_verify_all_on_a_missing_directory_is_not_a_failure(self):
         rc, out, _ = self._run(["--verify-all", str(self.dir / "nope")])

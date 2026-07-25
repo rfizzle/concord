@@ -71,9 +71,11 @@ class CheckerTests(unittest.TestCase):
         with redirect_stdout(out):
             ok, _printed = check_art.check_repo(self.repo, **kw)
         text = out.getvalue()
-        counts = {"verified": 0, "drifted": 0, "unlinked": 0}
+        counts = {"verified": 0, "drifted": 0, "malformed": 0,
+                  "blocked": 0, "unlinked": 0}
         for line in text.splitlines():
-            m = re.search(r"(\d+) verified, (\d+) drifted, (\d+) unlinked", line)
+            m = re.search(r"(\d+) verified, (\d+) drifted, (\d+) malformed, "
+                          r"(\d+) blocked, (\d+) unlinked", line)
             if m:
                 for key, val in zip(counts, m.groups()):
                     counts[key] += int(val)
@@ -129,6 +131,30 @@ class CheckerTests(unittest.TestCase):
         (checked, drifted, unlinked), out, _ = self._run()
         self.assertEqual((checked, drifted, unlinked), (0, 0, 1))
         self.assertIn("unlinked", out)
+
+    def test_malformed_spec_fails_the_driver_as_its_own_condition(self):
+        # The driver reports what the verifiers say, so "the shipped art was
+        # edited" and "the spec no longer parses" have to stay distinguishable
+        # all the way out to whatever wraps this in CI.
+        self._write_glyph(GLYPH_SPEC.replace("  .KK.\n", "  .KK\n"))
+        (checked, drifted, _), out, ok = self._run()
+        self.assertFalse(ok)
+        self.assertEqual((checked, drifted), (0, 0))
+        self.assertIn("BROKEN", out)
+        self.assertNotIn("DRIFT", out)
+
+    def test_nested_specs_are_walked(self):
+        # Members sort their art into subdirectories; the driver hands the
+        # verifier one root and trusts it to reach all of them.
+        nested = self.repo / "art" / "glyphs" / "hud"
+        nested.mkdir(parents=True, exist_ok=True)
+        (nested / "deep.glyph").write_text(
+            GLYPH_SPEC.replace("assets/coin.png", "assets/deep.png"))
+        self._render_glyph(nested / "deep.glyph", dest="assets/deep.png")
+        (checked, drifted, _), out, ok = self._run(verbose=True)
+        self.assertTrue(ok, out)
+        self.assertEqual((checked, drifted), (1, 0))
+        self.assertIn("deep.glyph", out)
 
     def test_ships_after_the_grid_is_not_read(self):
         # A 'ships:' line below the legend would be a grid row, not a header

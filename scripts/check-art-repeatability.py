@@ -15,7 +15,10 @@ vendored renderer directly gets exactly the same answer concord does.
     python3 scripts/check-art-repeatability.py --root ../mercantile
     python3 scripts/check-art-repeatability.py --root .. --all-members
 
-Exits non-zero when a shipped asset has drifted from its spec.
+Exits non-zero when a shipped asset has drifted from its spec, when a spec no
+longer parses, or when a tool a spec's render needs isn't installed — the
+verifiers label and count those three apart, and this driver passes their
+wording through rather than flattening it to "drift".
 """
 
 from __future__ import annotations
@@ -81,7 +84,7 @@ def main(argv=None):
             failed.append(repo)
 
     if failed:
-        print(f"\ndrift in: {', '.join(str(r) for r in failed)}")
+        print(f"\nunclean: {', '.join(str(r) for r in failed)}")
         return 1
     return 0
 

@@ -13,6 +13,7 @@ import importlib.util
 import io
 import json
 import pathlib
+import shutil
 import struct
 import sys
 import tempfile
@@ -56,6 +57,12 @@ frame:
 """
 
 
+# A 16px checkerboard: big enough to downscale several tiers, and detailed
+# enough that two resampling filters cannot agree by accident.
+_BIG_SPEC = "legend:\n  g gold\n  K ink\nframe:\n" + "\n".join(
+    "  " + ("gK" * 8 if y % 2 else "Kg" * 8) for y in range(16)) + "\n"
+
+
 def run_main(argv):
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
@@ -69,7 +76,8 @@ def analyze_spec(spec_text):
     legend, frames, size, meta, used = glyph.parse_spec(spec_text)
     px, n = glyph.build_frames(legend, frames, size)
     lines, findings = glyph.analyze(px, n, used, meta.get("raw_hex", ()),
-                                    meta.get("palette", "tokens"), meta.get("kind"))
+                                    meta.get("palette", "tokens"),
+                                    meta.get("kind"), meta.get("edge"))
     return (lines,
             [t for sev, t in findings if sev == "warning"],
             [t for sev, t in findings if sev == "note"])
@@ -139,16 +147,58 @@ class AnalyzeTests(unittest.TestCase):
     def test_mixed_edge_warns_when_the_kind_implies_one(self):
         mixed = "legend:\n  . transparent\n  g gold\nframe:\n  g.\n  ..\n"
         _, warns = self._analyze("kind: sprite\n" + mixed)
-        self.assertTrue(any("neither" in w for w in warns))
+        self.assertTrue(any("1px transparent margin" in w for w in warns))
         _, warns = self._analyze("kind: block\n" + mixed)
-        self.assertTrue(any("neither" in w for w in warns))
+        self.assertTrue(any("bleeds to all four edges" in w for w in warns))
         # A UI element may bleed on some edges and not others by design.
         _, warns = self._analyze("kind: ui\n" + mixed)
-        self.assertFalse(any("neither" in w for w in warns))
+        self.assertEqual(warns, [])
+        # An atlas is only ever read through sub-windows, so its outline says
+        # nothing about how it is drawn.
+        _, warns = self._analyze("kind: atlas\n" + mixed)
+        self.assertEqual(warns, [])
         # Undeclared: the geometry is genuinely ambiguous, so it is a note.
         _, warns, notes = analyze_spec(mixed)
-        self.assertFalse(any("neither" in w for w in warns))
+        self.assertEqual(warns, [])
         self.assertTrue(any("could not be inferred" in n for n in notes))
+
+    def test_a_sprite_may_declare_the_edge_it_draws(self):
+        # The quality bar has always allowed a motif to reach its border on
+        # purpose. The `edge:` line is where the spec says so — and the warning
+        # that fires without it names that line rather than an option that
+        # would only trade one warning for another.
+        mixed = "legend:\n  . transparent\n  g gold\nframe:\n  g.\n  ..\n"
+        bleed = "legend:\n  g gold\nframe:\n  gg\n  gg\n"
+
+        _, warns = self._analyze("kind: sprite\n" + mixed)
+        self.assertTrue(any("edge: shaped" in w for w in warns))
+        _, warns = self._analyze("kind: sprite\nedge: shaped\n" + mixed)
+        self.assertEqual(warns, [])
+
+        _, warns = self._analyze("kind: sprite\n" + bleed)
+        self.assertTrue(any("edge: bleed" in w for w in warns))
+        _, warns = self._analyze("kind: sprite\nedge: bleed\n" + bleed)
+        self.assertEqual(warns, [])
+
+    def test_a_declared_edge_is_measured_not_trusted(self):
+        mixed = "legend:\n  . transparent\n  g gold\nframe:\n  g.\n  ..\n"
+        lines, warns = self._analyze("kind: sprite\nedge: bleed\n" + mixed)
+        self.assertTrue(any("declares 'edge: bleed'" in w for w in warns))
+        self.assertTrue(any("declared: bleed" in ln for ln in lines))
+
+    def test_a_block_cannot_declare_its_way_out_of_bleeding(self):
+        # A side face that stops short of its border shows the void where
+        # copies meet, whatever the spec meant by it.
+        mixed = "kind: block\nedge: shaped\nlegend:\n  . transparent\n  g gold\n"
+        _, warns = self._analyze(mixed + "frame:\n  g.\n  ..\n")
+        self.assertTrue(any("bleeds to all four edges" in w for w in warns))
+
+    def test_a_particle_spends_its_whole_canvas(self):
+        # A 1px ring costs 75% of a 4px canvas — the margin rule is a sprite
+        # rule, and a mote is not a sprite.
+        full = "legend:\n  g gold\nframe:\n  gg\n  gg\n"
+        _, warns = self._analyze("kind: particle\n" + full)
+        self.assertEqual(warns, [])
 
     def test_flat_fill_warns_at_32(self):
         rows = ["g" * 32] * 32
@@ -512,6 +562,24 @@ class PaletteWarningTests(unittest.TestCase):
         with self.assertRaises(glyph.SpecError):
             glyph.parse_spec("palette: whatever\nlegend:\n  a gold\nframe:\n  a\n")
 
+    def test_edge_and_frames_directives_are_validated(self):
+        for bad in ("edge: whatever\n", "frames: sideways\n",
+                    "downscale: bicubic\n"):
+            with self.assertRaises(glyph.SpecError, msg=bad):
+                glyph.parse_spec(bad + "legend:\n  a gold\nframe:\n  a\n")
+        _, _, _, meta, _ = glyph.parse_spec(
+            "edge: shaped\nframes: split\ndownscale: lanczos\n"
+            "legend:\n  a gold\nframe:\n  a\n")
+        self.assertEqual(meta["edge"], "shaped")
+        self.assertEqual(meta["frames"], "split")
+        self.assertEqual(meta["downscale"], "lanczos")
+
+    def test_frames_directive_is_not_confused_with_frametime(self):
+        _, _, _, meta, _ = glyph.parse_spec(
+            "frametime: 3\nlegend:\n  a gold\nframe:\n  a\n")
+        self.assertEqual(meta["frametime"], 3)
+        self.assertNotIn("frames", meta)
+
     def test_directive_values_ignore_trailing_comments(self):
         # Header values are free text, so a '# note' after one must not become
         # part of the value.
@@ -774,7 +842,7 @@ class VerifyTests(unittest.TestCase):
 
         rc, out, _ = run_main(["--verify-all", str(art), "-v"])
         self.assertEqual(rc, 0)
-        self.assertIn("1 verified, 0 drifted, 1 unlinked", out)
+        self.assertIn("1 verified, 0 drifted, 0 malformed, 0 blocked, 1 unlinked", out)
         self.assertIn("unlinked", out)
 
         px, w, h = glyph.read_png(shipped)
@@ -783,7 +851,183 @@ class VerifyTests(unittest.TestCase):
         rc, out, _ = run_main(["--verify-all", str(art)])
         self.assertEqual(rc, 1)
         self.assertIn("DRIFT", out)
-        self.assertIn("1 verified, 1 drifted, 1 unlinked", out)
+        self.assertIn("1 verified, 1 drifted, 0 malformed, 0 blocked, 1 unlinked", out)
+
+    def test_verify_all_walks_subdirectories(self):
+        # A repo with enough art to sort it into folders is the repo that most
+        # needs the check: a walk that stopped at the top level would report a
+        # confident green over art it never opened.
+        art = self.dir / "art" / "glyphs"
+        (art / "hud" / "pips").mkdir(parents=True)
+        shipped = self.dir / "assets" / "deep.png"
+        nested = art / "hud" / "pips" / "deep.glyph"
+        nested.write_text(f"ships: {shipped}\n" + STATIC_SPEC)
+        run_main([str(nested), "-o", str(shipped), "--no-preview"])
+
+        rc, out, _ = run_main(["--verify-all", str(art), "-v"])
+        self.assertEqual(rc, 0)
+        self.assertIn("1 verified", out)
+        self.assertIn("deep.glyph", out)
+
+        px, w, h = glyph.read_png(shipped)
+        px[5] = (255, 0, 255, 255)
+        glyph.write_png(shipped, px, w, h)
+        rc, out, _ = run_main(["--verify-all", str(art)])
+        self.assertEqual(rc, 1)
+        self.assertIn("DRIFT", out)
+
+    def test_a_malformed_spec_is_not_reported_as_drift(self):
+        # A wrapper can only word its error honestly if the two are apart: one
+        # says the shipped art was edited, the other says the spec won't parse.
+        art = self.dir / "art" / "glyphs"
+        art.mkdir(parents=True)
+        (art / "bad.glyph").write_text(
+            f"ships: {self.dir / 'assets' / 'bad.png'}\n"
+            "legend:\n  g gold\nframe:\n  gg\n  g\n")   # ragged grid
+        rc, out, _ = run_main(["--verify-all", str(art)])
+        self.assertEqual(rc, 1)
+        self.assertIn("BROKEN", out)
+        self.assertNotIn("DRIFT", out)
+        self.assertIn("0 verified, 0 drifted, 1 malformed, 0 blocked, 0 unlinked", out)
+
+    def test_split_frame_specs_declare_their_packaging(self):
+        # concord#47: the packaging is a property of the spec, so --verify-all,
+        # which has no flags to pass, has to be able to read it off the spec.
+        art = self.dir / "art" / "glyphs"
+        art.mkdir(parents=True)
+        out = self.dir / "assets" / "spark.png"
+        spec = art / "spark.glyph"
+        spec.write_text(f"frames: split\nships: {out}\n" + ANIM_SPEC)
+        rc, _, err = run_main([str(spec), "-o", str(out), "--no-preview"])
+        self.assertEqual(rc, 0, err)
+        self.assertTrue((self.dir / "assets" / "spark_0.png").exists())
+        self.assertFalse((self.dir / "assets" / "spark.png.mcmeta").exists())
+
+        rc, text, _ = run_main(["--verify-all", str(art), "-v"])
+        self.assertEqual(rc, 0)
+        self.assertIn("spark_1.png", text)
+
+    def test_split_frames_on_a_static_spec_is_a_spec_error_not_drift(self):
+        art = self.dir / "art" / "glyphs"
+        art.mkdir(parents=True)
+        (art / "still.glyph").write_text(
+            f"frames: split\nships: {self.dir / 'assets' / 'still.png'}\n"
+            + STATIC_SPEC)
+        rc, out, _ = run_main(["--verify-all", str(art)])
+        self.assertEqual(rc, 1)
+        self.assertIn("BROKEN", out)
+        self.assertIn("2+ frames", out)
+
+    def test_ships_declares_downscaled_tiers_too(self):
+        # The mod-icon ladder runs downward: one 512 master, derived 256 and
+        # 128 copies. Every tier is named by the spec, so every tier verifies.
+        small = self.dir / "assets" / "icon-8.png"
+        spec = self._spec(f"ships: {small} 8\n" + _BIG_SPEC, "icon.glyph")
+        rc, _, err = run_main([str(spec), "--verify"])
+        self.assertEqual(rc, 1)          # the 8px tier hasn't shipped yet
+        run_main([str(spec), "-o", str(small), "--scale-to", "8"])
+        rc, out, err = run_main([str(spec), "--verify"])
+        self.assertEqual(rc, 0, err)
+        self.assertIn("icon-8.png", out)
+
+    def test_an_upscaled_tier_must_be_a_whole_multiple(self):
+        spec = self._spec(f"ships: {self.dir / 'x.png'} 10\n" + STATIC_SPEC)
+        rc, _, err = run_main([str(spec), "--verify"])
+        self.assertEqual(rc, 1)
+        self.assertIn("whole multiple", err)
+
+    @unittest.skipIf(glyph.magick_binary() is None, "ImageMagick not installed")
+    def test_a_ratio_that_is_no_whole_factor_resamples_through_magick(self):
+        # 4 -> 3 has no integer factor, so the built-in average can't express
+        # it; ImageMagick can, and the tier verifies against what it produced.
+        odd = self.dir / "assets" / "odd.png"
+        spec = self._spec(f"ships: {odd} 3\n" + STATIC_SPEC)
+        rc, out, err = run_main([str(spec), "-o", str(odd), "--scale-to", "3"])
+        self.assertEqual(rc, 0, err)
+        self.assertIn("ImageMagick box", out)
+        self.assertEqual(png_size(odd), (3, 3))
+        rc, _, err = run_main([str(spec), "--verify"])
+        self.assertEqual(rc, 0, err)
+
+    @unittest.skipIf(glyph.magick_binary() is None, "ImageMagick not installed")
+    def test_a_declared_filter_routes_through_magick_and_verifies(self):
+        big = "downscale: lanczos\n" + _BIG_SPEC
+        small = self.dir / "assets" / "hero-4.png"
+        spec = self._spec(f"ships: {small} 4\n" + big, "hero.glyph")
+        rc, out, err = run_main([str(spec), "-o", str(small), "--scale-to", "4"])
+        self.assertEqual(rc, 0, err)
+        self.assertIn("ImageMagick lanczos", out)
+        rc, _, err = run_main([str(spec), "--verify"])
+        self.assertEqual(rc, 0, err)
+        # ... and it is a different resampling from the built-in average, which
+        # is the whole reason for reaching past it.
+        box = self.dir / "assets" / "hero-box.png"
+        boxed = self._spec(f"ships: {box} 4\n" + big.replace(
+            "downscale: lanczos\n", ""), "hero-box.glyph")
+        run_main([str(boxed), "-o", str(box), "--scale-to", "4"])
+        self.assertNotEqual(glyph.read_png(small)[0], glyph.read_png(box)[0])
+
+    @unittest.skipIf(glyph.magick_binary() is None, "ImageMagick not installed")
+    def test_either_imagemagick_name_ships_the_same_bytes(self):
+        # v7 is `magick`, v6 is `convert`, and a v7 package often keeps both.
+        # They may write different PNG metadata, but the pixels come home and
+        # are re-encoded here, so the shipped file cannot depend on which one
+        # a given machine happens to have.
+        names = [n for n in ("magick", "convert") if shutil.which(n)]
+        if len(names) < 2:
+            self.skipTest("only one ImageMagick entry point on this machine")
+        spec = self._spec("downscale: lanczos\n" + _BIG_SPEC, "hero.glyph")
+        written = []
+        real = glyph.magick_binary
+        try:
+            for name in names:
+                glyph.magick_binary = (lambda p: (lambda: p))(shutil.which(name))
+                out = self.dir / f"via-{name}.png"
+                rc, _, err = run_main([str(spec), "-o", str(out), "--scale-to", "4"])
+                self.assertEqual(rc, 0, err)
+                written.append(out.read_bytes())
+        finally:
+            glyph.magick_binary = real
+        self.assertEqual(written[0], written[1])
+
+    def test_a_convert_that_is_not_imagemagick_is_not_used(self):
+        # `convert` is a common name: on Windows it is the filesystem tool.
+        # Running that with a resize command would read as ImageMagick
+        # misbehaving rather than as ImageMagick being absent.
+        impostor = self.dir / "convert"
+        impostor.write_text("#!/bin/sh\necho 'File System Conversion Utility'\n")
+        impostor.chmod(0o755)
+        cached, glyph._MAGICK_LOOKUP[:] = list(glyph._MAGICK_LOOKUP), []
+        real_which = shutil.which
+        shutil.which = lambda n, *a, **k: str(impostor) if n == "convert" else None
+        try:
+            self.assertIsNone(glyph.magick_binary())
+            with self.assertRaises(glyph.ToolError) as cm:
+                glyph.magick_resize([(0, 0, 0, 0)] * 16, 4, 2, "lanczos")
+        finally:
+            shutil.which = real_which
+            glyph._MAGICK_LOOKUP[:] = cached
+        self.assertIn("is not ImageMagick", str(cm.exception))
+
+    def test_a_missing_imagemagick_blocks_rather_than_accuses(self):
+        # The spec parses and the art may be perfect — what failed is the
+        # machine, so this is neither drift nor a malformed spec.
+        art = self.dir / "art" / "glyphs"
+        art.mkdir(parents=True)
+        (art / "hero.glyph").write_text(
+            f"downscale: lanczos\nships: {self.dir / 'assets' / 'h.png'} 2\n"
+            + STATIC_SPEC)
+        real, glyph.magick_binary = glyph.magick_binary, lambda: None
+        try:
+            rc, out, _ = run_main(["--verify-all", str(art)])
+        finally:
+            glyph.magick_binary = real
+        self.assertEqual(rc, 1)
+        self.assertIn("BLOCKED", out)
+        self.assertNotIn("DRIFT", out)
+        self.assertNotIn("BROKEN", out)
+        self.assertIn("ImageMagick is not installed", out)
+        self.assertIn("0 verified, 0 drifted, 0 malformed, 1 blocked, 0 unlinked", out)
 
     def test_verify_all_on_a_missing_directory_is_not_a_failure(self):
         rc, out, _ = run_main(["--verify-all", str(self.dir / "nope")])
@@ -1004,9 +1248,41 @@ class RenderTests(unittest.TestCase):
 
     def test_scale_to_rejects_non_multiple(self):
         spec = self._spec_file(STATIC_SPEC)
-        rc, _, err = run_main([str(spec), "-o", str(self.dir / "t.png"), "--scale-to", "10"])
-        self.assertEqual(rc, 1)
-        self.assertIn("integer multiple", err)
+        for bad in ("10", "0", "-4"):
+            rc, _, err = run_main([str(spec), "-o", str(self.dir / "t.png"),
+                                   "--scale-to", bad])
+            self.assertEqual(rc, 1, bad)
+            self.assertIn("whole multiple", err)
+
+    def test_scale_to_downscales_an_exact_factor(self):
+        # A master that is itself an upscale of a smaller grid downscales back
+        # to that grid exactly — which is why the icon ladder can be derived.
+        spec = self._spec_file(STATIC_SPEC)
+        native = self.dir / "n.png"
+        big = self.dir / "big.png"
+        small = self.dir / "small.png"
+        run_main([str(spec), "-o", str(native), "--no-preview"])
+        run_main([str(spec), "-o", str(big), "--scale-to", "16"])
+        rc, out, _ = run_main([str(big), "--from-png", "-o", str(self.dir / "big.glyph")])
+        self.assertEqual(rc, 0)
+        rc, out, _ = run_main([str(self.dir / "big.glyph"), "-o", str(small),
+                               "--scale-to", "4"])
+        self.assertEqual(rc, 0)
+        self.assertIn("area-average ÷4", out)
+        self.assertEqual(glyph.read_png(small)[0], glyph.read_png(native)[0])
+
+    def test_box_downscale_weights_colour_by_alpha(self):
+        # One opaque gold pixel among three transparent ones averages to gold
+        # at a quarter alpha — the transparent side contributes coverage, never
+        # colour, so a fading edge doesn't drag black inward.
+        gold = glyph.parse_color("gold")
+        out, w, h = glyph.scale_box([gold, glyph.TRANSPARENT,
+                                     glyph.TRANSPARENT, glyph.TRANSPARENT], 2, 2, 2)
+        self.assertEqual((w, h), (1, 1))
+        self.assertEqual(out[0][:3], gold[:3])
+        self.assertEqual(out[0][3], 64)
+        out, _, _ = glyph.scale_box([glyph.TRANSPARENT] * 4, 2, 2, 2)
+        self.assertEqual(out, [glyph.TRANSPARENT])
 
     def test_scanlines_decode(self):
         # The compressed IDAT must decode to (1 filter byte + 4·w) per row.
