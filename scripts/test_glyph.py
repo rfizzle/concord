@@ -14,6 +14,7 @@ import io
 import json
 import pathlib
 import struct
+import sys
 import tempfile
 import unittest
 import zlib
@@ -723,6 +724,41 @@ class VerifyTests(unittest.TestCase):
         run_main([str(st), "-o", str(big), "--scale-to", "16"])
         rc, _, _ = run_main([str(st), "-o", str(big), "--scale-to", "16", "--verify"])
         self.assertEqual(rc, 0)
+
+    def _run_on_stdin(self, spec_text, argv):
+        stdin, sys.stdin = sys.stdin, io.StringIO(spec_text)
+        try:
+            return run_main(argv)
+        finally:
+            sys.stdin = stdin
+
+    def test_verify_reads_a_spec_from_stdin(self):
+        # A spec on stdin has no path to re-open, so verification has to work
+        # from what was already parsed. Getting this wrong raised an uncaught
+        # FileNotFoundError out of a script that reports every other failure as
+        # a message and an exit code.
+        out = self.dir / "s.png"
+        run_main([str(self._spec(STATIC_SPEC)), "-o", str(out), "--no-preview"])
+        rc, stdout, stderr = self._run_on_stdin(
+            STATIC_SPEC, ["-", "--verify", "-o", str(out)])
+        self.assertEqual(rc, 0, stderr)
+        self.assertIn("pixel-identical", stdout)
+
+    def test_verify_from_stdin_reports_drift_not_a_traceback(self):
+        out = self.dir / "s.png"
+        run_main([str(self._spec(STATIC_SPEC)), "-o", str(out), "--no-preview"])
+        px, w, h = glyph.read_png(out)
+        px[5] = (255, 0, 255, 255)
+        glyph.write_png(out, px, w, h)
+        rc, _, stderr = self._run_on_stdin(
+            STATIC_SPEC, ["-", "--verify", "-o", str(out)])
+        self.assertEqual(rc, 1)
+        self.assertIn("pixels differ", stderr)
+
+    def test_verify_from_stdin_without_a_target_is_a_clean_error(self):
+        rc, _, stderr = self._run_on_stdin(STATIC_SPEC, ["-", "--verify"])
+        self.assertEqual(rc, 1)
+        self.assertIn("no 'ships:' target", stderr)
 
     def test_verify_all_walks_a_tree(self):
         # This is the member-facing entry point: the renderer is vendored into
