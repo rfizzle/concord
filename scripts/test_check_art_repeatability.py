@@ -14,6 +14,7 @@ import importlib.util
 import io
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -60,10 +61,23 @@ class CheckerTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def _run(self, **kw):
+        """Drive the checker and also read the counts out of what it printed.
+
+        The driver shells out to the vendored verifiers — which is the point,
+        since that is the only copy a member repo has — so the summary line is
+        the contract between them.
+        """
         out = io.StringIO()
         with redirect_stdout(out):
-            result = check_art.check_repo(self.repo, **kw)
-        return result, out.getvalue()
+            ok, _printed = check_art.check_repo(self.repo, **kw)
+        text = out.getvalue()
+        counts = {"verified": 0, "drifted": 0, "unlinked": 0}
+        for line in text.splitlines():
+            m = re.search(r"(\d+) verified, (\d+) drifted, (\d+) unlinked", line)
+            if m:
+                for key, val in zip(counts, m.groups()):
+                    counts[key] += int(val)
+        return (counts["verified"], counts["drifted"], counts["unlinked"]), text, ok
 
     def _write_glyph(self, text=GLYPH_SPEC, name="coin.glyph"):
         path = self.repo / "art" / "glyphs" / name
@@ -79,7 +93,7 @@ class CheckerTests(unittest.TestCase):
     def test_faithful_asset_passes(self):
         spec = self._write_glyph()
         self._render_glyph(spec)
-        (checked, drifted, unlinked), out = self._run(verbose=True)
+        (checked, drifted, unlinked), out, _ = self._run(verbose=True)
         self.assertEqual((checked, drifted, unlinked), (1, 0, 0))
         self.assertIn("ok", out)
 
@@ -90,7 +104,7 @@ class CheckerTests(unittest.TestCase):
         px, w, h = glyph.read_png(shipped)
         px[5] = (255, 0, 255, 255)
         glyph.write_png(shipped, px, w, h)
-        (checked, drifted, _), out = self._run()
+        (checked, drifted, _), out, _ = self._run()
         self.assertEqual((checked, drifted), (1, 1))
         self.assertIn("DRIFT", out)
         self.assertIn("pixels differ", out)
@@ -100,19 +114,19 @@ class CheckerTests(unittest.TestCase):
         spec = self._write_glyph()
         self._render_glyph(spec)
         spec.write_text(GLYPH_SPEC.replace("  g gold", "  g crimson"))
-        (_, drifted, _), out = self._run()
+        (_, drifted, _), out, _ = self._run()
         self.assertEqual(drifted, 1)
         self.assertIn("DRIFT", out)
 
     def test_missing_asset_is_drift(self):
         self._write_glyph()
-        (checked, drifted, _), out = self._run()
+        (checked, drifted, _), out, _ = self._run()
         self.assertEqual((checked, drifted), (1, 1))
         self.assertIn("missing", out)
 
     def test_spec_without_ships_is_unlinked_not_drift(self):
         self._write_glyph(GLYPH_SPEC.replace("ships: assets/coin.png\n", ""))
-        (checked, drifted, unlinked), out = self._run()
+        (checked, drifted, unlinked), out, _ = self._run()
         self.assertEqual((checked, drifted, unlinked), (0, 0, 1))
         self.assertIn("unlinked", out)
 
@@ -121,18 +135,20 @@ class CheckerTests(unittest.TestCase):
         # directive — the parser must not pick it up as a target.
         self._write_glyph(GLYPH_SPEC.replace("ships: assets/coin.png\n", "")
                           + "\n# ships: assets/nope.png\n")
-        (checked, _, unlinked), _ = self._run()
+        (checked, _, unlinked), _, _ = self._run()
         self.assertEqual((checked, unlinked), (0, 1))
 
-    def test_ships_parsers_agree_with_the_renderers(self):
-        # The checker skims for 'ships:' to decide what is linked; the renderer
-        # parses it to decide what to compare. They must see the same targets.
+    def test_ships_skim_agrees_with_the_full_parse(self):
+        # The tree walk skims for 'ships:' to decide what is linked; the render
+        # path parses it to decide what to compare. They must see the same
+        # targets, or a spec could be counted as verified without being checked.
         spec = self._write_glyph(
             GLYPH_SPEC.replace("ships: assets/coin.png\n",
                                "ships: assets/coin.png\nships: assets/coin-64.png 64\n"))
-        self.assertEqual(check_art.glyph_ships(spec),
+        self.assertEqual(glyph.spec_ships(spec),
                          ["assets/coin.png", "assets/coin-64.png"])
         _, _, _, meta, _ = glyph.parse_spec(spec.read_text())
+        self.assertEqual([p for p, _tier in meta["ships"]], glyph.spec_ships(spec))
         self.assertEqual(meta["ships"],
                          [("assets/coin.png", None), ("assets/coin-64.png", 64)])
 
@@ -145,11 +161,11 @@ class CheckerTests(unittest.TestCase):
             [sys.executable, str(check_art.GLYPH), str(spec), "-o",
              str(self.repo / "assets" / "coin-16.png"), "--scale-to", "16"],
             check=True, capture_output=True, cwd=self.repo)
-        (checked, drifted, _), _ = self._run()
+        (checked, drifted, _), _, _ = self._run()
         self.assertEqual((checked, drifted), (1, 0))
         # A tier shipped at the wrong size must not pass as "close enough".
         self._render_glyph(spec, dest="assets/coin-16.png")
-        (_, drifted, _), out = self._run()
+        (_, drifted, _), out, _ = self._run()
         self.assertEqual(drifted, 1)
         self.assertIn("the spec renders 16×16", out)
 
@@ -160,14 +176,17 @@ class CheckerTests(unittest.TestCase):
             "subtitle": "t.s.b", "seed": 1, "ships": "assets/blip.ogg",
             "layers": [{"freq": 880, "duration": 0.1}],
         }))
-        self.assertEqual(check_art.sfx_ships(cue), ["assets/blip.ogg"])
-        (checked, drifted, _), _ = self._run()
+        _SF = importlib.util.spec_from_file_location("sfx", check_art.SFX)
+        sfx = importlib.util.module_from_spec(_SF)
+        _SF.loader.exec_module(sfx)
+        self.assertEqual(sfx.spec_ships(cue), "assets/blip.ogg")
+        (checked, drifted, _), _, _ = self._run()
         self.assertEqual((checked, drifted), (1, 1))  # nothing shipped yet
         subprocess.run(
             [sys.executable, str(check_art.SFX), str(cue),
              "-o", str(self.repo / "assets" / "blip.ogg"), "--no-report"],
             check=True, capture_output=True, cwd=self.repo)
-        (checked, drifted, _), _ = self._run()
+        (checked, drifted, _), _, _ = self._run()
         self.assertEqual((checked, drifted), (1, 0))
 
 

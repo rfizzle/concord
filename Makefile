@@ -19,7 +19,8 @@ help:
 	@echo "toolchain-test   run the toolchain-drift checker's unit tests"
 	@echo "art-test       run the glyph + sfx renderer unit tests"
 	@echo "art-verify     re-render this repo's art specs and fail if a shipped asset drifted"
-	@echo "art-verify-all run art-verify across every sibling member repo"
+	@echo "art-verify-all run art-verify across every sibling member repo (members run"
+	@echo "               the vendored 'glyph.py --verify-all' / 'sfx.py --verify-all')"
 	@echo "status         regenerate site/status.json + the status page from the public APIs"
 	@echo "status-test    run the status generator's unit tests"
 	@echo "sync-test      run the concord-sync PR script's integration tests"
@@ -99,6 +100,9 @@ art-test:
 # Hold the art pipeline to its own repeatability rule: every art/ spec that
 # declares a `ships:` target is re-rendered and diffed against the asset that
 # shipped, so a hand-patched PNG or a stale .ogg fails instead of blending in.
+# The walk itself lives in the vendored renderers (`--verify-all`), so a member
+# repo can run the identical check without needing anything from concord; this
+# target is only the multi-repo driver.
 art-verify:
 	@$(PY) scripts/check-art-repeatability.py --root .
 

@@ -724,6 +724,36 @@ class VerifyTests(unittest.TestCase):
         rc, _, _ = run_main([str(st), "-o", str(big), "--scale-to", "16", "--verify"])
         self.assertEqual(rc, 0)
 
+    def test_verify_all_walks_a_tree(self):
+        # This is the member-facing entry point: the renderer is vendored into
+        # every member repo, so the repo-wide walk has to live in it rather
+        # than in a concord-only script.
+        art = self.dir / "art" / "glyphs"
+        art.mkdir(parents=True)
+        shipped = self.dir / "assets" / "coin.png"
+        linked = art / "coin.glyph"
+        linked.write_text(f"ships: {shipped}\n" + STATIC_SPEC)
+        (art / "loose.glyph").write_text(STATIC_SPEC)      # declares no target
+        run_main([str(linked), "-o", str(shipped), "--no-preview"])
+
+        rc, out, _ = run_main(["--verify-all", str(art), "-v"])
+        self.assertEqual(rc, 0)
+        self.assertIn("1 verified, 0 drifted, 1 unlinked", out)
+        self.assertIn("unlinked", out)
+
+        px, w, h = glyph.read_png(shipped)
+        px[5] = (255, 0, 255, 255)
+        glyph.write_png(shipped, px, w, h)
+        rc, out, _ = run_main(["--verify-all", str(art)])
+        self.assertEqual(rc, 1)
+        self.assertIn("DRIFT", out)
+        self.assertIn("1 verified, 1 drifted, 1 unlinked", out)
+
+    def test_verify_all_on_a_missing_directory_is_not_a_failure(self):
+        rc, out, _ = run_main(["--verify-all", str(self.dir / "nope")])
+        self.assertEqual(rc, 0)
+        self.assertIn("no such directory", out)
+
     def test_shipped_examples_are_reproducible(self):
         # The repeatability rule, applied to the skill's own reference specs.
         examples = ROOT / ".ai" / "skills" / "mc-textures" / "examples"

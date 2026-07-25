@@ -544,6 +544,34 @@ class VerifyTests(unittest.TestCase):
         self.assertFalse(ogg.exists())
         self.assertFalse((self.dir / "b.report.png").exists())
 
+    def test_verify_all_walks_a_tree(self):
+        # The member-facing entry point: sfx.py is vendored into every member
+        # repo, so the repo-wide walk has to live in it.
+        art = self.dir / "art" / "audio"
+        art.mkdir(parents=True)
+        shipped = self.dir / "assets" / "blip.ogg"
+        linked = art / "blip.sfx"
+        linked.write_text(json.dumps({
+            "subtitle": "t.s.b", "seed": 1, "ships": str(shipped),
+            "layers": [{"freq": 880, "duration": 0.12}],
+        }))
+        (art / "loose.sfx").write_text(json.dumps({
+            "subtitle": "t.s.l", "layers": [{"freq": 440, "duration": 0.1}]}))
+
+        rc, out, _ = self._run(["--verify-all", str(art)])
+        self.assertEqual(rc, 1)                      # linked cue not shipped yet
+        self.assertIn("1 verified, 1 drifted, 1 unlinked", out)
+
+        self._run([str(linked), "-o", str(shipped), "--no-report"])
+        rc, out, _ = self._run(["--verify-all", str(art), "-v"])
+        self.assertEqual(rc, 0)
+        self.assertIn("1 verified, 0 drifted, 1 unlinked", out)
+
+    def test_verify_all_on_a_missing_directory_is_not_a_failure(self):
+        rc, out, _ = self._run(["--verify-all", str(self.dir / "nope")])
+        self.assertEqual(rc, 0)
+        self.assertIn("no such directory", out)
+
     def test_tolerances_clear_real_encode_drift(self):
         # Vorbis moves peak and centroid on every encode; the tolerances have to
         # absorb that or --verify cries drift on a file it just wrote.
