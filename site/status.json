@@ -1,11 +1,11 @@
 {
-  "generated": "2026-07-25",
+  "generated": "2026-07-26",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 71,
+    "downloads": 77,
     "followers": 1,
-    "openIssues": 14
+    "openIssues": 22
   },
   "members": [
     {
@@ -43,10 +43,10 @@
         "conclusion": "success",
         "date": "2026-07-25"
       },
-      "openIssues": 2,
+      "openIssues": 4,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 67,
+        "downloads": 71,
         "followers": 1
       }
     },
@@ -66,7 +66,7 @@
         "conclusion": "success",
         "date": "2026-07-25"
       },
-      "openIssues": 0,
+      "openIssues": 2,
       "modrinth": null
     },
     {
@@ -85,10 +85,10 @@
         "conclusion": "success",
         "date": "2026-07-25"
       },
-      "openIssues": 1,
+      "openIssues": 2,
       "modrinth": {
         "slug": "prosperity-loot-overhaul",
-        "downloads": 4,
+        "downloads": 6,
         "followers": 0
       }
     },
@@ -105,7 +105,7 @@
         "conclusion": "success",
         "date": "2026-07-25"
       },
-      "openIssues": 0,
+      "openIssues": 1,
       "modrinth": null
     },
     {
@@ -121,7 +121,7 @@
         "conclusion": "success",
         "date": "2026-07-25"
       },
-      "openIssues": 2,
+      "openIssues": 3,
       "modrinth": null
     },
     {
@@ -137,7 +137,7 @@
         "conclusion": "success",
         "date": "2026-07-25"
       },
-      "openIssues": 4,
+      "openIssues": 5,
       "modrinth": null
     },
     {
