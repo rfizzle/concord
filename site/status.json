@@ -1,9 +1,9 @@
 {
-  "generated": "2026-07-26",
+  "generated": "2026-07-27",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 77,
+    "downloads": 82,
     "followers": 1,
     "openIssues": 22
   },
@@ -46,7 +46,7 @@
       "openIssues": 4,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 71,
+        "downloads": 75,
         "followers": 1
       }
     },
@@ -88,7 +88,7 @@
       "openIssues": 2,
       "modrinth": {
         "slug": "prosperity-loot-overhaul",
-        "downloads": 6,
+        "downloads": 7,
         "followers": 0
       }
     },
