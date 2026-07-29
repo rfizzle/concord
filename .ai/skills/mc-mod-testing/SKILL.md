@@ -350,13 +350,58 @@ in the gametest manifest, failing in both directions so a deleted class is caugh
 unregistered one. Walk the tree rather than listing one directory, or suites in subpackages
 slip past.
 
-Decide what counts as a suite by the interface it implements, or by a naming convention the
-guard also enforces — never by an unstated filename suffix. The gametest source set holds
-helpers too, so a guard that treats every class as a suite flags the helpers as unregistered,
-and registering one to quiet the guard hands the ungated initializer a class that is not a
-test. Match on a bare suffix instead and the hole runs the other way: a suite named
-`BrewingTests` is missing from both sides of the comparison at once, so the guard stays green
-while the tests never run.
+#### The canonical guard
+
+One shape, so a reader moving between mods finds the same file saying the same thing:
+
+- **Class name and location** — `GametestRegistrationTest`, at
+  `src/test/java/com/rfizzle/<mod>/GametestRegistrationTest.java`. It is a Tier 1 test that
+  reads the gametest *source tree*, so it belongs in the mod's root test package, not in a
+  `gametest` subpackage of `src/test` — nothing in `src/test/java` is part of the gametest
+  source set. Not `GametestEntrypointTest`, `ManifestEntrypointTest`, or `ManifestContractTest`;
+  a guard nobody can find by name is a guard nobody ports to the next mod.
+- **Detection basis** — `implements FabricGameTest`. Not a filename suffix, and not an
+  annotation regex.
+- **Four core assertions** — every suite on disk is registered; every registered entrypoint
+  resolves to a class on disk; the shipped `src/main/resources/fabric.mod.json` declares no
+  `fabric-gametest` entrypoints at all; the gametest manifest's `depends` is exactly the main
+  mod and nothing else. Assert that last one as set equality, not containment — a containment
+  check passes while a stray Fabric API version floor rots in the manifest.
+- **The two-way naming check** — a class that implements `FabricGameTest` but is not named
+  `*GameTest` fails, and a class named `*GameTest` that does not implement it fails too.
+
+Detection basis is the part that decides whether the guard works at all. The gametest source
+set holds helpers too, so a guard that treats every class as a suite flags the helpers as
+unregistered, and registering one to quiet the guard hands the ungated initializer a class that
+is not a test. Match on a bare filename suffix instead and the hole runs the other way: a suite
+named `BrewingTests` is missing from both sides of the comparison at once, so the guard stays
+green while the tests never run. An annotation regex has a third failure mode — unless it is
+line-anchored (`(?m)^\s*@GameTest`), it matches `@GameTest` inside a comment or a string
+literal and registers a class that holds no tests. `implements FabricGameTest` has none of
+these holes: it is the same predicate the loader itself uses.
+
+Reference implementations: cultivation's `GametestRegistrationTest.java:52-53` for the
+detection regex and `:128-148` for the two-way naming check; distillation's
+`ManifestEntrypointTest.java:56-78` and `:103-123` for the four assertions, which is the only
+carrier in the suite that asserts both registration parity as set equality *and* dependency
+exclusivity.
+
+Concord's own `make gametest-check` is **not** a substitute. The hub checker
+(`scripts/check-gametest-manifest.py`) fails on a shipped manifest that declares
+`fabric-gametest` entrypoints, on gametest sources with no companion manifest, and on an
+unexpanded `${version}` placeholder — but it never compares individual suites against
+entrypoints, and it treats a missing dependency floor as a note rather than a failure. It
+catches the structural mistakes across every member at once; only the per-repo
+`GametestRegistrationTest` catches the suite you forgot to register this morning.
+
+#### Naming and package layout
+
+Gametest suites live in `com.rfizzle.<mod>.gametest`, with non-suite helpers in a `util`
+subpackage, and are named `*GameTest`. Helpers — fixture builders, mock factories, floor
+templates — are *not* named `*GameTest` and are not registered. This is what makes the two-way
+naming check enforceable: with the convention held, "implements the interface" and "named
+`*GameTest`" describe the same set, and any divergence is a real defect rather than a style
+difference the guard has to tolerate.
 
 The guard reads the source tree because the gametest source set is not on the test classpath
 and its classes cannot be enumerated from there. Gradle therefore sees no dependency between
