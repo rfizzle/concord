@@ -78,7 +78,8 @@ it skips them.
   invocation vs what the Makefiles document as the real number.
 - **code** — API-STANDARD conformance (api package, `@Stable` shape, per-listener
   `catch (Throwable)` isolation inside every `createArrayBacked` invoker,
-  sanctioned provider shapes, reflection-accessor idiom), HUD-STANDARD conformance (contract
+  sanctioned provider shapes, reflection-accessor idiom), HUD-STANDARD
+  conformance (contract
   method names, derived vs literal heights, legacy fallbacks), config
   conventions (live-instance ownership, clamp helpers, sync payloads,
   migrations), package layout naming, localization key vocabulary, bootstrap

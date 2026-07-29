@@ -118,15 +118,24 @@ Every point where the host invokes guest code — a provider slot, a provider
 chain, an event listener — is a trust boundary, and all three isolate the same
 way:
 
-- **Catch `Throwable`, never `Exception`.** A consumer compiled against an older
-  signature raises an `Error` (`AbstractMethodError`, `NoClassDefFoundError`),
-  which an `Exception` catch lets escape and kill the server tick. Same posture
-  as calls *into* a sibling, below.
+- **Catch `Throwable`, never `Exception` — but rethrow `VirtualMachineError`.**
+  A consumer compiled against an older signature raises an `Error`
+  (`AbstractMethodError`, `NoClassDefFoundError`), which an `Exception` catch
+  lets escape and kill the server tick. Same posture as calls *into* a sibling,
+  below. `OutOfMemoryError` and `StackOverflowError` are the carve-out: the JVM
+  is unrecoverable, not the guest misbehaving, and absorbing an OOME then
+  allocating a log message allocates on the heap that just failed. None of the
+  errors this rule exists for is a `VirtualMachineError`.
 - **Isolate per guest, and continue** — one bad guest never denies the others
   their call. For events that means inside the invoker's loop, not around the
-  fire site.
-- **Fall back to the host's default, and log the `Throwable`** so the stack
-  trace survives.
+  fire site. Later guests then observe whatever the thrower already applied, so
+  validate host-consumed context fields on every mutation rather than once at
+  the end of the chain.
+- **Fall back to the host's default, and log once** — at `WARN`, passing the
+  `Throwable` so the stack trace survives, naming the offending guest class, and
+  gated behind an `AtomicBoolean.compareAndSet(false, true)`. A guest that
+  throws once throws every time; an ungated log puts stack-trace formatting on
+  the server thread at the fire site's full rate.
 
 ```java
 private static volatile ArmorDropChanceProvider armorDropChanceProvider =
@@ -136,13 +145,19 @@ public static void setArmorDropChanceProvider(ArmorDropChanceProvider p) {
     if (p != null) armorDropChanceProvider = p;               // last writer wins
 }
 
+private static final AtomicBoolean ARMOR_PROVIDER_FAILURE_LOGGED = new AtomicBoolean(false);
+
 /** Internal use: host calls this; a misbehaving provider never breaks mob spawning. */
 public static float resolveArmorDropChance(Entity mob, int tier, EquipmentSlot slot, ItemStack stack, float def) {
     try {
         float resolved = armorDropChanceProvider.resolve(mob, tier, slot, stack, def);
         return Float.isFinite(resolved) ? resolved : def;     // reject NaN/Inf
+    } catch (VirtualMachineError e) {
+        throw e;                                              // OOME/SOE: the JVM is gone, not the guest
     } catch (Throwable t) {                                   // Throwable: a stale consumer throws Error
-        LOGGER.warn("Armor drop-chance provider threw; using default", t);
+        if (ARMOR_PROVIDER_FAILURE_LOGGED.compareAndSet(false, true)) {
+            LOGGER.warn("Armor drop-chance provider threw; using default", t);
+        }
         return def;
     }
 }
@@ -152,22 +167,36 @@ public static float resolveArmorDropChance(Entity mob, int tier, EquipmentSlot s
 }
 ```
 
+This is `TribulationAPI`'s shipped slot with two changes: shipped tribulation
+still catches `Exception` and logs unconditionally, neither of which the rules
+above permit. Instinct's veterancy-rate slot already ships the once-only gate.
+
 ## Events
 
 Fabric `Event` objects, array-backed, named `<Mod><Thing>Callback`, **fired
 server-side** at state changes, with old + new values for scalar changes.
 
+Use the **two-argument** `createArrayBacked(Class, Function)`. The three-argument
+overload uses the sole listener *as* the invoker when exactly one is registered
+and never calls the factory, so the isolation below vanishes in the common case
+— and Fabric's own Javadoc recommends it for performance-critical events, which
+is precisely where someone reaches for it.
+
 **The invoker isolates each listener** — the `try`/`catch (Throwable)` goes
 inside the `createArrayBacked` loop. A fire-site wrap catches the throw but
 abandons every listener after the one that threw, and it makes isolation a
 discipline each fire site has to remember rather than a property the event
-declares once. Fire sites then stay clean:
+declares once. Fire sites then stay clean — when you move isolation into the
+invoker, *delete* the fire-site wrap rather than leaving it for safety, since
+all it can still do is re-introduce the abandon-the-rest semantics:
 
 ```java
-DistillationDiscoveryCallback.EVENT.invoker().onDiscover(player, recipeId);   // no wrap needed
+DistillationDiscoveryCallback.EVENT.invoker().onDiscover(player, recipeId);   // no wrap
 ```
 
-Distillation ships the model shape (cultivation's two match it):
+Distillation and cultivation ship this shape today. Naming the offending
+listener class (as meridian's invoker does), the fatal-error rethrow, and the
+once-only gate are the additions — do them in new code:
 
 ```java
 /**
@@ -176,11 +205,13 @@ Distillation ships the model shape (cultivation's two match it):
  * an already-known output does not fire it, and the admin/bulk grants
  * ({@code /distillation discover}, the {@code startDiscovered} join grant) record silently.
  *
- * <p>A listener that throws is caught, logged, and skipped — a misbehaving observer can
- * never break discovery recording.
+ * <p>A listener that throws is caught, logged, and skipped — it can never break discovery
+ * recording or the listeners registered after it.
  */
 @Stable
 public interface DistillationDiscoveryCallback {
+
+    AtomicBoolean LISTENER_FAILURE_LOGGED = new AtomicBoolean(false);
 
     Event<DistillationDiscoveryCallback> EVENT = EventFactory.createArrayBacked(
             DistillationDiscoveryCallback.class,
@@ -188,12 +219,16 @@ public interface DistillationDiscoveryCallback {
                 for (DistillationDiscoveryCallback listener : listeners) {
                     try {
                         listener.onDiscover(player, recipeId);
+                    } catch (VirtualMachineError e) {
+                        throw e;              // OOME/SOE: the JVM is gone, not the guest
                     } catch (Throwable t) {
                         // Throwable, not Exception: a listener compiled against an older signature
                         // throws Error (AbstractMethodError, NoClassDefFoundError), which an
                         // Exception catch would let escape and kill the server tick.
-                        Distillation.LOGGER.warn("A DistillationDiscoveryCallback listener {} threw; skipping",
-                                listener.getClass().getName(), t);
+                        if (LISTENER_FAILURE_LOGGED.compareAndSet(false, true)) {
+                            Distillation.LOGGER.warn("A DistillationDiscoveryCallback listener {} threw; skipping",
+                                    listener.getClass().getName(), t);
+                        }
                     }
                 }
             });
@@ -205,14 +240,23 @@ public interface DistillationDiscoveryCallback {
 Document **every** trigger in the callback's Javadoc (e.g. "fired on playtime
 progression, death relief, Shatter Shard use, and `/tribulation set`") so a
 consumer knows exactly when it runs — and state the isolation posture, so a
-consumer knows what a throw costs them. A callback whose Javadoc disclaims
-isolation is a defect in one or the other; fix the code, not the promise.
+consumer knows what a throw costs them: *"A listener that throws is caught,
+logged, and skipped — it can never break `<the host operation>` or the listeners
+registered after it."*
+
+Any Javadoc promising less is a defect in one or the other: fix the code, then
+fix the promise. Two forms qualify — one that **disclaims** isolation ("a
+listener that throws is not isolated by Respite") and one that promises the old
+**fire-site** posture ("it may prevent listeners registered after it from seeing
+that trade"). Both describe behavior the rules above no longer permit.
 
 ### Grandfathered names
 
 Three events shipped `@Stable` before the naming rule was enforced, so renaming
-them is a breaking change that waits for the next major. They are **conformant
-by exception** — record them, don't re-flag them:
+them is a breaking change that waits for the next major. They are **waived, not
+conformant** — record the waiver, don't re-flag it, and it dies with the rename.
+Each row is carried by an open `breaking`-labelled issue in the owning repo; a
+waiver with no owner never expires:
 
 | Mod | Shipped name | Replacement at next major |
 |---|---|---|
@@ -487,9 +531,10 @@ A mod conforms to the Concord API Standard when:
 - [ ] All externally consumable surface lives in `com.rfizzle.<mod>.api`, marked
       with the mod's local `@Stable`.
 - [ ] No `api` method mutates mod state outside the provider/callback pattern.
-- [ ] Every provider/callback invocation is isolated — `catch (Throwable)`, per
-      guest, rejecting non-finite returns and falling back to the host's
-      default; event isolation lives in the `createArrayBacked` invoker, not at
+- [ ] Every provider/callback invocation is isolated — `catch (Throwable)` with
+      `VirtualMachineError` rethrown, per guest, rejecting non-finite returns,
+      falling back to the host's default, logging once at `WARN`; event
+      isolation lives in the two-argument `createArrayBacked` invoker, not at
       the fire site.
 - [ ] The mod's own sibling integrations use `modCompileOnly` + `isModLoaded`
       guards in `compat/<modid>/` packages, with foreign references classload-
@@ -517,9 +562,15 @@ A mod conforms to the Concord API Standard when:
 - **Never** let a provider/callback throw or return NaN/Inf into host logic —
   catch `Throwable` and fall back to the default. A guest must not be able to
   crash the host.
-- **Never** isolate an event at the fire site instead of in the invoker — the
-  throw is caught but every listener after the thrower is abandoned, and each
-  new fire site is another chance to forget.
+- **Never** leave a wrap at the fire site — delete it when isolation moves into
+  the invoker. A fire-site wrap catches the throw but abandons every listener
+  after the thrower, and each new fire site is another chance to forget.
+- **Never** use the three-argument `createArrayBacked(type, emptyInvoker,
+  factory)` — at one listener it bypasses the invoker factory entirely and the
+  isolation is gone.
+- **Never** catch a `VirtualMachineError` — rethrow it. An `OutOfMemoryError`
+  absorbed and logged allocates on the heap that just failed, and a caught
+  `StackOverflowError` under "continue" recurs once per remaining guest.
 - **Never** reference a sibling's `api.*` outside an `isModLoaded` guard or a
   class only loaded behind one; **never** declare a sibling under `depends` or
   `recommends` — `suggests` with `*`, no version floor.

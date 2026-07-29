@@ -314,8 +314,9 @@ A mod conforms to the API Standard when:
 - [ ] All externally consumable surface lives in `com.rfizzle.<mod>.api`, annotated
       with the mod's local `@Stable` marker (see §2 erratum)
 - [ ] No `api` method mutates mod state outside the provider/callback pattern
-- [ ] Every provider/callback invocation is isolated per §3.1 — `catch (Throwable)`, per
-      guest, falling back to the host's default; event isolation lives in the
+- [ ] Every provider/callback invocation is isolated per §3.1 — `catch (Throwable)` with
+      `VirtualMachineError` rethrown, per guest, falling back to the host's default,
+      logging once at `WARN`; event isolation lives in the two-argument
       `createArrayBacked` invoker, not at the fire site
 - [ ] The mod's own sibling integrations use `modCompileOnly` + `isModLoaded` guards in
       `compat/<modid>/` packages, with foreign references classload-isolated (adapter
