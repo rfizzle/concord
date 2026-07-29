@@ -451,6 +451,33 @@ set with no resources at all contributes no anchor and belongs out of the list; 
 number of roots you expect to resolve, so adding `src/client/resources` later cannot leave it
 quietly unscanned.
 
+#### Every mod ships this guard
+
+`ShippedResourceHygieneTest`, at `src/test/java/com/rfizzle/<mod>/resources/`, is a required
+deliverable, not an optional extra — the same standing as `GametestRegistrationTest`. The two
+guard opposite boundaries of the same mistake and neither one catches the other's failure:
+registration drift means the tests never run, fixture leak means the tests ship. Both fail
+silently.
+
+Three assertions, in widening order:
+
+- **Known fixtures are absent from the shipped classpath** — `getResource(path)` returns `null`
+  for each fixture the mod actually uses. Cheap, names the offender exactly, and doubles as a
+  regression test after a fixture is relocated.
+- **No `gametest` path segment anywhere in the shipped roots** — catches the next fixture,
+  which by definition is not in the list above.
+- **No structure templates anywhere in the shipped roots** — `.snbt` is a test artifact for a
+  mod that ships no structures of its own. Drop this one only if the mod genuinely ships
+  structures, and say so in the test.
+
+Model: meridian's `ShippedResourceHygieneTest.java:72`, `:85`, and `:98`, with the anchored-root
+resolution at `:144-177`. Meridian's own fixtures live in
+`src/gametest/resources/data/meridian/gametest/structure/`, which is the proof that relocating
+them costs nothing — resolution from the companion-mod root works exactly as described above.
+
+Run the guard against a clean build. A stale `build/resources/` tree can still hold fixtures
+that were relocated in source, which reads as a live leak that a rebuild makes disappear.
+
 ### Source set setup in build.gradle
 ```groovy
 sourceSets {
@@ -530,7 +557,7 @@ try {
 - **Never** write tests whose only assertion is `assertNotNull`, `assertDoesNotThrow`, or bare `helper.succeed()`. Assert specific observable behavior.
 - **Always** run the single test with `./gradlew test --tests '<FQN>'` before claiming it passes.
 - **Never** put a `fabric-gametest` entrypoint or a test-only fixture in the shipped `src/main/resources`. Entrypoints there break `runServer`; fixtures there ship to players.
-- **Always** guard both boundaries with a Tier 1 test — every gametest class registered, and no test-only data on the shipped classpath. Both fail silently otherwise.
+- **Always** guard both boundaries with a Tier 1 test — `GametestRegistrationTest` (every gametest class registered) and `ShippedResourceHygieneTest` (no test-only data on the shipped classpath). Both are required deliverables; both fail silently otherwise.
 
 ## Concurrency test discipline
 
