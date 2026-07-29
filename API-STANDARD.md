@@ -144,6 +144,36 @@ The event's Javadoc states the isolation posture so a consumer knows what a thro
 them ("A listener that throws is caught, logged, and skipped"). A callback whose Javadoc
 disclaims isolation is a defect in one or the other — fix the code, not the promise.
 
+### 6.1 Grandfathered names
+
+Three events shipped before the `<Mod><Thing>Callback` rule was enforced. They are
+`@Stable` and present in every tagged release of their mod, so §8 binds them: renaming
+is a breaking change and waits for the next major. They are **conformant by exception**
+— a conformance sweep records them here and does not re-flag them.
+
+| Mod | Shipped name | Replacement at next major |
+|---|---|---|
+| mercantile | `TradeExecutedCallback` | `MercantileTradeExecutedCallback` |
+| mercantile | `ReputationChangedCallback` | `MercantileReputationChangedCallback` |
+| prosperity | `LootModifierCallback` | `ProsperityLootModifierCallback` |
+
+This register is **closed and exhaustive** — it is not a queue. Every other event in the
+suite conforms, and a new event that does not is a defect, not an entry. The exception
+exists because these three were already public when the rule landed; nothing else
+qualifies.
+
+The register is scoped to **events**. §6's naming rule has never governed the other
+types an `api` package holds — records, enums, extension interfaces, context objects —
+so those are not violations and do not belong here.
+
+Each mod's next-major checklist carries the rename per §8:
+
+- Add the prefixed type; the old name either delegates to it or is replaced outright.
+- Mark the old name deprecated for the release that still carries it.
+- The changelog entry names the broken signature.
+
+When a rename ships, delete its row. An empty register means the exception is spent.
+
 ## 7. Server authority
 
 All gameplay-affecting reads happen server-side; client accessors exist for rendering
@@ -181,7 +211,8 @@ A mod conforms to the API Standard when:
       `compat/<modid>/` packages
 - [ ] Client-reading accessors callable from common code are reflection-backed with
       documented sentinels
-- [ ] Events are Fabric `Event`s named `<Mod><Thing>Callback` with documented triggers
+- [ ] Events are Fabric `Event`s named `<Mod><Thing>Callback` with documented triggers,
+      or hold a row in the §6.1 grandfather register
 - [ ] README has a developer/API section with the gradle + guard example (model:
       Tribulation's README)
 - [ ] `AGENTS.md` declares "conforms to Concord API Standard"
