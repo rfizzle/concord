@@ -38,7 +38,8 @@ is scaffolded from it before any code exists.
 ├── .plan/                     # local planning scratchpad (gitignored, never committed)
 │
 ├── design/                    # the "why & what" — pre-implementation truth
-│   ├── DESIGN.md              #   vision, brand, palette, motifs, HUD slot
+│   ├── VISION.md              #   the player-experience promise, written for players
+│   ├── DESIGN.md              #   brand, palette, motif, HUD slot
 │   ├── SPEC.md                #   full behavioral spec (the Prosperity model)
 │   └── ASSETS.md              #   asset manifest: .glyph source → final path, MISSING where none
 │
@@ -59,8 +60,7 @@ is scaffolded from it before any code exists.
 ├── changelogs/                # OPTIONAL hand-authored release notes
 │   └── <version>.md           #   e.g. 1.0.0.md — published verbatim if present
 │
-├── scripts/                   # repo automation
-│   └── release.sh
+├── scripts/                   # OPTIONAL repo automation (generators, a tag-only release.sh)
 │
 ├── src/                       # code only — Loom split source sets
 │   ├── main/                  #   server + common
@@ -165,8 +165,11 @@ Store listing copy (`listing-modrinth.md`, `listing-curseforge.md`) lives here t
 Generated `_site/` output is never committed.
 
 ### `scripts/`
-Executable automation only (`release.sh` is the current standard member). Anything
-an agent or human runs by hand. Makefile targets wrap these.
+Optional. Executable automation only — anything an agent or human runs by hand;
+Makefile targets wrap these. `make release` (tag-and-push) is the standard
+release entry point; a repo-local `release.sh` is optional sugar around it and
+must stay tag-only per the version scheme in [`AGENTS-COMMON.md`](AGENTS-COMMON.md)
+— it never writes a version into `gradle.properties`.
 
 ---
 
@@ -210,8 +213,8 @@ A repo conforms when all of these are true at the same paths:
 
 1. `README.md`, `LICENSE`, `AGENTS.md`, `CLAUDE.md` (symlink), `Makefile` at root —
    and nothing else prose or binary at root
-2. `design/DESIGN.md` exists (and `design/SPEC.md` for any mod specced before/while
-   being built)
+2. `design/` carries the four fixed names — `VISION.md`, `DESIGN.md`, `SPEC.md`,
+   `ASSETS.md` (§2)
 3. `.ai/` with `skills/` vendored from concord (`prompts/` / `review-criteria.yml`
    only as deliberate whole-file overrides — concord defaults otherwise); no
    committed `.plan/`
