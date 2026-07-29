@@ -1,6 +1,7 @@
 # local AI state
 .claude/settings.local.json
 .claude/projects/
+/.plan/
 
 # python
 __pycache__/

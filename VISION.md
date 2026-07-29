@@ -324,26 +324,35 @@ matching CurseForge listing cross-links.
 
 Every mod publishes a stable integration surface under
 **`com.rfizzle.<mod>.api`** — the *only* stable package; everything outside it is
-internal and may change without notice. The conventions, all proven in
-`TribulationAPI` / `TribulationLevelCallback`:
+internal and may change without notice. The conventions, generalized from
+`TribulationAPI` / `TribulationLevelCallback` and normative in API-STANDARD:
 
 1. **Read-only by default.** Static accessors return values; nothing in the API mutates
    mod state. The single sanctioned mutation pattern is **provider/callback
    registration** (Tribulation's `setArmorDropChanceProvider`, Prosperity's
    `LootModifierCallback` context): the host mod calls *out* at a defined moment and the
-   guest adjusts a context object. Providers that throw or return non-finite values are
-   caught and fall back to defaults — error isolation is the host's job.
-2. **Consumption is `modCompileOnly` + runtime guard.** Published to Modrinth maven;
-   every call site wrapped in `FabricLoader.getInstance().isModLoaded("<mod>")`.
-   Integration code lives in `compat/<modid>/` packages that fail gracefully.
+   guest adjusts a context object. Error isolation is the host's job: every guest
+   invocation — provider slot, provider chain, event listener — is wrapped per guest in
+   `catch (Throwable)`, falling back to the host's default, so one misbehaving
+   integration can neither crash the host nor deny the other guests their call
+   (API-STANDARD §3.1).
+2. **Consumption is `modCompileOnly` + runtime guard.** Sibling jars resolve from GitHub
+   Releases through the artifact-only `rfizzle:` ivy repo — the Modrinth projects are not
+   publicly resolvable — and every call site is wrapped in
+   `FabricLoader.getInstance().isModLoaded("<mod>")`. Integration code lives in
+   `compat/<modid>/` packages that fail gracefully.
 3. **Client-safe accessors.** Anything callable from common code that needs client state
    is reflection-backed and returns a sentinel when unavailable
    (`getClientLevel() → -1`). Required for the HUD accessors in §3.3.
 4. **Events are Fabric `Event` objects** (array-backed), fired server-side at state
-   changes, named `<Mod><Thing>Callback`.
-5. **Stability contract:** `@ApiStatus.Stable` on api classes; stable across patch
-   versions; breaking changes require a major version bump and a changelog entry.
-   Internal classes may be `@ApiStatus.Internal`-annotated for tooling enforcement.
+   changes, named `<Mod><Thing>Callback`, isolating each listener inside the invoker.
+   Three events shipped before the naming rule was enforced and are grandfathered until
+   the next major (API-STANDARD §6.1).
+5. **Stability contract:** each mod's own `com.rfizzle.<mod>.api.Stable` marker on api
+   classes — `org.jetbrains`' `ApiStatus` has no `Stable` member, so the suite declares
+   its own per mod (API-STANDARD §2 erratum). Stable across patch versions; breaking
+   changes require a major version bump and a changelog entry. Internal classes may be
+   `@ApiStatus.Internal`-annotated for tooling enforcement.
 6. **Server-authoritative.** All gameplay-affecting reads happen server-side; client
    accessors are for rendering only.
 
@@ -484,20 +493,20 @@ need.
   `getGrade(Animal)`, `getVeterancyDays(TamableAnimal)`, `getVeterancyRank(TamableAnimal)`,
   `isDowned(LivingEntity)`, `isTroughFed(Animal)`, the `setVeterancyRateProvider` hook
   (the sanctioned mutation point — how the Tribulation compat accelerates accrual), plus
-  the `InstinctAnimalBredCallback`, `InstinctPetDownedCallback`, and
-  `InstinctPetRevivedCallback` events — all *(new, land with implementation)*. No HUD
+  the `InstinctAnimalBredCallback`, `InstinctAnimalDownedCallback`, and
+  `InstinctAnimalRevivedCallback` events — all *(new, land with implementation)*. No HUD
   accessors, by design (no slot). Instinct ships one guarded consumer of its own (matrix
   #25, `compat/tribulation/`); its `#instinct:revive_items` and `#instinct:trough_food`
   convention tags make #28/#29 pure data integrations, no API call needed.
 
 ### 5.4 Third-party integration story
 
-An outside mod integrates with any member identically: add the Modrinth maven
-`modCompileOnly` dep, guard with `isModLoaded`, read the api package, optionally register
-a provider/callback. Document the pattern **once** on the collection landing page's API
-section with one worked example (the Tribulation README's developer section is the seed),
-and link it from every per-mod API page. The suite's pitch to third parties: *seven mods,
-one integration pattern* — learn it once, integrate with all, and any future member (§9)
+An outside mod integrates with any member identically: add the `modCompileOnly` dep from
+the member's GitHub release jar, guard with `isModLoaded`, read the api package,
+optionally register a provider/callback. Document the pattern **once** on the collection
+landing page's API section with one worked example (the Tribulation README's developer
+section is the seed), and link it from every per-mod API page. The suite's pitch to third
+parties: *eight mods, one integration pattern* — learn it once, integrate with all, and any future member (§9)
 works the same way. Prosperity's `LootModifierContext.customData()` CompoundTag is the
 designated escape hatch for inter-mod context the APIs don't model.
 

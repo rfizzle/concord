@@ -216,5 +216,5 @@ categories:
       - .ai/skills/mc-hud/SKILL.md (if present)
     applies_when: |
       PR touches a compat.* package, the mod's public api package, public
-      APIs that compat classes import, or fabric.mod.json depends/recommends
-      entries.
+      APIs that compat classes import, or fabric.mod.json
+      depends/suggests/recommends entries.
