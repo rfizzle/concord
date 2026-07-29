@@ -34,8 +34,12 @@ categories:
     name: Spec alignment
     severity: must_fix
     description: |
-      Does the PR implement what the linked issue spec describes?
-      Acceptance criteria covered? Anything out-of-scope sneaking in?
+      Does the PR implement what the linked issue spec describes? Itemize every
+      acceptance criterion and mark it covered / partial / missing — do not
+      summarize the whole spec as one pass. A missing criterion (or a partial
+      one that breaks the stated behavior) is must_fix. Flag out-of-scope
+      additions the spec did not ask for. When no issue is linked, alignment
+      cannot be verified: score UNVERIFIED, not pass, and not a must_fix.
     look_at:
       - linked issue body (the spec posted by the claude-spec workflow)
 
@@ -56,8 +60,12 @@ categories:
     description: |
       Logic bugs, off-by-ones, null/Optional handling, edge cases, error
       paths. Are loops bounded? Are early returns correct? Persisted-state
-      changes that risk data loss or break save/config migration.
+      changes that risk data loss or break save/config migration. Ground this
+      in the CI results provided to the reviewer: failing build/tests/gametests
+      are must_fix; if CI is incomplete or absent, do not score a clean pass on
+      reading alone — note correctness as unverified by CI.
     look_at:
+      - CI results for the head commit (build / unit tests / gametests)
       - .ai/skills/mc-persistence/SKILL.md (if present)
       - .ai/skills/mc-config/SKILL.md (if present)
 

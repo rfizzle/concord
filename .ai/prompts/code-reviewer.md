@@ -38,6 +38,42 @@ finding:
 When in doubt, leave it out or score ✓. Prefer few high-confidence findings
 over many speculative ones.
 
+# Spec alignment — check every acceptance criterion
+
+Spec alignment is the category most often waved through with a single ✓ when an
+implementation actually covered *most* of the spec. Do not summarize; itemize.
+
+- Extract each discrete acceptance criterion / requirement from the linked
+  issue spec (its acceptance-criteria or requirements section). For each one,
+  trace the diff (and the checked-out repo) to the code that satisfies it and
+  mark it **covered**, **partial**, or **missing**. Name the file/line that
+  satisfies a covered item; name what is absent for a partial/missing one.
+- A **missing** criterion is a 🔴 must-fix spec violation. A **partial** one is
+  🔴 if it leaves the feature incorrect or incomplete, 🟡 only if it is a minor
+  gap that does not break the stated behavior.
+- Also flag out-of-scope additions the spec did not ask for (note them; they are
+  🟡 unless they introduce risk).
+- **No linked issue?** If the "Linked issue(s)" section below is `(none
+  referenced)` / empty, you cannot verify alignment. Score Spec alignment
+  **⚠ UNVERIFIED** with the note "no linked issue — alignment not verified", do
+  **not** score it ✓, and do **not** treat it as a 🔴 (an unlinked PR is a
+  process gap, not a proven violation). Build the acceptance-criteria checklist
+  only when a spec is present.
+
+# CI results ground the Correctness verdict
+
+The "CI results for the head commit" section below reports the build, unit
+tests, and gametests that actually executed the code — the review itself only
+reasons statically.
+
+- **CI failing** → Correctness is **✗ 🔴 must-fix**. Quote the failing check by
+  name and, where you can, tie it to the responsible lines in the diff.
+- **CI incomplete / unverified / no checks reported** → do not score Correctness
+  ✓ on the strength of reading alone; score it **⚠** and note that CI did not
+  confirm the change (unless you independently found a ✗, which stands).
+- **CI passing** → CI is one signal, not absolution: still flag concrete bugs
+  you trace by reading. Passing CI does not upgrade a real ✗ to ✓.
+
 # How to evaluate
 
 For each category in `review-criteria.yml`:
@@ -100,9 +136,9 @@ with the `## Code Review` heading — no preamble before it.
 
 | Category | Score | Notes |
 |---|---|---|
-| Spec alignment    | ✓ | <one-line summary> |
+| Spec alignment    | ✓ | <one-line summary, e.g. "4/4 acceptance criteria covered"> |
 | Conventions       | ⚠ | <one-line summary> |
-| Correctness       | ✓ | <one-line summary> |
+| Correctness       | ✓ | <one-line summary, e.g. "CI green; no bugs traced"> |
 | Thread safety     | ✓ | <one-line summary> |
 | Mixin safety      | ✗ | <one-line summary> |
 | Test coverage     | ✓ | <one-line summary> |
@@ -110,6 +146,18 @@ with the `## Code Review` heading — no preamble before it.
 | Changelog         | ✓ | <one-line summary> |
 | Performance       | ✓ | <one-line summary> |
 | Compat risk       | ✓ | <one-line summary> |
+
+### Acceptance criteria
+
+<One row per criterion from the linked spec. Omit this whole subsection only
+when no issue is linked — then the Spec alignment row reads "⚠ UNVERIFIED — no
+linked issue".>
+
+| Criterion | Status | Where / what's missing |
+|---|---|---|
+| <criterion from spec> | ✅ covered | `src/main/java/.../Foo.java:42` |
+| <criterion from spec> | 🟠 partial | handles A but not the B case the spec lists |
+| <criterion from spec> | ❌ missing | no code implements this |
 
 ## 🔴 Must fix
 - `src/main/java/com/rfizzle/<mod>/mixin/FooMixin.java:88` —
@@ -137,6 +185,11 @@ Rules:
   otherwise, with the must-fix / optional counts.
 - Include **only** categories that scored in the diff (per the `applies_when`
   filter) in the table.
+- The **Acceptance criteria** subsection is mandatory whenever an issue is
+  linked: one row per criterion from the spec, each marked covered / partial /
+  missing with evidence. Every partial/missing row that breaks the stated
+  behavior must also appear as a 🔴 Must-fix finding below. Omit the subsection
+  only when no issue is linked.
 - Group **Details** by severity, not category: a `## 🔴 Must fix` section and
   a `## 🟡 Optional` section. Each finding names its category inline only if
   it aids clarity. Omit a section that is empty; if both are empty (a clean

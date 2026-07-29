@@ -4,7 +4,20 @@
 # the same comment in place (anchored by a hidden marker) so the PR shows only
 # the latest review, headed by the commit it reviewed.
 #
-# Prompt/criteria resolution order (first match wins):
+# Triggered AFTER CI, not on the PR event. The caller stub fires on
+# `workflow_run` when the mod's CI workflow completes, so the review always runs
+# with CI's verdict already known — no polling, no race. The review reasons
+# statically; CI (build / unit tests / gametest) is the only thing that runs the
+# code, so its conclusion grounds the Correctness category. Because the trigger
+# is `workflow_run`, the GITHUB_TOKEN has write scope even for fork PRs, so the
+# sticky comment posts on forks too.
+#
+# This reusable workflow takes the CI run's head SHA, conclusion, and run id as
+# inputs and resolves the associated open PR itself (skipping push builds and
+# drafts). Migration: a legacy stub still triggering on pull_request keeps
+# working — the gate falls back to the PR event's head SHA and the review runs
+# with Correctness marked CI-unverified until the stub is migrated to the
+# workflow_run form below. Prompt/criteria resolution order (first match wins):
 #   1. explicit `prompt-file` / `criteria-file` workflow inputs (paths in
 #      the calling repo) — set these in the stub to use custom locations
 #   2. the calling repo's .ai/prompts/code-reviewer.md / .ai/review-criteria.yml
@@ -14,23 +27,46 @@
 #
 #   name: Claude Code Review
 #   on:
-#     pull_request: { types: [opened, synchronize, ready_for_review, reopened] }
+#     workflow_run:
+#       # Must match the `name:` of the mod's CI workflow exactly.
+#       workflows: ["CI"]
+#       types: [completed]
 #   concurrency:
-#     group: claude-review-${{ github.event.pull_request.number }}
+#     group: claude-review-${{ github.event.workflow_run.head_branch }}
 #     cancel-in-progress: true
 #   permissions:
 #     contents: read
 #     pull-requests: write
 #     issues: read
+#     actions: read        # read the triggering CI run's per-job results
 #   jobs:
 #     review:
 #       uses: rfizzle/concord/.github/workflows/claude-review.yml@master
+#       with:
+#         head-sha: ${{ github.event.workflow_run.head_sha }}
+#         ci-conclusion: ${{ github.event.workflow_run.conclusion }}
+#         ci-run-id: ${{ github.event.workflow_run.id }}
 #       secrets: inherit
 name: Claude Code Review
 
 on:
   workflow_call:
     inputs:
+      head-sha:
+        description: >-
+          the CI run's head commit SHA (github.event.workflow_run.head_sha).
+          Empty = legacy pull_request-triggered stub: the gate falls back to the
+          PR event's head SHA and Correctness runs in CI-unverified mode.
+        type: string
+        default: ""
+      ci-conclusion:
+        description: "the CI run's conclusion (success / failure / cancelled / …)"
+        type: string
+        default: ""
+      ci-run-id:
+        description: "the CI run's id, used to fetch per-job pass/fail for the prompt"
+        type: string
+        default: ""
       prompt-file:
         description: "path (in the calling repo) to a custom reviewer prompt; empty = auto-resolve"
         type: string
@@ -53,8 +89,58 @@ on:
         required: true
 
 jobs:
+  # Resolve the open, non-draft PR for the CI run's head commit. A push build
+  # (no PR) or a draft PR short-circuits the review without spending a turn.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.pr.outputs.proceed }}
+      pr: ${{ steps.pr.outputs.pr }}
+      base: ${{ steps.pr.outputs.base }}
+      sha: ${{ steps.pr.outputs.sha }}
+    steps:
+      - name: Resolve PR for head SHA
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+          SHA="${{ inputs.head-sha }}"
+          if [ -z "$SHA" ]; then
+            # Legacy stub still triggering on pull_request: take the SHA from
+            # the caller's event so the migration is non-breaking.
+            SHA="${{ github.event.pull_request.head.sha }}"
+          fi
+          if [ -z "$SHA" ]; then
+            echo "::warning::no head-sha input and no pull_request event; nothing to review"
+            echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          # PRs containing this commit. For a PR head the base repo can resolve
+          # it via refs/pull/N/head, so this works for fork PRs too. Take the
+          # first open one. Tab-separated so bodies/titles can't split fields.
+          INFO="$(gh api "repos/$REPO/commits/$SHA/pulls" \
+            --jq '[.[] | select(.state=="open")][0] | "\(.number)\t\(.draft)\t\(.base.ref)"' \
+            2>/dev/null || true)"
+          PR="$(printf '%s' "$INFO" | cut -f1)"
+          DRAFT="$(printf '%s' "$INFO" | cut -f2)"
+          BASE="$(printf '%s' "$INFO" | cut -f3)"
+
+          if [ -z "$PR" ] || [ "$PR" = "null" ]; then
+            echo "No open PR for $SHA (likely a push build); skipping review."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "$DRAFT" = "true" ]; then
+            echo "PR #$PR is a draft; skipping review."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          echo "Reviewing PR #$PR (base $BASE) at $SHA"
+          { echo "proceed=true"; echo "pr=$PR"; echo "base=$BASE"; echo "sha=$SHA"; } >> "$GITHUB_OUTPUT"
+
   review:
-    if: github.event.pull_request.draft == false
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     # Reads the code and history, reads issue/PR comments, and maintains the
     # sticky review comment. No write beyond pull-requests — cap it here.
@@ -62,10 +148,14 @@ jobs:
       contents: read
       pull-requests: write
       issues: read
+      actions: read # per-job pass/fail from the triggering CI run
     steps:
-      - name: Checkout
+      # workflow_run checks out the default branch by default — pin to the PR
+      # head commit so the reviewer reads the code under review.
+      - name: Checkout PR head
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          ref: ${{ needs.gate.outputs.sha }}
           fetch-depth: 0
 
       - name: Checkout concord (prompt defaults)
@@ -84,8 +174,48 @@ jobs:
           echo "claude install.sh sha256: $(sha256sum /tmp/claude-install.sh | cut -d' ' -f1)"
           bash /tmp/claude-install.sh
 
+      # CI has already finished (this workflow is triggered by its completion),
+      # so its result is authoritative — no polling, no race. Render the overall
+      # conclusion plus per-job pass/fail for the reviewer to ground Correctness.
+      - name: Summarize CI results
+        run: |
+          REPO="${{ github.repository }}"
+          CI_CONCLUSION="${{ inputs.ci-conclusion }}"
+          CI_RUN_ID="${{ inputs.ci-run-id }}"
+          OUT=/tmp/ci-status.txt
+
+          case "$CI_CONCLUSION" in
+            success) HEAD="CI PASSED on this commit." ;;
+            failure|timed_out|startup_failure)
+              HEAD="CI FAILED on this commit (conclusion: ${CI_CONCLUSION}). Treat as a 🔴 must-fix and tie the failure to the diff." ;;
+            cancelled|skipped|"")
+              HEAD="CI did not complete cleanly (conclusion: ${CI_CONCLUSION:-unknown}). Correctness is UNVERIFIED by CI — do not score it ✓ on reading alone." ;;
+            *) HEAD="CI conclusion: ${CI_CONCLUSION}." ;;
+          esac
+
+          {
+            echo "$HEAD"
+            echo
+            echo "CI jobs (conclusion|name):"
+            if [ -n "$CI_RUN_ID" ]; then
+              gh api "repos/$REPO/actions/runs/$CI_RUN_ID/jobs" --paginate \
+                --jq '.jobs[] | "  \(.conclusion // .status)|\(.name)"' 2>/dev/null \
+                || echo "  (per-job details unavailable)"
+            else
+              echo "  (no ci-run-id provided)"
+            fi
+          } > "$OUT"
+
+          echo "--- CI status for reviewer ---"
+          cat "$OUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build review prompt
         run: |
+          PR=${{ needs.gate.outputs.pr }}
+          BASE_REF="${{ needs.gate.outputs.base }}"
+
           # Resolution: explicit input > repo-local .ai/ file > concord default.
           # An explicit input that points at a missing file is a config error.
           if [ -n "${{ inputs.prompt-file }}" ]; then
@@ -105,7 +235,7 @@ jobs:
           echo "Using prompt: $PROMPT_FILE"
           echo "Using criteria: $CRITERIA_FILE"
 
-          DIFF="$(gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }})"
+          DIFF="$(gh pr diff "$PR" --repo ${{ github.repository }})"
 
           # Cap the inlined diff so one huge file (a deleted log, generated
           # assets) can't blow the model's context window — "Prompt is too
@@ -120,15 +250,15 @@ jobs:
 
           [INLINED DIFF TRUNCATED at ${MAX_DIFF_BYTES} of ${DIFF_BYTES} bytes.
           The working directory contains the full PR checkout with history;
-          run 'git diff origin/${{ github.event.pull_request.base.ref }}...HEAD --stat'
+          run 'git diff origin/${BASE_REF}...HEAD --stat'
           for the full file list and diff any remaining file directly.]"
           fi
-          PR_TITLE="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json title --jq .title)"
-          PR_BODY="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json body --jq .body)"
+          PR_TITLE="$(gh pr view "$PR" --repo ${{ github.repository }} --json title --jq .title)"
+          PR_BODY="$(gh pr view "$PR" --repo ${{ github.repository }} --json body --jq .body)"
 
           # The sticky review comment from the previous push, so the reviewer
           # doesn't re-raise findings the latest push already addressed.
-          PREV_REVIEW="$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} \
+          PREV_REVIEW="$(gh pr view "$PR" --repo ${{ github.repository }} \
             --json comments \
             --jq '[.comments[] | select(.body | startswith("<!-- concord-code-review -->"))] | last | .body // ""')"
 
@@ -140,7 +270,7 @@ jobs:
           REPO="${GITHUB_REPOSITORY#*/}"
           LINKED_ISSUES="$(gh api graphql \
             -f query='query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){closingIssuesReferences(first:10){nodes{number title body}}}}}' \
-            -F owner="$OWNER" -F repo="$REPO" -F pr=${{ github.event.pull_request.number }} \
+            -F owner="$OWNER" -F repo="$REPO" -F pr="$PR" \
             --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[] | "Issue #\(.number): \(.title)\n\n\(.body)\n"' 2>/dev/null)" || LINKED_ISSUES=""
 
           # Quick signal in the log: did we resolve a linked issue (whose body
@@ -162,7 +292,7 @@ jobs:
           $(cat "$CRITERIA_FILE")
 
           ---
-          HEAD commit: ${{ github.event.pull_request.head.sha }}
+          HEAD commit: ${{ needs.gate.outputs.sha }}
 
           PR title: ${PR_TITLE}
 
@@ -174,6 +304,13 @@ jobs:
           the change was built from. Review the diff against this, not just the
           PR description; flag where the implementation drifts from the spec:
           ${LINKED_ISSUES:-(none referenced)}
+
+          ---
+          CI results for the head commit — the build, unit tests, and gametests
+          that actually ran the code. Use this to ground the Correctness verdict:
+          a failing check is a 🔴 must-fix; do not score Correctness ✓ while CI
+          is failing or unverified. Tie a failure back to the diff when you can.
+          $(cat /tmp/ci-status.txt 2>/dev/null || echo '(CI status unavailable)')
 
           ---
           Previous review (if any) — do not repeat findings this push has
@@ -281,7 +418,7 @@ jobs:
           # Hidden marker anchors the sticky comment: the body must start with
           # it so the find-and-edit lookup (and next run's PREV_REVIEW) match.
           MARKER="<!-- concord-code-review -->"
-          SHA="${{ github.event.pull_request.head.sha }}"
+          SHA="${{ needs.gate.outputs.sha }}"
           {
             echo "$MARKER"
             echo "_Reviewed at \`${SHA:0:7}\` · $(date -u '+%Y-%m-%d %H:%M UTC')_"
@@ -289,7 +426,7 @@ jobs:
             cat /tmp/review-trimmed.md
           } > /tmp/review-body.md
 
-          PR=${{ github.event.pull_request.number }}
+          PR=${{ needs.gate.outputs.pr }}
           REPO=${{ github.repository }}
 
           # Edit the existing sticky comment in place if one exists, else create
