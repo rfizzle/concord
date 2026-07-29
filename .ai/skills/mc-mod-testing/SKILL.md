@@ -154,7 +154,16 @@ convention. They run in milliseconds with no Fabric runtime and turn
 suite-standard prose into an executable regression gate.
 
 The canonical loader reads off the test classpath (where `src/main/resources`
-lands), with a file-path fallback:
+lands), with a file-path fallback. Read the classpath *first* — Gradle's
+up-to-date checks track the test task's classpath, so a resource edit invalidates
+a classpath-reading test and reruns it, while a test that reaches for
+`src/main/resources` by path is invisible to that tracking: the resource changes,
+the task stays `UP-TO-DATE`, and the guard goes quiet exactly when it should
+fire. This is the same input-tracking mechanism the gametest registration guard
+has to declare explicitly (see "Registering the suite" below); reading the
+classpath gets it for free. The path fallback exists for IDE runners that launch
+without the processed-resources directory on the classpath — it is a fallback,
+never the primary read.
 
 ```java
 private static final String RESOURCE = "/assets/mymod/lang/en_us.json";
