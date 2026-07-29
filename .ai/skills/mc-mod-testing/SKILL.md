@@ -592,6 +592,37 @@ When a persisted format changes (NBT codec, hash scheme, serialized IDs), write 
 
 Format changes without migration tests are the #1 source of silent world-upgrade data loss in mods.
 
+## Naming conventions
+
+These are the suite's test-naming rules. They exist so a reader moving between mods can find
+the same thing in the same place, and so a survey can tell a missing test from a renamed one.
+
+- **`ConfigMigratorTest` in `config/`** — the config-migration suite is
+  `src/test/java/com/rfizzle/<mod>/config/ConfigMigratorTest.java`. One name, one location; the
+  migration tests described under "Testing persisted data migrations" below live here.
+- **`*ResourceContractTest` for shipped-resource guards** — a Tier 1 test pinning a shipped
+  JSON contract is named for the surface it guards plus that suffix:
+  `CommandResourceContractTest`, `SleepVoteResourceContractTest`,
+  `AdvancementResourceContractTest`. The suffix is what makes "does this feature have a
+  resource guard?" answerable by `ls` rather than by reading every test in the package.
+- **Mod-prefixed camelCase gametest batches** — `@GameTest(batch = "...")` values start with
+  the mod id and continue in camelCase: `distillationAntidotesToggle`, `cultivationWeather`,
+  `instinctBehaviorsOff`. Batch names share one namespace across every mod loaded into the
+  gametest run, so an unprefixed `advancementBeauty` collides the moment two members are
+  tested together, and the report cannot say which mod a batch belongs to.
+- **Named timeout constants** — a non-default `timeoutTicks` is a named constant, never a bare
+  number at the annotation:
+
+  ```java
+  private static final int TIMEOUT = 500;
+
+  @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = TIMEOUT)
+  public void antidoteClearsTheEffect(GameTestHelper helper) { ... }
+  ```
+
+  A literal repeated across a suite's twenty methods is twenty edits when the timing changes,
+  and it never says *why* this suite needs longer than the default.
+
 ## Config mutation isolation
 
 When tests modify global config (singleton or static), always restore the original in a `finally` block or `@AfterEach`. A test that sets `enableFollowMode = false` and then fails before restoring it poisons every subsequent test in the run.
