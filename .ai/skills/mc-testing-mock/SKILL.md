@@ -19,9 +19,9 @@ ServerPlayer player = MockPlayers.serverPlayerInLevel(helper);
 
 **The faithful replica — five steps (MC 1.21.1):**
 
-1. Create a `GameProfile` with `UUID.randomUUID()` and name `"test-mock-player"`
+1. Create a `GameProfile` with `UUID.randomUUID()` and a mod-namespaced mock name
 2. Create a `CommonListenerCookie` via `CommonListenerCookie.createInitial(profile, false)`
-3. Construct a **`ServerPlayer` subclass** with the helper's `ServerLevel`, its server, and the cookie's `gameProfile()` + `clientInformation()`, **overriding `isSpectator()` to return `false` and `isCreative()` to return `true`** (the vanilla method forces these; a bare `ServerPlayer` would report spectator/non-creative and silently change gameplay-gated behavior)
+3. Construct a **`ServerPlayer` subclass** with the helper's `ServerLevel`, its server, and the cookie's `gameProfile()` + `clientInformation()`, **overriding `isSpectator()` to return the requested spectator flag (`false` for the plain replica) and `isCreative()` to return `true`** (the vanilla method forces these; a bare `ServerPlayer` would report spectator/non-creative and silently change gameplay-gated behavior)
 4. Create a real `Connection(PacketFlow.SERVERBOUND)` and back it with `new EmbeddedChannel(connection)` — the embedded channel absorbs packets so `connection.send(...)` paths work instead of NPEing. **Keep the channel**: it is the only handle on what the server sent this player
 5. Call `server.getPlayerList().placeNewPlayer(connection, player, cookie)` — this **fully registers the player** in the server's player list, sets up `ServerGamePacketListenerImpl`, and adds the player to the level
 
@@ -29,11 +29,18 @@ ServerPlayer player = MockPlayers.serverPlayerInLevel(helper);
 
 One class per mod, in the gametest source set (`com.rfizzle.<mod>.gametest.util.MockPlayers`),
 with this shape. The private `connectedInLevel` does the construction once; the public factories
-are the three ways tests need it, and `retire`/`retireLeaked` are the teardown (see "Cleanup"
-below).
+are the three ways tests need it, and `retire`/`retireLeaked` are the teardown, explained under
+"Cleanup" below.
 
 ```java
 public final class MockPlayers {
+
+    /**
+     * Profile name for this mod's mocks. Namespaced, because a sweep matches on it and
+     * several mods can share a gametest level — an unnamespaced "test-mock-player" lets
+     * one mod's sweep retire another mod's live player.
+     */
+    private static final String MOCK_NAME = MyMod.MOD_ID + "-test-mock-player";
 
     /** A connected player plus the embedded channel its outbound packets land in. */
     public record Connected(ServerPlayer player, EmbeddedChannel channel) {
@@ -57,8 +64,32 @@ public final class MockPlayers {
         return connectedInLevel(helper, true);
     }
 
+    /** Fully retires a connected mock: awake, out of the player list, entity discarded. */
+    public static void retire(ServerPlayer player) {
+        if (player.isRemoved()) {
+            return;                       // PlayerList#remove is not idempotent
+        }
+        if (player.isSleeping()) {
+            player.stopSleepInBed(true, true);
+        }
+        MinecraftServer server = player.getServer();
+        if (server != null) {
+            server.getPlayerList().remove(player);
+        }
+        player.discard();
+    }
+
+    /** Retires any mock this mod leaked into the helper's level. See the batch caveat below. */
+    public static void retireLeaked(GameTestHelper helper) {
+        for (ServerPlayer player : List.copyOf(helper.getLevel().players())) {
+            if (MOCK_NAME.equals(player.getGameProfile().getName())) {
+                retire(player);
+            }
+        }
+    }
+
     private static Connected connectedInLevel(GameTestHelper helper, boolean spectator) {
-        GameProfile profile = new GameProfile(UUID.randomUUID(), "test-mock-player");
+        GameProfile profile = new GameProfile(UUID.randomUUID(), MOCK_NAME);
         CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
 
         ServerLevel level = helper.getLevel();
@@ -87,6 +118,13 @@ Guard its faithfulness with a gametest — assert the returned player has a live
 in the player list, is in the level, `isCreative()`, and `!isSpectator()` — so a later
 "simplification" to a bare `new ServerPlayer(...)` fails loudly instead of silently breaking
 the connection-dependent tests.
+
+**The spectator variant is a spectator through `isSpectator()` only.** It is still placed with
+the server's default `GameType` and still overrides `isCreative()` to `true`, so
+`getGameModeForPlayer()` reports whatever the server default is. Production code that gates on
+`isSpectator()` — the common case — is exercised correctly. Code that gates on
+`GameType.SPECTATOR` or on `!isCreative()` is *not*, and a test using this mock will pass while
+running the wrong branch. Check which predicate the code under test uses before reaching for it.
 
 **Returning the channel is the point of the record.** Without it, a test that needs to assert on
 an outbound packet has to dig the channel back out of the player by reflection — through
@@ -230,51 +268,51 @@ A suite that only discards accumulates ghost entries across the shared test serv
 later test whose assertions depend on who is online reads a player count inflated by every
 mock that ran before it.
 
-The full reclaim is `PlayerList#remove` followed by `discard()`:
+The full reclaim is `PlayerList#remove` followed by `discard()` — `retire(player)` in the
+canonical class above. Three details in it are load-bearing:
 
-```java
-/**
- * Fully retires a connected mock: out of the player list, entity
- * discarded — so entries don't accumulate across the shared test server.
- */
-public static void retire(ServerPlayer player) {
-    MinecraftServer server = player.getServer();
-    if (server != null) {
-        server.getPlayerList().remove(player);
-    }
-    player.discard();
-}
-```
+**It must be idempotent.** `PlayerList#remove` has no `isRemoved()` guard and calls
+`save(player)` unconditionally, so a second call rewrites the player `.dat`, the stats JSON, and
+the advancements JSON. The two idioms in this skill collide in any method that uses both — a
+`finally` that retires plus a success-path retire inside a polled callback — so the guard is not
+hypothetical. `Entity.setRemoved` *is* idempotent, which is why the trailing `discard()` needs no
+guard of its own.
 
-The historical objection to `remove()` was that it forces a player-data disk write per test.
-That was measured and does not hold: the write happens anyway when the test server stops, at
-`MinecraftServer.stopServer` → `saveAll()`. `remove()` moves the cost, it does not add it.
+**Wake the player before removing it.** `PlayerList#remove` does nothing about sleep, and a
+removed sleeping player leaves `SleepStatus` counting someone who is gone —
+`ServerLevel.tick` then evaluates `areEnoughSleeping(...)` against stale numbers for the rest of
+the run. Pass `true` for *both* arguments: the second is what triggers
+`ServerLevel.updateSleepingPlayerList()`, so `stopSleepInBed(true, false)` clears the player's
+own flag and skips the refresh that makes it correct. Vanilla's own `stopSleeping()` passes
+`(true, true)`. Wake while the player is still in `level.players()`, or
+`updateSleepingPlayerList()` returns early on an empty list and the recompute never happens.
 
-For suites whose assertions depend on the player count, sweep first rather than trusting that
-every earlier test cleaned up — a test that timed out mid-poll did not:
+**The disk-write objection does not hold.** `discard()` leaves the player in
+`PlayerList.players`, so `MinecraftServer.stopServer` → `PlayerList.saveAll()` saves every leaked
+mock at shutdown anyway — and since each mock carries a `UUID.randomUUID()`, nothing dedups on
+either side. It is one save per mock either way; `remove()` moves the write into the run rather
+than adding one. (rfizzle/cultivation#100 proposes this change suite-wide; the decision is not
+yet recorded there, and its measurements cover only the discard-only side.)
 
-```java
-/**
- * Retires any mock player a previously failed test left in the helper's
- * level, so player-count-sensitive tests start from a clean player list.
- */
-public static void retireLeaked(GameTestHelper helper) {
-    for (ServerPlayer player : List.copyOf(helper.getLevel().players())) {
-        if ("test-mock-player".equals(player.getGameProfile().getName())) {
-            if (player.isSleeping()) {
-                player.stopSleepInBed(true, false);
-            }
-            retire(player);
-        }
-    }
-}
-```
+For suites whose assertions depend on the player count, sweep with `retireLeaked(helper)` rather
+than trusting that every earlier test cleaned up — a test that timed out mid-poll did not.
 
-Copy the player list before iterating — `retire` mutates it. The sleep check exists because
-`PlayerList#remove` on a sleeping player leaves the level's sleep-status bookkeeping stale.
+**`retireLeaked` needs a batch to itself.** It reads `helper.getLevel().players()`, which is
+level-wide, and `GameTestRunner.runBatch` spawns the structures for an entire batch and then
+adds every test in it to the ticker at once — same-batch tests run *concurrently in one level*.
+Called from a test that shares its batch, the sweep retires a sibling test's live player out from
+under it. Give any test that sweeps a `batch` value of its own. Copy the player list before
+iterating, since `retire` mutates it, and note the sweep is single-dimension: a mock left in
+another level survives it.
 
-A tier-1 source scan holds this rule for a whole suite: cultivation's `MockPlayerDiscardTest`
-shows the shape.
+A tier-1 source scan can hold this rule for a whole suite — cultivation's
+`MockPlayerDiscardTest` shows the shape. Read it for the scanning technique only: it still
+matches the literal token `".discard()"` and requires it inside a `finally`, so a suite that
+adopts `MockPlayers.retire(player)` *fails* it. Adopting this rule means moving the matched
+token to `MockPlayers.retire(<name>)` — matched on the argument rather than the receiver — and
+replacing the javadoc paragraph that records the superseded "the player-list entry is
+deliberately left in place" rationale. Both are in rfizzle/cultivation#100's acceptance
+criteria.
 
 ### One `finally` per method
 
