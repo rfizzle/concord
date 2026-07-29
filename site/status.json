@@ -1,11 +1,11 @@
 {
-  "generated": "2026-07-28",
+  "generated": "2026-07-29",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 92,
+    "downloads": 93,
     "followers": 1,
-    "openIssues": 21
+    "openIssues": 20
   },
   "members": [
     {
@@ -22,7 +22,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-27"
+        "date": "2026-07-29"
       },
       "openIssues": 1,
       "modrinth": null
@@ -41,12 +41,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-27"
+        "date": "2026-07-29"
       },
-      "openIssues": 5,
+      "openIssues": 4,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 78,
+        "downloads": 79,
         "followers": 1
       }
     },
@@ -64,7 +64,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-27"
+        "date": "2026-07-29"
       },
       "openIssues": 1,
       "modrinth": null
@@ -83,7 +83,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-27"
+        "date": "2026-07-29"
       },
       "openIssues": 2,
       "modrinth": {
@@ -103,7 +103,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-27"
+        "date": "2026-07-29"
       },
       "openIssues": 1,
       "modrinth": null
@@ -119,7 +119,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-27"
+        "date": "2026-07-29"
       },
       "openIssues": 3,
       "modrinth": null
@@ -135,7 +135,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-27"
+        "date": "2026-07-29"
       },
       "openIssues": 5,
       "modrinth": null
@@ -150,8 +150,8 @@
       "release": null,
       "ci": {
         "status": "completed",
-        "conclusion": "success",
-        "date": "2026-07-27"
+        "conclusion": "action_required",
+        "date": "2026-07-29"
       },
       "openIssues": 3,
       "modrinth": null

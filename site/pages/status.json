@@ -14,7 +14,7 @@
           "lgColumns": 3,
           "items": [
             {
-              "title": "92",
+              "title": "93",
               "html": [
                 "Downloads across the collection"
               ]
@@ -26,7 +26,7 @@
               ]
             },
             {
-              "title": "21",
+              "title": "20",
               "html": [
                 "Open issues across the suite"
               ]
@@ -66,8 +66,8 @@
               "v1.0.0",
               "2026-07-01",
               "<a href='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml/badge.svg?branch=master' alt='Mercantile CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>78</a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/mercantile/issues'>5</a>"
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>79</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/mercantile/issues'>4</a>"
             ],
             [
               "<a class='text-accent hover:text-accent2 underline' href='https://tribulation.rfizzle.com'>Tribulation</a>",
@@ -124,7 +124,7 @@
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/instinct/issues'>3</a>"
             ]
           ],
-          "note": "Downloads count each member's Modrinth listing; members without a public listing yet show —. Refreshed nightly from the GitHub and Modrinth APIs · data last changed 2026-07-28."
+          "note": "Downloads count each member's Modrinth listing; members without a public listing yet show —. Refreshed nightly from the GitHub and Modrinth APIs · data last changed 2026-07-29."
         }
       ]
     }
