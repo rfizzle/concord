@@ -170,7 +170,7 @@ private static final String RESOURCE = "/assets/mymod/lang/en_us.json";
 private static final Path SOURCE = Path.of("src/main/resources/assets/mymod/lang/en_us.json");
 
 private static JsonObject lang() {
-    try (InputStream in = LangContractTest.class.getResourceAsStream(RESOURCE)) {
+    try (InputStream in = LangResourceContractTest.class.getResourceAsStream(RESOURCE)) {
         String json = in != null
                 ? new String(in.readAllBytes(), StandardCharsets.UTF_8)
                 : Files.readString(SOURCE, StandardCharsets.UTF_8);
@@ -360,8 +360,12 @@ One shape, so a reader moving between mods finds the same file saying the same t
   `gametest` subpackage of `src/test` — nothing in `src/test/java` is part of the gametest
   source set. Not `GametestEntrypointTest`, `ManifestEntrypointTest`, or `ManifestContractTest`;
   a guard nobody can find by name is a guard nobody ports to the next mod.
-- **Detection basis** — `implements FabricGameTest`. Not a filename suffix, and not an
-  annotation regex.
+- **Detection basis** — `implements FabricGameTest`, matched as
+  `Pattern.compile("implements\\s+[^{]*\\bFabricGameTest\\b")`. Not a filename suffix, and not
+  an annotation regex. Match the pattern, not the literal string: a suite declaring
+  `implements Tickable, FabricGameTest` is invisible to a plain `contains("implements
+  FabricGameTest")`. A suite that inherits the interface from an abstract base is rejected by
+  this basis — that is deliberate, since the manifest needs the concrete class named anyway.
 - **Four core assertions** — every suite on disk is registered; every registered entrypoint
   resolves to a class on disk; the shipped `src/main/resources/fabric.mod.json` declares no
   `fabric-gametest` entrypoints at all; the gametest manifest's `depends` is exactly the main
@@ -380,28 +384,45 @@ line-anchored (`(?m)^\s*@GameTest`), it matches `@GameTest` inside a comment or 
 literal and registers a class that holds no tests. `implements FabricGameTest` has none of
 these holes: it is the same predicate the loader itself uses.
 
-Reference implementations: cultivation's `GametestRegistrationTest.java:52-53` for the
-detection regex and `:128-148` for the two-way naming check; distillation's
-`ManifestEntrypointTest.java:56-78` and `:103-123` for the four assertions, which is the only
-carrier in the suite that asserts both registration parity as set equality *and* dependency
-exclusivity.
+Reference implementation: cultivation's `GametestRegistrationTest.java:52-53` for the detection
+regex and `:128-148` for the two-way naming check. Distillation's `ManifestEntrypointTest.java`
+is worth reading for the assertion *shapes* — `:56-78` and `:103-123` cover all four, and it is
+the only carrier that collapses registration parity into a single `assertEquals(discovered,
+declared)`. Read it for those and nothing else: its class name is one of the ones ruled out
+above, and its detection basis is the annotation regex this section rules out, so it is not a
+model for either.
+
+Four of the six existing guards already assert dependency exclusivity as set equality:
+distillation `:103-113`, meridian `:175`, mercantile `:92`, instinct `:96`. Tribulation's
+`GametestEntrypointTest.java:136` is the containment form the bullet above warns about,
+cultivation asserts nothing about `depends` at all, and prosperity and respite carry no guard of
+any kind. Those four are the gap; the other four already hold this assertion.
 
 Concord's own `make gametest-check` is **not** a substitute. The hub checker
 (`scripts/check-gametest-manifest.py`) fails on a shipped manifest that declares
 `fabric-gametest` entrypoints, on gametest sources with no companion manifest, and on an
 unexpanded `${version}` placeholder — but it never compares individual suites against
-entrypoints, and it treats a missing dependency floor as a note rather than a failure. It
-catches the structural mistakes across every member at once; only the per-repo
-`GametestRegistrationTest` catches the suite you forgot to register this morning.
+entrypoints, it only *notes* a companion manifest that fails to depend on the main mod, and it
+never inspects dependency floors at all. It catches the structural mistakes across every member
+at once; only the per-repo `GametestRegistrationTest` catches the suite you forgot to register
+this morning.
 
 #### Naming and package layout
 
-Gametest suites live in `com.rfizzle.<mod>.gametest`, with non-suite helpers in a `util`
-subpackage, and are named `*GameTest`. Helpers — fixture builders, mock factories, floor
-templates — are *not* named `*GameTest` and are not registered. This is what makes the two-way
-naming check enforceable: with the convention held, "implements the interface" and "named
-`*GameTest`" describe the same set, and any divergence is a real defect rather than a style
-difference the guard has to tolerate.
+Gametest suites live in `com.rfizzle.<mod>.gametest` **or any subpackage of it other than
+`util`**, and are named `*GameTest`. Non-suite helpers — fixture builders, mock factories, floor
+templates — live in `com.rfizzle.<mod>.gametest.util`, are *not* named `*GameTest`, and are not
+registered.
+
+Subpackages are allowed on purpose: a mod with forty suites wants
+`gametest.enchantments` and `gametest.shelf`, and the guard walks the tree anyway. What the rule
+forbids is a suite living *outside* `<mod>.gametest` entirely — a suite in `<mod>.event` or
+`<mod>.library` is invisible to anyone looking for the test suite and to any tooling that scopes
+by package.
+
+This is what makes the two-way naming check enforceable: with the convention held, "implements
+the interface" and "named `*GameTest`" describe the same set, and any divergence is a real
+defect rather than a style difference the guard has to tolerate.
 
 The guard reads the source tree because the gametest source set is not on the test classpath
 and its classes cannot be enumerated from there. Gradle therefore sees no dependency between
@@ -410,11 +431,21 @@ drifted:
 
 ```groovy
 test {
-    inputs.files(fileTree('src/gametest/java'), file('src/gametest/resources/fabric.mod.json'))
+    inputs.files(fileTree('src/gametest/java'),
+                 file('src/gametest/resources/fabric.mod.json'),
+                 file('src/main/resources/fabric.mod.json'))
             .withPropertyName('gametestRegistration')
             .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 ```
+
+The shipped manifest is in the list because the guard's third assertion reads it. It also
+arrives transitively through `processResources`, so leaving it out is not a live staleness hole
+— but declaring all three inputs keeps the block readable as "what this guard reads".
+
+The cost of this coupling is that any edit under `src/gametest/java` invalidates the whole
+`test` task, so the full Tier 1 suite reruns. That is the price of a guard that reads a source
+tree Gradle otherwise has no reason to watch.
 
 ### Test-only data
 
@@ -463,16 +494,26 @@ Three assertions, in widening order:
 
 - **Known fixtures are absent from the shipped classpath** — `getResource(path)` returns `null`
   for each fixture the mod actually uses. Cheap, names the offender exactly, and doubles as a
-  regression test after a fixture is relocated.
+  regression test after a fixture is relocated. **Resolve the shipped roots before asserting
+  `null`**, or the whole assertion passes vacuously against an empty classpath — a guard that
+  cannot fail is worse than no guard, because it reads as coverage.
 - **No `gametest` path segment anywhere in the shipped roots** — catches the next fixture,
   which by definition is not in the list above.
 - **No structure templates anywhere in the shipped roots** — `.snbt` is a test artifact for a
   mod that ships no structures of its own. Drop this one only if the mod genuinely ships
   structures, and say so in the test.
 
+**Pick the anchor per source set.** The anchor is a resource you know sits at the top level of
+that root, whose parent directory therefore *is* the root. Meridian uses `/meridian.accesswidener`
+for `main` and `/meridian.client.mixins.json` for `client`
+(`ShippedResourceHygieneTest.java:46-50`). A mod with neither can anchor `main` on
+`/fabric.mod.json`, but note that only resolves the main root — the client root needs an anchor
+of its own, and a source set with no resources at all contributes no anchor and belongs out of
+the list entirely.
+
 Model: meridian's `ShippedResourceHygieneTest.java:72`, `:85`, and `:98`, with the anchored-root
-resolution at `:144-177`. Meridian's own fixtures live in
-`src/gametest/resources/data/meridian/gametest/structure/`, which is the proof that relocating
+resolution at `:144-177` and the moved-anchor failure at `:165-171`. Meridian's own fixtures live
+in `src/gametest/resources/data/meridian/gametest/structure/`, which is the proof that relocating
 them costs nothing — resolution from the companion-mod root works exactly as described above.
 
 Run the guard against a clean build. A stale `build/resources/` tree can still hold fixtures
@@ -599,19 +640,28 @@ Format changes without migration tests are the #1 source of silent world-upgrade
 These are the suite's test-naming rules. They exist so a reader moving between mods can find
 the same thing in the same place, and so a survey can tell a missing test from a renamed one.
 
+Of the four, only `ConfigMigratorTest` is universal today; the other three are newly required
+and the members are mid-migration. Audit a member against its own conformance sweep issue, not
+against this list — a mod that fails one of these is behind the rule, not necessarily broken.
+
 - **`ConfigMigratorTest` in `config/`** — the config-migration suite is
   `src/test/java/com/rfizzle/<mod>/config/ConfigMigratorTest.java`. One name, one location; the
-  migration tests described under "Testing persisted data migrations" below live here.
+  migration tests described under "Testing persisted data migrations" above live here.
 - **`*ResourceContractTest` for shipped-resource guards** — a Tier 1 test pinning a shipped
   JSON contract is named for the surface it guards plus that suffix:
   `CommandResourceContractTest`, `SleepVoteResourceContractTest`,
   `AdvancementResourceContractTest`. The suffix is what makes "does this feature have a
-  resource guard?" answerable by `ls` rather than by reading every test in the package.
+  resource guard?" answerable by `ls` rather than by reading every test in the package. The
+  `*LangContractTest`, `*AssetsTest`, and `*ResourcesTest` names in use today are the same guard
+  under other names and are in scope for the rename.
 - **Mod-prefixed camelCase gametest batches** — `@GameTest(batch = "...")` values start with
   the mod id and continue in camelCase: `distillationAntidotesToggle`, `cultivationWeather`,
-  `instinctBehaviorsOff`. Batch names share one namespace across every mod loaded into the
-  gametest run, so an unprefixed `advancementBeauty` collides the moment two members are
-  tested together, and the report cannot say which mod a batch belongs to.
+  `instinctBehaviorsOff`. The prefix earns its keep today in report attribution and batch
+  filtering — an unprefixed `advancementBeauty` (respite's, currently) does not say which mod it
+  belongs to in a failure report. It also forecloses a collision: batch names share one namespace
+  across every mod in a gametest run, so two members tested together would merge same-named
+  batches. Give a batch a name of its own per test where a test sweeps the level (see
+  `retireLeaked` in `mc-testing-mock`) — same-batch tests run concurrently.
 - **Named timeout constants** — a non-default `timeoutTicks` is a named constant, never a bare
   number at the annotation:
 
