@@ -92,6 +92,45 @@ if (FabricLoader.getInstance().isModLoaded("tribulation")) {
 - Conditional *data* (recipes, trade entries, loot injections that reference a
   sibling's items) uses Fabric resource conditions keyed on the sibling's mod id.
 
+### 4.1 `fabric.mod.json` dependency shape
+
+The gradle side of a soft dependency is only half of it — the manifest has to agree, or
+the loader hard-fails on a mod the code was written to live without. Every member
+declares:
+
+| Key | Value | Why |
+|---|---|---|
+| `depends.minecraft` | `"~1.21.1"` | Tolerates a patch bump without a manifest edit in eight repos |
+| `depends.fabricloader` | `">=0.16.10"` | Floor, not a pin — loader is backward compatible |
+| `depends.fabric-api` | `"*"` | The real floor is the gradle pin (see below) |
+| `depends.java` | `">=21"` | Matches the toolchain |
+
+`fabric-api` is unbounded on purpose. The version that actually matters is
+`fabric_version` in [`propagate/versions-common.properties`](propagate/versions-common.properties),
+which is what the mod compiles against and what the suite bumps in one place. Restating
+that floor in eight manifests gives it eight chances to drift from the pin it is
+supposed to mirror, and the manifest copy is the one nobody updates.
+
+**A sibling is never a hard dependency, and never a recommendation.** It goes under
+`suggests` with `*`:
+
+```json
+"suggests": {
+  "tribulation": "*"
+}
+```
+
+- Not `depends` — that is the load-bearing coupling §1 forbids.
+- Not `recommends` — the loader surfaces a recommendation as something the player ought
+  to install, which is a claim the integration cannot support. Every Concord feature
+  works fully with the sibling absent; a sibling adds, it does not complete.
+- Not a version floor. A floor says the integration breaks below it, but §4's guards and
+  §3.1's isolation mean an older sibling degrades to un-integrated behavior instead of
+  breaking. The manifest should not assert a hard edge the code does not have.
+
+Third-party viewers and config UIs (Jade, WTHIT, EMI, REI, JEI, Mod Menu, Cloth Config)
+follow the same rule for the same reason — see the `mc-compat` skill.
+
 ## 5. Client-safe accessors
 
 Anything callable from common code that reads client state is **reflection-backed**
@@ -209,6 +248,8 @@ A mod conforms to the API Standard when:
       `createArrayBacked` invoker, not at the fire site
 - [ ] The mod's own sibling integrations use `modCompileOnly` + `isModLoaded` guards in
       `compat/<modid>/` packages
+- [ ] `fabric.mod.json` carries the §4.1 dependency shape, with any sibling under
+      `suggests`
 - [ ] Client-reading accessors callable from common code are reflection-backed with
       documented sentinels
 - [ ] Events are Fabric `Event`s named `<Mod><Thing>Callback` with documented triggers,
