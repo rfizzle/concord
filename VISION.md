@@ -324,8 +324,8 @@ matching CurseForge listing cross-links.
 
 Every mod publishes a stable integration surface under
 **`com.rfizzle.<mod>.api`** — the *only* stable package; everything outside it is
-internal and may change without notice. The conventions, all proven in
-`TribulationAPI` / `TribulationLevelCallback`:
+internal and may change without notice. The conventions, generalized from
+`TribulationAPI` / `TribulationLevelCallback` and normative in API-STANDARD:
 
 1. **Read-only by default.** Static accessors return values; nothing in the API mutates
    mod state. The single sanctioned mutation pattern is **provider/callback
@@ -336,9 +336,11 @@ internal and may change without notice. The conventions, all proven in
    `catch (Throwable)`, falling back to the host's default, so one misbehaving
    integration can neither crash the host nor deny the other guests their call
    (API-STANDARD §3.1).
-2. **Consumption is `modCompileOnly` + runtime guard.** Published to Modrinth maven;
-   every call site wrapped in `FabricLoader.getInstance().isModLoaded("<mod>")`.
-   Integration code lives in `compat/<modid>/` packages that fail gracefully.
+2. **Consumption is `modCompileOnly` + runtime guard.** Sibling jars resolve from GitHub
+   Releases through the artifact-only `rfizzle:` ivy repo — the Modrinth projects are not
+   publicly resolvable — and every call site is wrapped in
+   `FabricLoader.getInstance().isModLoaded("<mod>")`. Integration code lives in
+   `compat/<modid>/` packages that fail gracefully.
 3. **Client-safe accessors.** Anything callable from common code that needs client state
    is reflection-backed and returns a sentinel when unavailable
    (`getClientLevel() → -1`). Required for the HUD accessors in §3.3.
@@ -499,12 +501,12 @@ need.
 
 ### 5.4 Third-party integration story
 
-An outside mod integrates with any member identically: add the Modrinth maven
-`modCompileOnly` dep, guard with `isModLoaded`, read the api package, optionally register
-a provider/callback. Document the pattern **once** on the collection landing page's API
-section with one worked example (the Tribulation README's developer section is the seed),
-and link it from every per-mod API page. The suite's pitch to third parties: *seven mods,
-one integration pattern* — learn it once, integrate with all, and any future member (§9)
+An outside mod integrates with any member identically: add the `modCompileOnly` dep from
+the member's GitHub release jar, guard with `isModLoaded`, read the api package,
+optionally register a provider/callback. Document the pattern **once** on the collection
+landing page's API section with one worked example (the Tribulation README's developer
+section is the seed), and link it from every per-mod API page. The suite's pitch to third
+parties: *eight mods, one integration pattern* — learn it once, integrate with all, and any future member (§9)
 works the same way. Prosperity's `LootModifierContext.customData()` CompoundTag is the
 designated escape hatch for inter-mod context the APIs don't model.
 
