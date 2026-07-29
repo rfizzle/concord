@@ -247,9 +247,12 @@ A mod conforms to the API Standard when:
       guest, falling back to the host's default; event isolation lives in the
       `createArrayBacked` invoker, not at the fire site
 - [ ] The mod's own sibling integrations use `modCompileOnly` + `isModLoaded` guards in
-      `compat/<modid>/` packages
+      `compat/<modid>/` packages, with foreign references classload-isolated (adapter
+      class or nested `Api` holder) and whole integration bodies catching `Throwable`
 - [ ] `fabric.mod.json` carries the §4.1 dependency shape, with any sibling under
       `suggests`
+- [ ] Compat mapping/scaling cores are pure (zero sibling imports) and unit-tested
+      without the sibling jar on the classpath
 - [ ] Client-reading accessors callable from common code are reflection-backed with
       documented sentinels
 - [ ] Events are Fabric `Event`s named `<Mod><Thing>Callback` with documented triggers,
