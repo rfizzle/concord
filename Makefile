@@ -4,11 +4,12 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test art-verify art-verify-all status status-test sync-test labels-check labels-test release-test gametest-check gametest-test help
+.PHONY: catalog catalog-check pull-members agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test art-verify art-verify-all status status-test sync-test labels-check labels-test release-test gametest-check gametest-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
 	@echo "catalog-check  fail if CATALOG.md is stale (CI guard)"
+	@echo "pull-members   checkout master, ff-pull, and prune stale branches in every sibling repo"
 	@echo "agents-sync      inject concord-owned AGENTS.md regions into sibling repos (../<member>)"
 	@echo "agents-check     show which sibling AGENTS.md regions would change (no writes)"
 	@echo "gitignore-sync   inject the concord-owned .gitignore region into sibling repos (../<member>)"
@@ -39,6 +40,9 @@ catalog-check:
 # Local convenience: apply AGENTS-COMMON.md regions to each member checked out
 # as a sibling directory. CI does the same for all members via propagate.yml.
 MEMBERS := $(shell jq -r '.members[].id' members.json)
+
+pull-members:
+	@bash scripts/pull-members.sh
 
 agents-sync:
 	@for m in $(MEMBERS); do \
