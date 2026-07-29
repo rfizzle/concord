@@ -40,11 +40,33 @@ state. The single sanctioned mutation pattern is **provider/callback registratio
   `addLuck`/`multiplyStacks`).
 - The host calls *out* at a defined moment; the guest adjusts the context. The guest
   never reaches into the host.
-- **Error isolation is the host's job**: a provider that throws or returns a non-finite
-  value is caught and the host falls back to its configured default. A misbehaving
-  integration must never crash or corrupt the host.
+- **Error isolation is the host's job** — see §3.1. A misbehaving integration must never
+  crash or corrupt the host.
 - Provider slots use last-writer-wins `volatile` semantics unless the host documents
   otherwise.
+
+### 3.1 Error isolation
+
+Every point where the host invokes guest code — an event listener, a provider slot, a
+provider chain — is a trust boundary, and the host isolates it. Three rules, all
+normative:
+
+1. **Catch `Throwable`, never `Exception`.** A consumer compiled against an older
+   signature surfaces the mismatch as an `Error` — `AbstractMethodError`,
+   `NoClassDefFoundError`, `LinkageError` — which an `Exception` catch lets escape and
+   kill the server tick. This is the same posture §4 already requires of calls *into* a
+   sibling, and it is what the suite's reflection-backed accessors already do.
+2. **Isolate per guest, and continue.** The `try`/`catch` wraps a single listener or
+   provider invocation, so one misbehaving guest never denies the others their call.
+   For events this means the `catch` lives **inside the `createArrayBacked` invoker's
+   loop** (§6), not around the fire site — a fire-site wrap catches the throw but
+   abandons every listener after the one that threw.
+3. **Fall back to the host's default, and log.** A provider that throws *or returns a
+   non-finite value* yields the host's configured default. Log the `Throwable` itself so
+   the stack trace survives; naming the offending guest class in the message makes an
+   unfamiliar third-party listener tractable to diagnose.
+
+A host that satisfies these three cannot be broken by any guest, however badly written.
 
 ## 4. Consumption pattern
 
@@ -82,11 +104,45 @@ pattern.
 ## 6. Events
 
 - Fabric `Event` objects, array-backed via `EventFactory.createArrayBacked`.
-- Named `<Mod><Thing>Callback` (reference: `TribulationLevelCallback`).
+- Named `<Mod><Thing>Callback` (naming reference: `TribulationLevelCallback`).
 - Fired **server-side** at state changes; the firing mod documents every trigger
   (e.g. Tribulation's level event fires on playtime progression, death relief, Shatter
   Shard use, and `/tribulation set`).
 - Listeners receive old and new values where the change is scalar.
+- **The invoker isolates each listener** per §3.1 — the `try`/`catch (Throwable)` lives
+  inside the `createArrayBacked` loop, so one listener throwing does not deny the rest
+  their call. Fire sites then stay clean; they neither need nor should carry their own
+  wrap. Isolation is a property of the event, declared once where the event is, rather
+  than a discipline every fire site has to remember.
+
+```java
+@Stable
+public interface CultivationHarvestCallback {
+
+    Event<CultivationHarvestCallback> EVENT = EventFactory.createArrayBacked(
+            CultivationHarvestCallback.class,
+            listeners -> (level, pos, crop, drops, harvester) -> {
+                for (CultivationHarvestCallback listener : listeners) {
+                    try {
+                        listener.onHarvest(level, pos, crop, drops, harvester);
+                    } catch (Throwable t) {
+                        // Throwable, not Exception: a listener compiled against an older
+                        // signature throws Error (AbstractMethodError, NoClassDefFoundError),
+                        // which an Exception catch would let escape and kill the server tick.
+                        Cultivation.LOGGER.error("CultivationHarvestCallback listener {} threw; skipping it",
+                                listener.getClass().getName(), t);
+                    }
+                }
+            });
+
+    void onHarvest(ServerLevel level, BlockPos pos, BlockState crop, List<ItemStack> drops,
+            @Nullable ServerPlayer harvester);
+}
+```
+
+The event's Javadoc states the isolation posture so a consumer knows what a throw costs
+them ("A listener that throws is caught, logged, and skipped"). A callback whose Javadoc
+disclaims isolation is a defect in one or the other — fix the code, not the promise.
 
 ## 7. Server authority
 
@@ -118,7 +174,9 @@ A mod conforms to the API Standard when:
 - [ ] All externally consumable surface lives in `com.rfizzle.<mod>.api`, annotated
       with the mod's local `@Stable` marker (see §2 erratum)
 - [ ] No `api` method mutates mod state outside the provider/callback pattern
-- [ ] All provider/callback invocations are wrapped in host-side error isolation
+- [ ] Every provider/callback invocation is isolated per §3.1 — `catch (Throwable)`, per
+      guest, falling back to the host's default; event isolation lives in the
+      `createArrayBacked` invoker, not at the fire site
 - [ ] The mod's own sibling integrations use `modCompileOnly` + `isModLoaded` guards in
       `compat/<modid>/` packages
 - [ ] Client-reading accessors callable from common code are reflection-backed with
