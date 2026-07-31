@@ -1,9 +1,9 @@
 {
-  "generated": "2026-07-30",
+  "generated": "2026-07-31",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 105,
+    "downloads": 113,
     "followers": 1,
     "openIssues": 27
   },
@@ -69,7 +69,7 @@
       "openIssues": 2,
       "modrinth": {
         "slug": "tribulation-difficulty-overhaul",
-        "downloads": 6,
+        "downloads": 14,
         "followers": 0
       }
     },
