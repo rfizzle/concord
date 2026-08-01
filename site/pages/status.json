@@ -14,7 +14,7 @@
           "lgColumns": 3,
           "items": [
             {
-              "title": "113",
+              "title": "126",
               "html": [
                 "Downloads across the collection"
               ]
@@ -66,7 +66,7 @@
               "v1.0.0",
               "2026-07-01",
               "<a href='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml/badge.svg?branch=master' alt='Mercantile CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>83</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>87</a>",
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/mercantile/issues'>5</a>"
             ],
             [
@@ -75,7 +75,7 @@
               "v1.0.0",
               "2026-07-01",
               "<a href='https://github.com/rfizzle/tribulation/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/tribulation/actions/workflows/ci.yml/badge.svg?branch=master' alt='Tribulation CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/tribulation-difficulty-overhaul'>14</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/tribulation-difficulty-overhaul'>15</a>",
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/tribulation/issues'>2</a>"
             ],
             [
@@ -84,7 +84,7 @@
               "v1.0.0",
               "2026-07-01",
               "<a href='https://github.com/rfizzle/prosperity/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/prosperity/actions/workflows/ci.yml/badge.svg?branch=master' alt='Prosperity CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/prosperity-loot-overhaul'>16</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/prosperity-loot-overhaul'>24</a>",
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/prosperity/issues'>3</a>"
             ],
             [
@@ -124,7 +124,7 @@
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/instinct/issues'>4</a>"
             ]
           ],
-          "note": "Downloads count each member's Modrinth listing; members without a public listing yet show —. Refreshed nightly from the GitHub and Modrinth APIs · data last changed 2026-07-31."
+          "note": "Downloads count each member's Modrinth listing; members without a public listing yet show —. Refreshed nightly from the GitHub and Modrinth APIs · data last changed 2026-08-01."
         }
       ]
     }
