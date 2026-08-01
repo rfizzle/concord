@@ -129,10 +129,10 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           distribution: temurin
           java-version: 21
@@ -392,7 +392,7 @@ jobs:
         # Created as a draft so the jar can be attached: repositories with
         # immutable releases enabled reject asset uploads after publish. The
         # Publish step below flips the draft to published once the jar is on it.
-        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           name: ${{ steps.meta.outputs.title }}
           tag_name: ${{ github.ref_name }}
@@ -430,7 +430,7 @@ jobs:
         # build-site.yml). Runs whenever the job isn't cancelled — including after
         # a platform publish fails — because the record step below still runs then
         # and needs the script.
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: rfizzle/concord
           ref: ${{ inputs.concord-ref }}
@@ -438,7 +438,7 @@ jobs:
 
       - name: Set up Python
         if: steps.publish.outputs.available == 'true'
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
