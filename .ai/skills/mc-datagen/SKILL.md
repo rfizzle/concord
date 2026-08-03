@@ -280,10 +280,10 @@ Any one missing degrades quietly rather than failing:
   nobody reads.
 
 **1 and 4 together are what make the guard mean anything.** The check shells out
-to `git status --porcelain -- src/main/generated`. With no entrypoint that
-directory is never created or tracked, so the `--` pathspec matches nothing, git
-exits 0 with empty output, and the task reports clean — a passing check that
-verified nothing. A member holding 2+3+4 without 1 is in the worst state of the
+to `git --no-optional-locks status --porcelain -- <genDir>` (the task below). With
+no entrypoint that directory is never created or tracked, so the `--` pathspec
+matches nothing, git exits 0 with empty output, and the task reports clean — a
+passing check that verified nothing. A member holding 2+3+4 without 1 is in the worst state of the
 four: it looks the most wired and proves the least.
 
 So a member is conformant when it is **4-of-4**, or when it deliberately has

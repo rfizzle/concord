@@ -97,11 +97,13 @@ Use the `Read` tool to inspect reports — never re-run just to see results.
 
 ## The canonical build.gradle skeleton
 
-Every Concord member's `build.gradle` is the same file with a different mod id.
-The blocks below are that file in source order — this is the assembly reference;
+Concord members' `build.gradle` files share a common shape: the same blocks, in
+the same order, differing in their dependencies and in a handful of mod-id
+strings. The table below is that shape in source order — the assembly reference;
 each block's rationale and full text live in the section named beside it. A new
-member starts by copying a sibling's `build.gradle` and renaming; an existing one
-is conformant when every block is present in this order.
+member starts by copying a sibling's `build.gradle` and renaming. Treat it as the
+target shape rather than a checklist: it is a reading aid, not machine-checked,
+and a member is judged on having the blocks, not on matching line numbers.
 
 | # | Block | Documented in |
 |---|---|---|
@@ -112,24 +114,41 @@ is conformant when every block is present in this order.
 | 5 | `tasks.register('printVersion')` | SemVer from the pushed tag |
 | 6 | `def computeModVersion()` / `def runGitDescribe(String)` | SemVer from the pushed tag |
 | 7 | `repositories { … }` — content-filtered, one group per block | Dependency-repository hygiene |
-| 8 | `loom { splitEnvironmentSourceSets() ; runs { datagen, gametest } }` | Fabric Loom configuration |
+| 8 | `loom { splitEnvironmentSourceSets() ; accessWidenerPath }` | Fabric Loom configuration |
 | 9 | `sourceSets { main, gametest, test }` | Fabric Loom configuration · testRuntimeClasspath fix |
-| 10 | `configurations { gametest* ; testRuntimeClasspath }` | Fabric Loom configuration · testRuntimeClasspath fix |
-| 11 | `dependencies { … }` | Dependency scoping |
-| 12 | `processResources { … }` — version injection | Version management |
-| 13 | `java { withSourcesJar() }` / `jar { … }` | — |
-| 14 | JaCoCo agent on `runGametest` · `jacocoMergedReport` | Coverage |
+| 10 | `configurations { gametest* }` | Fabric Loom configuration |
+| 11 | `loom { runs { datagen, gametest } }` | Fabric Loom configuration |
+| 12 | `dependencies { … }` | Dependency scoping |
+| 13 | `configurations.testRuntimeClasspath { exclude … }` | testRuntimeClasspath fix |
+| 14 | JaCoCo agent on `runGametest` · `jacocoTestReport` · `jacocoMergedReport` | Coverage |
 | 15 | `verifyDatagenIdempotent` | the `mc-datagen` skill |
+| 16 | `processResources { … }` — version injection | Version management |
+| 17 | `java { withSourcesJar() }` / `jar { … }` / `tasks.named('sourcesJar')` | — |
 
-Two invariants the table cannot show:
+Rows 8 and 11 are one `loom` block split in two, straddling the source sets it
+configures — the environment split has to be declared before `sourceSets` reads
+it, while the run configs reference `sourceSets.gametest` and so must follow.
+Collapsing them into a single `loom` block placed after `configurations` is
+equally correct and some members do it.
 
-- **No version literal anywhere in the file.** Toolchain pins come from the
-  concord-owned `versions-common.properties` via `settings.gradle`; everything else
-  from `gradle.properties`. See "Version management".
-- **The mod id appears in exactly three places** — `jacoco.includes`, the
-  `jacocoMergedReport` mixin exclusion, and the `jar` task's base name. Those three
-  are the entire diff between two members' build files. If a fourth appears, it is
-  usually a hardcoded string that belonged in `gradle.properties`.
+Rows 8 (`accessWidenerPath`), 11 (`datagen`), and 15 are **conditional**: a member
+with no access widener, or one that deliberately has no datagen at all, is not
+missing a block. The datagen pair travels with the other anchors in the
+`mc-datagen` skill — all four or none.
+
+Two properties the table cannot show:
+
+- **No toolchain version literal anywhere in the file.** `minecraft_version`,
+  `loader_version`, `fabric_version`, `loom_version`, and `java_version` come from
+  the concord-owned `versions-common.properties` via `settings.gradle`; everything
+  else from `gradle.properties`. See "Version management". The one deliberate
+  in-file pin is JaCoCo's `toolVersion`, which is not a suite toolchain key and is
+  pinned here so the coverage number stays comparable across members.
+- **The mod id appears in four places at most** — the `accessWidenerPath` filename
+  (where the mod has one), the `-Dfabric-api.datagen.modid=` vmArg, `jacoco.includes`,
+  and the `jacocoMergedReport` mixin exclusion. Each of those is a place the string
+  genuinely has to be literal. The jar name is **not** one of them: it comes from
+  `project.archives_base_name`. An occurrence anywhere else is worth a second look.
 
 **This skeleton is a reference, not a synced file.** It cannot ride the
 `concord-sync` PR the way `versions-common.properties` does: `propagate/` is copied
@@ -538,6 +557,7 @@ def runGitDescribe(String tagPrefix) {
         def finished = proc.waitFor(10, TimeUnit.SECONDS)
         if (!finished) {
             proc.destroyForcibly()
+            logger.warn('git describe timed out after 10s — version falls back to the mod_version base')
             return null
         }
         def out = proc.inputStream.text.trim()
@@ -556,6 +576,11 @@ a credential helper waiting on a prompt that has no terminal attached. The bound
 form degrades to the `mod_version` base after ten seconds instead of wedging the
 build indefinitely; `destroyForcibly()` is what stops the orphaned git process from
 outliving the Gradle daemon.
+
+Warn on the way down. Degrading to the base version is the right behavior, but
+doing it silently is not: on a machine where git is slow rather than hung, every
+Gradle invocation pays the full ten seconds and then produces a jar versioned
+`0.0.0` with nothing in the log to say why.
 
 Expose a `printVersion` task for CI:
 ```groovy
@@ -600,7 +625,7 @@ sourceSets {
     // Put the client source set's compiled output (not its dependency configurations) on the
     // test classpath so unit tests can reach client-only classes such as ClientMymodConfig.
     // Only .output is added — never client.compileClasspath/runtimeClasspath — so the unmapped
-    // fabric-api sibling access widener that the testRuntimeClasspath exclusion above guards
+    // fabric-api sibling access widener that the testRuntimeClasspath exclusion below guards
     // against is never pulled in.
     test {
         compileClasspath += sourceSets.client.output

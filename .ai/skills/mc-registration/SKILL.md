@@ -221,8 +221,8 @@ Call from `onInitialize()` after `register()`.
 ## The bootstrap trio
 
 Every mod's main class — `<Capitalized mod id>.java` in `com.rfizzle.<modid>` —
-opens with the same three declarations, and everything else in the mod resolves
-its identity through them:
+carries the same three declarations, and everything else in the mod resolves its
+identity through them:
 
 ```java
 public class Mymod implements ModInitializer {

@@ -286,15 +286,19 @@ A repo conforms when all of these are true at the same paths:
    [`makefile-targets.json`](makefile-targets.json) — the thirteen universal ones,
    plus `coverage` and `run-datagen` where `build.gradle` wires them (checked by
    `make makefile-check`); extra targets are a member's own business
-9. `build.gradle` carries the canonical skeleton blocks in order, per the
-   `mc-gradle-builds` skill. Not machine-checked — the file is read and applied,
-   never synced, because `propagate/` copies whole files and every member's
-   build.gradle differs
+9. `build.gradle` carries the canonical skeleton blocks, per the
+   `mc-gradle-builds` skill — the blocks themselves, not their line numbers, and
+   the access-widener and datagen blocks only where the member has those things.
+   Not machine-checked: the file is read and applied, never synced, because
+   `propagate/` copies whole files and every member's build.gradle differs
 10. Datagen is either **4-of-4** on the anchors in the `mc-datagen` skill —
     entrypoint, Loom run config, make target, `verifyDatagenIdempotent` — or
-    deliberately none of the four, recorded in `AGENTS.md`. A partial set is drift:
-    CI gates the idempotency step on the task existing, and the task itself passes
-    vacuously without the entrypoint
+    deliberately none of the four, recorded in `AGENTS.md`. The one carve-out is
+    the scaffold state the skill describes: run config, make target, and verify
+    task in place ahead of the entrypoint, while a member is getting ready to
+    generate. Any other partial set is drift, because CI gates the idempotency
+    step on the task existing and the task itself passes vacuously without the
+    entrypoint
 
 Future members (Husbandry, Apothecary, …) are created from this layout before any
 code exists — Prosperity is the template.
