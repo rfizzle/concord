@@ -1,0 +1,38 @@
+# Guards scripts/check-makefile-targets.py — the checker that holds every member
+# Makefile to the canonical target contract in makefile-targets.json. The drift it
+# looks for is silent by nature: a missing `coverage` target still leaves a
+# working build, it just points readers at the unit-only report, so nothing
+# surfaces until someone quotes the wrong coverage number. Exercise the
+# drift/note classification before it can merge.
+#
+# Only the hermetic unit tests run here. A live scan across the members is
+# `make makefile-check` — it reports currently-known gaps by design, so gating a
+# PR on it would fail every unrelated pull request.
+# Hermetic: no network, python3 only.
+name: Makefile target checker tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/check-makefile-targets.py"
+      - "scripts/test_check_makefile_targets.py"
+      - "makefile-targets.json"
+      - ".github/workflows/makefile-check.yml"
+  push:
+    branches: [master]
+    paths:
+      - "scripts/check-makefile-targets.py"
+      - "scripts/test_check_makefile_targets.py"
+      - "makefile-targets.json"
+      - ".github/workflows/makefile-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run Makefile target checker tests
+        run: python3 -m unittest scripts.test_check_makefile_targets

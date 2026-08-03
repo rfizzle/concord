@@ -1,0 +1,153 @@
+{
+  "description": "Canonical Makefile target contract for every Concord member repo. A member's Makefile is the same file with a different jar name: these recipes are byte-identical across the suite once {modid} is substituted. This file is the machine-readable source of truth, enforced by scripts/check-makefile-targets.py (see `make makefile-check`). `universal` targets are required in every member. `conditional` targets are required only when the member's build.gradle wires the thing they drive, and are a note otherwise, so a member that genuinely has no datagen or no merged-coverage report is not reported as drift. The `help` strings are compared too: help is the one recipe that legitimately varies per member, since it lists only the targets that member has, so it is checked as an ordered projection of these descriptions rather than byte-for-byte. Deliberate per-repo additions beyond this set are notes, never drift \u2014 the contract is a floor, not a ceiling. Prose rules live in REPO-LAYOUT.md; edit both together.",
+  "helpPreamble": "\t@echo \"Targets:\"",
+  "helpOrder": [
+    "build",
+    "jar",
+    "test",
+    "coverage",
+    "run-client",
+    "run-server",
+    "run-datagen",
+    "gen-sources",
+    "refresh-deps",
+    "clean",
+    "version",
+    "release",
+    "site",
+    "site-serve",
+    "sync"
+  ],
+  "universal": [
+    {
+      "target": "build",
+      "help": "Compile, test, and assemble the mod jar",
+      "recipe": [
+        "\t$(GRADLE) build"
+      ]
+    },
+    {
+      "target": "jar",
+      "prerequisites": "build",
+      "help": "Print the path to the built primary jar",
+      "recipe": [
+        "\t@ls -1 build/libs/{modid}-*.jar 2>/dev/null | grep -Ev -- '-(sources|dev|javadoc)\\.jar$$' | head -1"
+      ]
+    },
+    {
+      "target": "test",
+      "help": "Run JUnit tests",
+      "recipe": [
+        "\t$(GRADLE) test"
+      ]
+    },
+    {
+      "target": "run-client",
+      "help": "Launch a dev Minecraft client with the mod loaded",
+      "recipe": [
+        "\t$(GRADLE) runClient"
+      ]
+    },
+    {
+      "target": "run-server",
+      "help": "Launch a dev Minecraft server with the mod loaded",
+      "recipe": [
+        "\t$(GRADLE) runServer"
+      ]
+    },
+    {
+      "target": "gen-sources",
+      "help": "Generate Minecraft sources for IDE navigation",
+      "recipe": [
+        "\t$(GRADLE) genSources"
+      ]
+    },
+    {
+      "target": "refresh-deps",
+      "help": "Refresh Gradle dependencies",
+      "recipe": [
+        "\t$(GRADLE) --refresh-dependencies build"
+      ]
+    },
+    {
+      "target": "clean",
+      "help": "Remove build outputs",
+      "recipe": [
+        "\t$(GRADLE) clean"
+      ]
+    },
+    {
+      "target": "version",
+      "help": "Print the base and git-derived computed version",
+      "recipe": [
+        "\t@echo \"base:     $(BASE_VERSION)\"",
+        "\t@echo \"computed: $$($(GRADLE) -q printVersion 2>/dev/null || echo '(gradle failed; falling back to base)')\""
+      ]
+    },
+    {
+      "target": "release",
+      "help": "Tag v<version> and push it to trigger the release (usage: make release VERSION=X.Y.Z [NO_PUSH=1])",
+      "recipe": [
+        "\t@test -n \"$(VERSION)\" || (echo \"Usage: make release VERSION=X.Y.Z [NO_PUSH=1]\" && exit 1)",
+        "\tgit tag \"v$(VERSION)\"",
+        "\t@$(if $(NO_PUSH),echo \"Tagged v$(VERSION) \u2014 push it with: git push origin v$(VERSION)\",git push origin \"v$(VERSION)\")"
+      ]
+    },
+    {
+      "target": "site",
+      "help": "Build the website from site/ with the shared concord template",
+      "recipe": [
+        "\tnode ../concord/template/scripts/gen-changelog.cjs $(PWD)/site",
+        "\tSITE_DIR=$(PWD)/site npx -y @11ty/eleventy@3.0.0 --config=../concord/template/eleventy.config.cjs --input=../concord/template/src --output=_site"
+      ]
+    },
+    {
+      "target": "site-serve",
+      "help": "Build and serve the website locally with live reload",
+      "recipe": [
+        "\tnode ../concord/template/scripts/gen-changelog.cjs $(PWD)/site",
+        "\tSITE_DIR=$(PWD)/site npx -y @11ty/eleventy@3.0.0 --config=../concord/template/eleventy.config.cjs --input=../concord/template/src --output=_site --serve"
+      ]
+    },
+    {
+      "target": "sync",
+      "help": "Refresh .ai/skills + .ai/commands + .ai/agents from the concord checkout (CONCORD_DIR=../concord)",
+      "recipe": [
+        "\t@test -d $(CONCORD_DIR)/.ai/skills || { echo \"concord checkout not found at $(CONCORD_DIR) (set CONCORD_DIR=...)\"; exit 1; }",
+        "\trsync -a --delete $(CONCORD_DIR)/.ai/skills/ .ai/skills/",
+        "\trsync -a --delete $(CONCORD_DIR)/.ai/commands/ .ai/commands/",
+        "\trsync -a --delete $(CONCORD_DIR)/.ai/agents/ .ai/agents/",
+        "\t@git -C $(CONCORD_DIR) rev-parse HEAD > .ai/skills/.concord-rev",
+        "\t@echo \"synced .ai/skills + .ai/commands + .ai/agents from concord @ $$(git -C $(CONCORD_DIR) rev-parse --short HEAD)\""
+      ]
+    }
+  ],
+  "conditional": [
+    {
+      "target": "coverage",
+      "help": "Run unit tests + gametests and write the merged coverage report",
+      "recipe": [
+        "\t$(GRADLE) test runGametest jacocoMergedReport",
+        "\t@echo \"report: build/reports/jacoco/jacocoMergedReport/html/index.html\"",
+        "\t@echo \"note:   build/reports/jacoco/test/ is unit-tests-only \u2014 not the mod's coverage number\""
+      ],
+      "requiredWhen": {
+        "file": "build.gradle",
+        "contains": "jacocoMergedReport"
+      },
+      "because": "a member that wires the merged report but omits the target undersells its real coverage number: the documented local entry point is missing while build/reports/jacoco/test/ (unit-only) is what a reader finds."
+    },
+    {
+      "target": "run-datagen",
+      "help": "Run Fabric data generation",
+      "recipe": [
+        "\t$(GRADLE) runDatagen"
+      ],
+      "requiredWhen": {
+        "file": "build.gradle",
+        "contains": "datagen {"
+      },
+      "because": "a member with a Loom datagen run config and no target leaves runDatagen discoverable only by reading build.gradle (mc-datagen, anchor 3)."
+    }
+  ]
+}

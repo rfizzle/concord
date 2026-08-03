@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check pull-members agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test art-verify art-verify-all status status-test sync-test labels-check labels-test release-test gametest-check gametest-test help
+.PHONY: catalog catalog-check pull-members agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test art-verify art-verify-all status status-test sync-test labels-check labels-test release-test gametest-check gametest-test makefile-check makefile-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -30,6 +30,8 @@ help:
 	@echo "release-test   run the release publisher's unit tests"
 	@echo "gametest-check report members whose gametest suite is misregistered"
 	@echo "gametest-test  run the gametest-manifest checker's unit tests"
+	@echo "makefile-check report members whose Makefile drifts from makefile-targets.json"
+	@echo "makefile-test  run the Makefile-target checker's unit tests"
 
 catalog:
 	@$(PY) scripts/gen-skills-catalog.py
@@ -137,3 +139,15 @@ gametest-check:
 
 gametest-test:
 	@$(PY) -m unittest scripts.test_check_gametest_manifest
+
+# Diff each sibling member's Makefile against the canonical target contract in
+# makefile-targets.json — the 13 universal targets byte-for-byte (modulo the jar
+# name), the two conditional ones against whether build.gradle wires what they
+# drive, and the help menu as an ordered projection of the contract's
+# descriptions. Reports known gaps by design, so it is a local/scheduled check
+# rather than a PR gate.
+makefile-check:
+	@$(PY) scripts/check-makefile-targets.py --root ..
+
+makefile-test:
+	@$(PY) -m unittest scripts.test_check_makefile_targets
