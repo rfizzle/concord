@@ -300,6 +300,118 @@ class CheckMakefileTargets(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertIn("no Makefile found", err)
 
+    def test_conditional_target_with_drifted_recipe_is_drift(self) -> None:
+        """A present conditional target is held to its recipe like any other."""
+        self._makefile(
+            CLEAN_MAKEFILE.replace(
+                "$(GRADLE) test runGametest jacocoMergedReport",
+                "$(GRADLE) test jacocoMergedReport",
+            )
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("coverage: recipe differs from the contract", err)
+
+    def test_help_line_for_an_ungoverned_target_does_not_trip_ordering(self) -> None:
+        """The contract is a floor: a member may document its own targets."""
+        self._makefile(
+            CLEAN_MAKEFILE.replace(
+                ".PHONY: help build jar coverage",
+                ".PHONY: help build jar coverage bootstrap",
+            ).replace(
+                '\t@echo "  coverage ',
+                '\t@echo "  bootstrap    Set up a fresh checkout"\n'
+                '\t@echo "  coverage ',
+                1,
+            )
+            + "\nbootstrap:\n\t./scripts/bootstrap.sh\n"
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("in the order", err)
+
+    def test_help_entries_outside_the_help_recipe_are_ignored(self) -> None:
+        """Another target echoing a menu line must not invent help drift."""
+        self._makefile(
+            CLEAN_MAKEFILE.replace(
+                ".PHONY: help build jar coverage",
+                ".PHONY: help build jar coverage ci-help",
+            )
+            + '\nci-help:\n\t@echo "  smoke        Run the smoke suite"\n'
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("smoke", err)
+
+    def test_reworded_help_preamble_is_drift(self) -> None:
+        self._makefile(CLEAN_MAKEFILE.replace('@echo "Targets:"', '@echo "Usage:"'))
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("help: opens with", err)
+
+    def test_duplicate_help_entry_is_named_as_such(self) -> None:
+        self._makefile(
+            CLEAN_MAKEFILE.replace(
+                '\t@echo "  jar          Print the path to the built primary jar"\n',
+                '\t@echo "  jar          Print the path to the built primary jar"\n' * 2,
+            )
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("help: lists jar more than once", err)
+
+    def test_comment_inside_a_recipe_is_not_drift(self) -> None:
+        """make ignores it, so it must not read as a changed recipe."""
+        self._makefile(
+            CLEAN_MAKEFILE.replace(
+                "build:\n\t$(GRADLE) build",
+                "build:\n\t# the standard entry point\n\t$(GRADLE) build",
+            )
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+
+    def test_phony_backslash_continuation_is_followed(self) -> None:
+        self._makefile(
+            CLEAN_MAKEFILE.replace(
+                ".PHONY: help build jar coverage",
+                ".PHONY: help build \\\n\tjar coverage",
+            )
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+
+    def test_file_backed_extra_target_need_not_be_phony(self) -> None:
+        """A member's own real-file rule is not the contract's business."""
+        self._makefile(
+            CLEAN_MAKEFILE + "\nnode_modules: package.json\n\tnpm ci\n"
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("shadows the target", err)
+
+    def test_commented_out_wiring_does_not_owe_a_conditional_target(self) -> None:
+        (self.member_dir / "build.gradle").write_text(
+            "// TODO: wire jacocoMergedReport someday", encoding="utf-8"
+        )
+        self._makefile(
+            CLEAN_MAKEFILE.replace(
+                "coverage:\n\t$(GRADLE) test runGametest jacocoMergedReport\n", ""
+            ).replace(
+                '\t@echo "  coverage     Run unit tests + gametests and write the merged coverage report"\n',
+                "",
+            ).replace(".PHONY: help build jar coverage", ".PHONY: help build jar")
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+        self.assertIn("not wired in this member", err)
+
+    def test_unreadable_makefile_is_a_note_not_a_traceback(self) -> None:
+        (self.member_dir / "Makefile").write_bytes(b"build:\n\t caf\xe9\n")
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+        self.assertIn("unreadable", err)
+
     # --- harness ------------------------------------------------------------
 
     def test_member_not_checked_out_is_skipped(self) -> None:
@@ -325,6 +437,30 @@ class CheckMakefileTargets(unittest.TestCase):
 
     def test_contract_missing_a_required_key_exits_two(self) -> None:
         self.contract.write_text(json.dumps({"universal": []}), encoding="utf-8")
+        with self.assertRaises(SystemExit) as raised:
+            self._run()
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_spec_without_a_recipe_exits_two(self) -> None:
+        broken = json.loads(json.dumps(CONTRACT))
+        del broken["universal"][0]["recipe"]
+        self.contract.write_text(json.dumps(broken), encoding="utf-8")
+        with self.assertRaises(SystemExit) as raised:
+            self._run()
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_conditional_spec_without_required_when_exits_two(self) -> None:
+        broken = json.loads(json.dumps(CONTRACT))
+        del broken["conditional"][0]["requiredWhen"]
+        self.contract.write_text(json.dumps(broken), encoding="utf-8")
+        with self.assertRaises(SystemExit) as raised:
+            self._run()
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_member_entry_without_an_id_exits_two(self) -> None:
+        self.members.write_text(
+            json.dumps({"members": [{"name": "nameless"}]}), encoding="utf-8"
+        )
         with self.assertRaises(SystemExit) as raised:
             self._run()
         self.assertEqual(raised.exception.code, 2)

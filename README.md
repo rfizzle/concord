@@ -43,6 +43,8 @@ every member mod conforms to, and (eventually) the collection landing site serve
 | [`.ai/`](.ai) | Suite-default Claude prompts (`code-reviewer`, `spec-writer`) and `review-criteria.yml` — generic, mod identity comes from each repo's AGENTS.md. Resolution: explicit `prompt-file`/`criteria-file` workflow input → repo-local `.ai/` file (whole-file override) → these defaults |
 | [`.ai/skills/`](.ai/skills) | Canonical `mc-*` domain skills for all member repos. Mod repos keep vendored copies (so Claude Code, Jules, and bare clones all work) and refresh them with `make sync` — edit skills HERE, never in a mod repo. The generated [`CATALOG.md`](.ai/skills/CATALOG.md) (`make catalog`) indexes them — one row per skill, summary + when to read it — and rides the same sync, so each `AGENTS.md` points at it instead of carrying its own table |
 | [`.ai/commands/`](.ai/commands) | Canonical slash commands (`/glyph`, `/sfx`, `/assess`, `/align`, `/implement`) for all member repos — vendored by the same `make sync` target, surfaced to Claude Code via a `.claude/commands` → `.ai/commands` symlink. Edit HERE, never in a mod repo |
+| [`.ai/agents/`](.ai/agents) | Canonical sub-agents the `/implement` pipeline dispatches (`recon`, `domain-reviewer`, `standards-reviewer`, `performance-reviewer`), each pinning its own model. Surfaced via a `.claude/agents` → `.ai/agents` symlink. Vendored by `make sync` only — unlike skills and commands, these do not ride the `concord-sync` PR |
+| [`makefile-targets.json`](makefile-targets.json) | The canonical Makefile target contract — the thirteen universal targets with their exact recipes and `help` descriptions, plus `coverage` and `run-datagen` owed only where `build.gradle` wires them. Enforced by [`check-makefile-targets.py`](scripts/check-makefile-targets.py) (`make makefile-check` locally, the scheduled `makefile-drift` workflow in CI); targets beyond the contract are a member's own business |
 
 ### The CI contract
 
@@ -80,17 +82,23 @@ sync:
 	@test -d $(CONCORD_DIR)/.ai/skills || { echo "concord checkout not found at $(CONCORD_DIR) (set CONCORD_DIR=...)"; exit 1; }
 	rsync -a --delete $(CONCORD_DIR)/.ai/skills/ .ai/skills/
 	rsync -a --delete $(CONCORD_DIR)/.ai/commands/ .ai/commands/
+	rsync -a --delete $(CONCORD_DIR)/.ai/agents/ .ai/agents/
 	@git -C $(CONCORD_DIR) rev-parse HEAD > .ai/skills/.concord-rev
-	@echo "synced .ai/skills + .ai/commands from concord @ $$(git -C $(CONCORD_DIR) rev-parse --short HEAD)"
+	@echo "synced .ai/skills + .ai/commands + .ai/agents from concord @ $$(git -C $(CONCORD_DIR) rev-parse --short HEAD)"
 ```
 
-`.ai/skills/` and `.ai/commands/` in a mod repo are wholly owned by the sync
-(`--delete` propagates removals, whether run locally or by the `concord-sync`
-PR); `.concord-rev` records provenance. Claude Code
-loads them through `.claude/skills` → `.ai/skills` and `.claude/commands` →
-`.ai/commands` symlinks, so the vendored skills and slash commands (like
-`/glyph`) work in every member repo. A repo needing a repo-local skill or
-command puts it outside the synced directory and wires the symlink accordingly.
+This recipe is the canonical one in [`makefile-targets.json`](makefile-targets.json);
+`make makefile-check` holds every member to it.
+
+`.ai/skills/`, `.ai/commands/`, and `.ai/agents/` in a mod repo are wholly owned by
+the sync (`--delete` propagates removals); `.concord-rev` records provenance. The
+`concord-sync` PR carries the first two automatically; `.ai/agents/` travels by
+`make sync` only. Claude Code
+loads them through `.claude/skills` → `.ai/skills`, `.claude/commands` →
+`.ai/commands`, and `.claude/agents` → `.ai/agents` symlinks, so the vendored
+skills, slash commands (like `/glyph`), and sub-agents work in every member repo.
+A repo needing a repo-local skill or command puts it outside the synced directory
+and wires the symlink accordingly.
 
 ## How mod repos reference Concord
 

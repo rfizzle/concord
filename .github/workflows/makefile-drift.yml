@@ -1,0 +1,72 @@
+# Detects members whose Makefile has drifted from the canonical target contract in
+# makefile-targets.json — a missing target, a changed recipe, or a reworded help
+# line. The drift is silent by nature: a member without `coverage` still builds
+# and tests fine, it just has no documented way to reach the merged report, so the
+# gap only surfaces when someone quotes the unit-only number as the mod's coverage.
+# Fetches each member's Makefile and build.gradle fresh via the GitHub API (the
+# members aren't checked out in CI) into a temp mirror, then runs the same checker
+# as `make makefile-check`.
+#
+# build.gradle is mirrored because the contract's two conditional targets are owed
+# only when it wires what they drive — without it every member would read as
+# legitimately having no coverage or datagen target.
+#
+# Reuses CONCORD_DISPATCH_TOKEN (the propagate credential) for read access to
+# member repos. Runs weekly and on demand — not on push/PR — so a member with a
+# known gap doesn't block unrelated pull requests.
+name: Member Makefile target drift
+
+on:
+  schedule:
+    - cron: "58 6 * * 1" # Mondays, 06:58 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Mirror member Makefiles and build files
+        env:
+          GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/members"
+          # Assign first so a jq failure trips errexit (a bare `for x in $(jq…)`
+          # would swallow it and iterate zero times, passing green having checked
+          # nothing).
+          ids=$(jq -r '.members[].id' members.json)
+          [ -n "$ids" ] || { echo "::error::no member ids in members.json"; exit 1; }
+          infra_fail=0
+          for id in $ids; do
+            dir="$root/$id"
+            mkdir -p "$dir"
+            # Both files are expected in every member. A 404 is a finding for the
+            # checker (it reports a missing Makefile as a note), not an infra
+            # failure.
+            for file in Makefile build.gradle; do
+              if content=$(gh api "repos/rfizzle/$id/contents/$file" --jq '.content' 2>err.txt); then
+                if ! printf '%s' "$content" | base64 -d > "$dir/$file"; then
+                  echo "::error::base64 decode failed for $id/$file"
+                  infra_fail=1
+                fi
+              elif grep -qi 'HTTP 404\|Not Found' err.txt; then
+                echo "::notice::$id/$file absent (404)"
+              else
+                # Auth/rate-limit/network/repo-not-found: an infra failure, not
+                # drift. Surface it distinctly so a transient error can't
+                # masquerade as a member with no Makefile and skew the report.
+                echo "::error::fetch failed for $id/$file (not a 404): $(cat err.txt)"
+                infra_fail=1
+              fi
+            done
+          done
+          if [ "$infra_fail" -ne 0 ]; then
+            echo "::error::infrastructure failures mirroring member files — aborting before the check to avoid false positives"
+            exit 1
+          fi
+      - name: Check Makefile targets
+        run: python3 scripts/check-makefile-targets.py --root "$RUNNER_TEMP/members"

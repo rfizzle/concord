@@ -144,8 +144,9 @@ gametest-test:
 # makefile-targets.json — the 13 universal targets byte-for-byte (modulo the jar
 # name), the two conditional ones against whether build.gradle wires what they
 # drive, and the help menu as an ordered projection of the contract's
-# descriptions. Reports known gaps by design, so it is a local/scheduled check
-# rather than a PR gate.
+# descriptions. The scheduled makefile-drift workflow runs the same check against
+# freshly-fetched member files; it is not a PR gate, so a known gap in one member
+# never blocks an unrelated pull request.
 makefile-check:
 	@$(PY) scripts/check-makefile-targets.py --root ..
 
