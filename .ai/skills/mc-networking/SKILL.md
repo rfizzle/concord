@@ -50,21 +50,24 @@ public record EnchantmentInfoPayload(
 
 | Element | Convention |
 |---|---|
-| Class | `<Thing>Payload` — `ConfigSyncPayload`, `EnchantmentInfoPayload`. No direction suffix. |
-| Payload id | `snake_case` of the class's subject, built through `<Mod>.id(...)`: `<mod>:config_sync`. |
-| Package | `network/` in the mod's root package. |
-| Source set | `main/` — both logical sides need the record and codec. |
+| Class | `<Thing>Payload`, optionally `<Thing>S2CPayload` / `<Thing>C2SPayload` |
+| Payload id | `snake_case` of the class's subject, built through `<Mod>.id(...)` |
+| Package | `network/` in the mod's root package |
+| Source set | `main/` — both logical sides need the record and codec |
 
-Direction belongs in the registration call (`playS2C()` vs `playC2S()`), not in
-the name. A `ConfigSyncS2CPayload` registered under `<mod>:config_sync_s2c` says
-the same thing three times and reads differently from its neighbors for no gain.
-The exception is a genuine pair — a request and its reply, or the same subject
-travelling both ways — where the suffix is the only thing distinguishing them.
+Whether to carry a direction suffix is one decision per mod, not per payload.
+Both forms read fine; a mod that mixes them reads badly, and a mod with paired
+request/reply payloads on the same subject needs the suffix to tell them apart.
+Pick one on the first payload and hold it. The id follows the class either way,
+so `TradeIndexS2CPayload` is `<mod>:trade_index_s2c`.
 
-**The config sync payload is a named standard case**, since every mod that gates
-gameplay on config has one: class `ConfigSyncPayload`, id `<mod>:config_sync`,
-package `network/`, carrying the serialized config as one length-bounded string
-(see the `mc-config` skill for what belongs on the wire).
+**The config sync payload is the one exception, and it is fixed suite-wide:**
+class `ConfigSyncPayload`, id `<mod>:config_sync`, package `network/`, carrying
+the serialized config as one length-bounded string (see the `mc-config` skill for
+what belongs on the wire). Every mod that gates gameplay on config has this
+payload and no mod has two of them, so it is the one place a reader moving
+between mods can rely on the name — worth the inconsistency inside a mod that
+suffixes everything else.
 
 ### Renaming a live payload id is not free
 
@@ -379,7 +382,8 @@ player over a config the client could simply have ignored.
 - **Never** mutate world state directly in a network handler callback. Network handlers run on netty threads. Use `server.execute()` or `client.execute()` to schedule work on the main thread.
 - **Always** register both the payload type (via `PayloadTypeRegistry`) AND the handler (via `*PlayNetworking.registerGlobalReceiver`). Missing either causes silent drops or crashes.
 - **Always** route registration through a `<Mod>Networking` class (or per-domain `<Domain>Networking` classes) called from the entrypoint, so the mod's wire surface is listed in one readable place.
-- **Always** name payloads `<Thing>Payload` with a `<mod>:snake_case` id built via `<Mod>.id(...)`, in the `network/` package. Direction lives in `playS2C()`/`playC2S()`, not the class name.
+- **Always** name payloads `<Thing>Payload` with a matching `<mod>:snake_case` id built via `<Mod>.id(...)`, in the `network/` package. Carry a direction suffix on all of a mod's payloads or none of them.
+- **Always** name the config sync payload `ConfigSyncPayload` under `<mod>:config_sync`, whatever the mod's suffix convention — it is the one payload every mod has, and the one whose name is worth relying on across mods.
 - **Never** rename a payload id that has shipped without a version bump. A mismatched id is silently discarded by vanilla's unknown-payload codec — no log, no error — and a config sync that never arrives leaves the client running its own local rules.
 - **Always** register S2C payload types in the common initializer (both sides need to know the type), but register the client handler in `ClientModInitializer` only.
 - **Never** reference client-only classes (screens, renderers) in a payload class that lives in the common source set. The payload record and codec go in `main/`; the client handler goes in `client/`.
