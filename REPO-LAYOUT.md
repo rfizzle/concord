@@ -4,9 +4,8 @@
 > member) mirror each other. Companion to [`VISION.md`](VISION.md).
 
 The rule of thumb: **`src/` is for the compiler, `site/` is for the website,
-everything else that's text or art has exactly one named home.** Meridian,
-Mercantile, Tribulation, and Prosperity all mirror this layout; a new member
-is scaffolded from it before any code exists.
+everything else that's text or art has exactly one named home.** Every member
+mirrors this layout; a new member is scaffolded from it before any code exists.
 
 ---
 
@@ -28,11 +27,13 @@ is scaffolded from it before any code exists.
 │   ├── skills/                #   vendored from concord — refresh via `make sync`
 │   ├── skills/.concord-rev    #   provenance: concord SHA of the last sync
 │   ├── commands/              #   vendored from concord — slash commands (/glyph, /sfx)
+│   ├── agents/                #   vendored from concord — /implement pipeline sub-agents
 │   └── prompts/, review-criteria.yml  # OPTIONAL overrides of the concord defaults
 │
 ├── .claude/                   # Claude Code local state (mostly gitignored)
 │   ├── skills/                #   symlink → ../.ai/skills (vendored skills)
 │   ├── commands/              #   symlink → ../.ai/commands (vendored slash commands)
+│   ├── agents/                #   symlink → ../.ai/agents (vendored sub-agents)
 │   └── settings.local.json    #   gitignored
 │
 ├── .plan/                     # local planning scratchpad (gitignored, never committed)
@@ -55,7 +56,9 @@ is scaffolded from it before any code exists.
 │   ├── pages/<slug>.json      #   one structured-content file per page
 │   ├── assets/                #   logo.png, icon.png, og-image.png, favicons
 │   ├── listing-modrinth.md    #   store listing copy (Mercantile pattern)
-│   └── listing-curseforge.md
+│   ├── listing-curseforge.md
+│   ├── listing-summary.txt    #   ≤256 chars — synced to the Modrinth description
+│   └── github-description.txt #   the GitHub "About" blurb (manual)
 │
 ├── changelogs/                # OPTIONAL hand-authored release notes
 │   └── <version>.md           #   e.g. 1.0.0.md — published verbatim if present
@@ -95,8 +98,15 @@ directory.
 `CLAUDE.md` is a **symlink to `AGENTS.md`** (already true in Tribulation) so every
 agent finds what it expects without content drift. `AGENTS.md` follows the
 Tribulation skeleton: project overview → build commands → source layout →
-conventions (Mojang mappings, `<Mod>.id()` helper, conventional commits) →
-development lifecycle.
+conventions (Mojang mappings, the `MOD_ID` / `LOGGER` / `<Mod>.id()` bootstrap trio
+from the `mc-registration` skill, conventional commits) → **Where things live**
+(the map from a subsystem to its package) → **Compat integrations** (the soft deps
+this mod probes for, and the guard each sits behind — omit it when there are none)
+→ development lifecycle.
+
+Those sections sit **outside** the Concord-owned block and stay repo-owned: they
+describe this mod's packages and this mod's integrations, so there is nothing for
+concord to say. The sync never touches them.
 
 The invariant tail sections — **Working with domain skills**, **Custom art &
 audio**, **Development lifecycle**, **Pull requests & commits**, and **Version
@@ -111,15 +121,49 @@ is retired (it drifted: it hard-coded a skill count). A new repo opts in once by
 pasting the single marker pair; sections added inside the block thereafter
 propagate automatically, no new markers needed.
 
+### `Makefile`
+Thin task shortcuts wrapping gradle, and a fixed contract: the canonical target
+list, recipes, and `help` descriptions live in concord's
+[`makefile-targets.json`](makefile-targets.json) and are checked by
+`make makefile-check`. Thirteen targets are required in every member and are
+byte-identical across the suite once the jar name is substituted — `build`, `jar`,
+`test`, `run-client`, `run-server`, `gen-sources`, `refresh-deps`, `clean`,
+`version`, `release`, `site`, `site-serve`, `sync`.
+
+Two more are required **conditionally**, owed when the member's `build.gradle`
+wires what they drive:
+
+- `coverage` — when `jacocoMergedReport` is wired. Without the target, the
+  documented way to get the mod's real coverage number is missing, and what a
+  reader finds instead is the unit-only report.
+- `run-datagen` — when a Loom `datagen` run config exists (the third of the four
+  datagen anchors in the `mc-datagen` skill).
+
+`help` is the one recipe that varies, because it lists only the targets that
+member has. It is held to the contract as an *ordered projection* of those
+descriptions rather than byte-for-byte — the wording of each line is fixed even
+though the set of lines is not. Targets beyond the contract are a member's own
+business: the list is a floor, not a ceiling.
+
 ### `.ai/` — AI working area
 Committed. `skills/` and `commands/` are **vendored from the concord repo** —
 edit them in concord; the `concord-sync` PR proposes refreshes automatically when
 they change on concord's `master`, or run `make sync` locally to work ahead of it
 (both directories are wholly owned by the sync — removals propagate; `.concord-rev`
 records the source SHA). Claude Code
-reaches them via `.claude/skills` → `.ai/skills` and `.claude/commands` →
-`.ai/commands` symlinks, so vendored skills and slash commands (like `/glyph`)
-work here. The generated `skills/CATALOG.md`
+reaches them via `.claude/skills` → `.ai/skills`, `.claude/commands` →
+`.ai/commands`, and `.claude/agents` → `.ai/agents` symlinks, so vendored skills,
+slash commands (like `/glyph`), and sub-agents work here. All three symlinks are
+committed.
+
+`agents/` holds the sub-agents the `/implement` pipeline dispatches — `recon`,
+`domain-reviewer`, `standards-reviewer`, `performance-reviewer` — each pinning its
+own model in frontmatter. It is vendored from concord like the other two, but on a
+**different channel**: `make sync` rsyncs it, while the automatic `concord-sync` PR
+does not carry it. Editing an agent in concord therefore reaches members only when
+someone runs `make sync`; a member whose agents look stale is not a sync failure.
+
+The generated `skills/CATALOG.md`
 (concord's `make catalog`) indexes the skills and rides the same sync, so
 `AGENTS.md` points at it rather than repeating the list. CI prompts and review criteria
 default to concord's `.ai/`; a repo-local `prompts/*.md` or
@@ -161,7 +205,15 @@ four theme colors), `pages/<slug>.json` (one per page, block-based — schema in
 concord repo's `template/README.md`), and `assets/` (image masters' web copies).
 The shared Concord template renders it; `.github/workflows/site.yml` (≈15 lines,
 calls concord's reusable workflow) deploys it to Pages. Local preview: `make site`.
-Store listing copy (`listing-modrinth.md`, `listing-curseforge.md`) lives here too.
+Store listing copy lives here too, in four files split by how they reach their
+destination. `listing-modrinth.md` and `listing-summary.txt` are **synced**: the
+`listing-sync.yml` stub calls concord's `mod-listing-sync.yml`, which pushes the
+body and — when the summary file is non-empty — the ≤256-character Modrinth
+description, failing the run if it is longer. An absent summary file is skipped
+silently, so a member that wants one has to have one. `listing-curseforge.md` and
+`github-description.txt` are **manual** copy-paste sources — CurseForge has no
+public write API, and the GitHub "About" blurb is set through the repo settings —
+so nothing reads them and nothing will tell you when they go stale.
 Generated `_site/` output is never committed.
 
 ### `scripts/`
@@ -215,19 +267,34 @@ A repo conforms when all of these are true at the same paths:
    and nothing else prose or binary at root
 2. `design/` carries the four fixed names — `VISION.md`, `DESIGN.md`, `SPEC.md`,
    `ASSETS.md` (§2)
-3. `.ai/` with `skills/` vendored from concord (`prompts/` / `review-criteria.yml`
+3. `.ai/` with `skills/`, `commands/`, and `agents/` vendored from concord, and the
+   matching `.claude/` symlinks committed (`prompts/` / `review-criteria.yml`
    only as deliberate whole-file overrides — concord defaults otherwise); no
    committed `.plan/`
 4. `art/logo.png` + `art/icon-128.png` masters; README embeds `art/logo.png`
 5. `site/` contains the structured website content (`site.json`, `pages/`,
-   `assets/`, `listing-*.md`) + a `site.yml` workflow calling concord's reusable
-   build; no committed `docs/` or `_site/` output
+   `assets/`, `listing-*.md`, `listing-summary.txt`, `github-description.txt`) +
+   a `site.yml` workflow calling concord's reusable build; no committed `docs/` or
+   `_site/` output
 6. The standard `.gitignore`, with no committed runtime artifacts (`logs/`, `run/`,
    `replay_pid*`, compiled classes)
 7. The `.github/workflows/` caller stubs match concord's canonical contract —
    each stub's `uses:` ref and `permissions:` block per
    [`workflow-stubs.json`](workflow-stubs.json) (checked by `make stubs-check`);
    per-repo triggers and `with:` inputs (e.g. `curseforge-id`) may vary
+8. The `Makefile` carries the canonical targets per
+   [`makefile-targets.json`](makefile-targets.json) — the thirteen universal ones,
+   plus `coverage` and `run-datagen` where `build.gradle` wires them (checked by
+   `make makefile-check`); extra targets are a member's own business
+9. `build.gradle` carries the canonical skeleton blocks in order, per the
+   `mc-gradle-builds` skill. Not machine-checked — the file is read and applied,
+   never synced, because `propagate/` copies whole files and every member's
+   build.gradle differs
+10. Datagen is either **4-of-4** on the anchors in the `mc-datagen` skill —
+    entrypoint, Loom run config, make target, `verifyDatagenIdempotent` — or
+    deliberately none of the four, recorded in `AGENTS.md`. A partial set is drift:
+    CI gates the idempotency step on the task existing, and the task itself passes
+    vacuously without the entrypoint
 
 Future members (Husbandry, Apothecary, …) are created from this layout before any
 code exists — Prosperity is the template.
