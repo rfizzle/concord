@@ -184,11 +184,12 @@ private static JsonObject lang() {
 
 What to pin — pick the contracts the mod actually relies on:
 
-- **Config lang contract** — every `config.<mod>.<section>.<key>` label has a
-  matching non-blank `.tooltip` key, so the Cloth screen never renders a raw
-  key. Collect all misses into a list before asserting, so the failure names
-  exactly which keys are missing (exclude `.title`, `.category.*`, and
-  `.tooltip` keys themselves from the label sweep):
+- **Config lang contract** — every `config.<mod>.*` field label has a matching
+  non-blank `.tooltip` key, so the Cloth screen never renders a raw key. Collect
+  all misses into a list before asserting, so the failure names exactly which
+  keys are missing (exclude `.title`, `.category.*`, enum option labels, and
+  `.tooltip` keys themselves from the label sweep — see the `mc-config` skill for
+  the full key vocabulary):
 
   ```java
   @Test
