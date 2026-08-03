@@ -70,7 +70,7 @@ considered, name the chosen one and one sentence on why.>
 For each triggered `mc-*` skill, name it and the specific constraint it places
 on THIS change — not "consult it", but what it forces you to do:
 - `mc-networking` — <e.g. payload is a record implementing CustomPacketPayload
-  with a StreamCodec; register both ends in <mod>Networking.>
+  with a StreamCodec; register both ends in <Mod>Networking.>
 - `mc-registration` — <e.g. new items go through the central registry class,
   not an ad-hoc Registry.register call.>
 - <… or "No mc-* skill is triggered by this change." if none apply.>
