@@ -1,11 +1,11 @@
 {
-  "generated": "2026-08-03",
+  "generated": "2026-08-04",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 151,
+    "downloads": 156,
     "followers": 4,
-    "openIssues": 27
+    "openIssues": 29
   },
   "members": [
     {
@@ -22,7 +22,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-29"
+        "date": "2026-08-03"
       },
       "openIssues": 2,
       "modrinth": null
@@ -41,12 +41,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-29"
+        "date": "2026-08-03"
       },
-      "openIssues": 5,
+      "openIssues": 6,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 96,
+        "downloads": 99,
         "followers": 2
       }
     },
@@ -64,12 +64,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-29"
+        "date": "2026-08-03"
       },
-      "openIssues": 2,
+      "openIssues": 3,
       "modrinth": {
         "slug": "tribulation-difficulty-overhaul",
-        "downloads": 25,
+        "downloads": 27,
         "followers": 1
       }
     },
@@ -87,7 +87,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-29"
+        "date": "2026-08-03"
       },
       "openIssues": 3,
       "modrinth": {
@@ -107,7 +107,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-29"
+        "date": "2026-08-03"
       },
       "openIssues": 2,
       "modrinth": null
@@ -123,7 +123,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-29"
+        "date": "2026-08-03"
       },
       "openIssues": 4,
       "modrinth": null
@@ -139,7 +139,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-07-29"
+        "date": "2026-08-03"
       },
       "openIssues": 5,
       "modrinth": null
@@ -154,8 +154,8 @@
       "release": null,
       "ci": {
         "status": "completed",
-        "conclusion": "action_required",
-        "date": "2026-07-29"
+        "conclusion": "success",
+        "date": "2026-08-03"
       },
       "openIssues": 4,
       "modrinth": null
