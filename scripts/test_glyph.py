@@ -215,6 +215,97 @@ class AnalyzeTests(unittest.TestCase):
         self.assertFalse(any("mixes accents" in w for w in warns))
 
 
+class AccentOwnershipTests(unittest.TestCase):
+    """The mixed-accent check reads ownership, not spelling.
+
+    An accent belongs to its mod however a legend writes it, so the bare alias
+    block cannot be used to opt out of DESIGN-SYSTEM.md §2 rule 1. The shared
+    material tones are the deliberate exception.
+    """
+
+    def _warns(self, legend):
+        _, warns, _ = analyze_spec(f"legend:\n{legend}frame:\n  ab\n  ba\n")
+        return [w for w in warns if "mixes accents" in w]
+
+    def test_bare_alias_resolves_to_its_owning_mod(self):
+        # `crimson` is Tribulation's; pairing it with Mercantile's emerald is
+        # the same violation as `tribulation.crimson` would be.
+        self.assertTrue(self._warns("  a mercantile.emerald\n  b crimson\n"))
+
+    def test_bare_alias_of_the_same_mod_is_clean(self):
+        # Mixed spellings of one mod's own accents are only a style choice.
+        self.assertFalse(self._warns("  a tribulation.crimson\n  b ember\n"))
+
+    def test_alias_whose_name_does_not_carry_its_mod(self):
+        # `arcane` is meridian.purple and `diamond` is prosperity.cyan — the
+        # alias names match no prefix, so ownership has to come from the colour.
+        self.assertTrue(self._warns("  a arcane\n  b tribulation.crimson\n"))
+        self.assertTrue(self._warns("  a diamond\n  b cultivation.leaf\n"))
+
+    def test_bare_own_accent_with_a_foreign_namespaced_one_warns(self):
+        # A Tribulation glyph reaching for a named Prosperity accent. Counting
+        # only namespaced tokens saw one prefix here and stayed silent.
+        self.assertTrue(self._warns(
+            "  a crimson\n  b prosperity.gold-deep\n"))
+
+    def test_ramp_step_of_a_bare_alias_resolves(self):
+        # Resolution has to survive the ramp-base stripping parse_spec does.
+        self.assertTrue(self._warns("  a crimson-1\n  b mercantile.emerald+1\n"))
+
+    def test_shared_material_tone_is_owned_by_no_mod(self):
+        self.assertEqual(glyph.ACCENT_OWNERS["metal.gold"], frozenset())
+        self.assertFalse(self._warns("  a mercantile.emerald\n  b metal.gold\n"))
+        self.assertFalse(self._warns("  a metal.gold\n  b metal.gold-deep\n"))
+
+    def test_bare_gold_is_the_shared_tone_not_either_brand(self):
+        # Meridian and Prosperity both list #ffd700 as an accent (§2), so the
+        # metal carries no one's identity and the bare spelling names it.
+        self.assertEqual(glyph.ACCENT_OWNERS["gold"], frozenset())
+        self.assertFalse(self._warns("  a mercantile.emerald\n  b gold\n"))
+
+    def test_namespaced_gold_still_belongs_to_its_mod(self):
+        # The shared tone does not launder the branded spellings.
+        self.assertTrue(self._warns(
+            "  a meridian.gold\n  b tribulation.crimson\n"))
+
+    def test_neutrals_are_owned_by_no_mod(self):
+        for token in ("ink", "card", "elevated", "bone", "ash", "smoke"):
+            self.assertEqual(glyph.ACCENT_OWNERS[token], frozenset(), token)
+
+    def test_warning_names_the_offending_tokens(self):
+        # Reporting bare mod names alone would tell a spec whose only Meridian
+        # colour is spelled `arcane` that it mixes in a mod it never mentions.
+        warns = self._warns("  a arcane\n  b tribulation.crimson\n")
+        self.assertTrue(any("meridian (arcane)" in w for w in warns), warns)
+        self.assertTrue(
+            any("tribulation (tribulation.crimson)" in w for w in warns), warns)
+
+    def test_every_bare_token_is_a_neutral_a_metal_or_an_owned_alias(self):
+        # Guards the next palette addition: a bare entry that is neither a
+        # role, a material, nor traceable to an accent is a hole in the rule.
+        for token in glyph.NAMED_COLORS:
+            if "." in token:
+                continue
+            targets = glyph._alias_targets(token)
+            if not targets:
+                self.assertEqual(glyph.ACCENT_OWNERS[token], frozenset(), token)
+                continue
+            prefixes = {t.split(".", 1)[0] for t in targets}
+            shared = prefixes & set(glyph.SHARED_NAMESPACES)
+            self.assertTrue(shared or glyph.ACCENT_OWNERS[token], token)
+
+    def test_ownership_is_derived_from_the_palette(self):
+        # Every namespaced accent resolves to its own prefix, so adding one
+        # teaches the check about it without a second table to keep in step.
+        for token in glyph.NAMED_COLORS:
+            if "." not in token:
+                continue
+            prefix = token.split(".", 1)[0]
+            want = (frozenset() if prefix in glyph.SHARED_NAMESPACES
+                    else frozenset((prefix,)))
+            self.assertEqual(glyph.ACCENT_OWNERS[token], want, token)
+
+
 class RampTests(unittest.TestCase):
     def test_step_tokens_resolve(self):
         base = glyph.parse_color("mercantile.emerald")
@@ -657,6 +748,16 @@ class SnapPaletteTests(unittest.TestCase):
         self.assertEqual(name, "mercantile.emerald")
         self.assertEqual(dist, 0.0)
 
+    def test_a_shared_metal_snaps_to_the_metal_not_a_brand(self):
+        # Three tokens hold #ffd700. A raw gold in an arbitrary mod's spec is
+        # almost never a claim on Meridian's or Prosperity's identity, so the
+        # suggestion that keeps the spec conformant is the shared tone.
+        for hex_, want in (("#ffd700", "metal.gold"),
+                           ("#daa520", "metal.gold-deep")):
+            name, dist, _ = glyph.nearest_token(glyph.parse_color(hex_))
+            self.assertEqual(name, want)
+            self.assertEqual(dist, 0.0)
+
     def test_a_hand_mixed_shadow_finds_a_ramp_step(self):
         # The exact case that motivated ramp steps: a manual emerald shadow.
         name, dist, _ = glyph.nearest_token(glyph.parse_color("#2c8a57"))
@@ -686,6 +787,21 @@ class SnapPaletteTests(unittest.TestCase):
             self.assertIn("mercantile.emerald", out)
             self.assertIn("Suggestions only", out)
             self.assertFalse((d / "s.png").exists())
+
+    def test_list_colors_groups_the_palette_by_owner(self):
+        # DESIGN-SYSTEM.md §8 and the skill both send authors here to learn the
+        # palette, so this output has to teach the rule the renderer enforces.
+        rc, out, _ = run_main(["--list-colors"])
+        self.assertEqual(rc, 0)
+        for heading in ("shared neutrals", "shared material tones",
+                        "per-mod accents", "bare aliases"):
+            self.assertIn(heading, out)
+        self.assertIn("crimson", out)
+        self.assertTrue(any(ln.split() == ["crimson", "#dc143c", "=", "tribulation"]
+                            for ln in out.splitlines()), out)
+        self.assertTrue(any(ln.startswith("    gold ")
+                            and ln.endswith("= shared material tone")
+                            for ln in out.splitlines()), out)
 
     def test_cli_says_so_when_nothing_to_snap(self):
         with tempfile.TemporaryDirectory() as tmp:
