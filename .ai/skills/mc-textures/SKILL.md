@@ -25,10 +25,10 @@ A texture is conformant when it:
   mod's art, and the bare spelling of one is still that mod's — `crimson` is
   Tribulation's exactly as `tribulation.crimson` is, and the renderer says so either
   way. Only the `metal.` tones are free to appear anywhere: a brass pivot is a
-  material, not a brand. The tonal steps a shaded surface needs are **ramp
-  steps off those tokens** — `emerald+1` toward the highlight, `emerald-2` toward
-  shadow — so shading stays inside the palette instead of scattering raw hex through
-  the legend. `--ramp <token>` prints a ready-made ramp as paste-ready legend lines, and
+  material, not a brand. The tonal steps a shaded surface needs are **ramp steps off
+  those tokens** — `mercantile.emerald+1` toward the highlight, `mercantile.emerald-2`
+  toward shadow — so shading stays inside the palette instead of scattering raw hex
+  through the legend. `--ramp <token>` prints a ready-made ramp as paste-ready legend lines, and
   `--snap-palette` reports the nearest token for each raw-hex entry in an existing legend;
   steps cool and saturate going down, warm and pale going up, which is what makes a
   ramp read as light on a form rather than as a dimmer switch. A raw-hex legend entry
@@ -149,8 +149,9 @@ then iterate the grid — fixing pixel art is fast (edit the `.glyph`, re-run). 
 also measures the grid against this quality bar and says where it falls short. **Warnings**
 are quality-bar violations — a surface left as a flat fill, a silhouette with no `ink`
 outline, a border neither the spec's `kind:` nor its `edge:` accounts for, a join that
-would seam when tiled, an animation frame identical to the one before it, a legend
-borrowing another mod's accent.
+would seam when tiled, an animation frame identical to the one before it, a legend that
+mixes two mods' accents. The mix is what the renderer can see: a glyph built entirely
+from a foreign mod's accents holds to one identity and passes, so that one is on you.
 **Notes** are advisory — raw hex where a token would do, a missing `kind:`. Fix the
 warnings; work through the notes as you touch the art. It reports the motif's detached pieces too — a
 glint or a hanging link is deliberate, a stray pixel is not, and only you can tell which

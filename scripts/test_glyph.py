@@ -280,30 +280,50 @@ class AccentOwnershipTests(unittest.TestCase):
         self.assertTrue(
             any("tribulation (tribulation.crimson)" in w for w in warns), warns)
 
-    def test_every_bare_token_is_a_neutral_a_metal_or_an_owned_alias(self):
-        # Guards the next palette addition: a bare entry that is neither a
-        # role, a material, nor traceable to an accent is a hole in the rule.
+    # The bare tokens that name a role rather than a colour anyone owns. Listed
+    # by hand because that is the whole point: a bare entry is only unowned if
+    # it is one of these, never merely because nothing happened to match it.
+    ROLE_TOKENS = {"ink", "card", "elevated", "bone", "ash", "smoke"}
+
+    def test_every_bare_token_is_a_role_a_metal_or_an_owned_alias(self):
+        # Guards the next palette addition. An alias added with a hex that
+        # matches no accent — a typo'd digit, or one added before its
+        # namespaced twin — resolves to no owner, and an unowned token is
+        # dropped from the mixed-accent check entirely. Trusting the absence of
+        # a match to mean "shared" is how that entry would ship silently.
         for token in glyph.NAMED_COLORS:
             if "." in token:
                 continue
             targets = glyph._alias_targets(token)
             if not targets:
-                self.assertEqual(glyph.ACCENT_OWNERS[token], frozenset(), token)
+                self.assertIn(token, self.ROLE_TOKENS,
+                              f"{token} traces to no accent and names no role")
                 continue
             prefixes = {t.split(".", 1)[0] for t in targets}
             shared = prefixes & set(glyph.SHARED_NAMESPACES)
             self.assertTrue(shared or glyph.ACCENT_OWNERS[token], token)
 
+    def test_an_alias_matching_no_accent_is_caught(self):
+        # The regression for the above: the guard has to fail on the orphan,
+        # not shrug at it.
+        glyph.NAMED_COLORS["sapphire"] = "#2a5fd6"
+        try:
+            with self.assertRaises(AssertionError):
+                self.test_every_bare_token_is_a_role_a_metal_or_an_owned_alias()
+        finally:
+            del glyph.NAMED_COLORS["sapphire"]
+
     def test_ownership_is_derived_from_the_palette(self):
-        # Every namespaced accent resolves to its own prefix, so adding one
-        # teaches the check about it without a second table to keep in step.
-        for token in glyph.NAMED_COLORS:
-            if "." not in token:
-                continue
-            prefix = token.split(".", 1)[0]
-            want = (frozenset() if prefix in glyph.SHARED_NAMESPACES
-                    else frozenset((prefix,)))
-            self.assertEqual(glyph.ACCENT_OWNERS[token], want, token)
+        # Ownership comes off the table rather than a list kept beside it, so a
+        # newly added accent is understood without a second edit. Checked
+        # against named expectations, not against the resolver's own formula.
+        for token, want in (("meridian.purple", {"meridian"}),
+                            ("prosperity.cyan", {"prosperity"}),
+                            ("arcane", {"meridian"}),
+                            ("diamond", {"prosperity"}),
+                            ("candleglow", {"respite"}),
+                            ("metal.gold-deep", set())):
+            self.assertEqual(glyph.ACCENT_OWNERS[token], frozenset(want), token)
 
 
 class RampTests(unittest.TestCase):
@@ -796,12 +816,18 @@ class SnapPaletteTests(unittest.TestCase):
         for heading in ("shared neutrals", "shared material tones",
                         "per-mod accents", "bare aliases"):
             self.assertIn(heading, out)
-        self.assertIn("crimson", out)
-        self.assertTrue(any(ln.split() == ["crimson", "#dc143c", "=", "tribulation"]
-                            for ln in out.splitlines()), out)
-        self.assertTrue(any(ln.startswith("    gold ")
-                            and ln.endswith("= shared material tone")
-                            for ln in out.splitlines()), out)
+        # Read the rows back as fields rather than as exact lines, so the next
+        # spacing tweak doesn't have to come here.
+        rows = {}
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].startswith("#"):
+                rows[parts[0]] = " ".join(parts[3:]) if "=" in parts else ""
+        self.assertEqual(rows.get("crimson"), "tribulation")
+        self.assertEqual(rows.get("gold"), "shared material tone")
+        self.assertEqual(rows.get("arcane"), "meridian")
+        self.assertEqual(rows.get("ink"), "")          # a role, owned by no one
+        self.assertEqual(rows.get("metal.gold"), "")   # its own group, not an alias
 
     def test_cli_says_so_when_nothing_to_snap(self):
         with tempfile.TemporaryDirectory() as tmp:

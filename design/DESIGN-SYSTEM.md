@@ -73,11 +73,12 @@ Those tones carry the `metal.` namespace and belong to no one:
 
 Gold is shared exactly because rule 2 lets Meridian and Prosperity both list it: where
 two mods hold one accent in common, identity is carried by the *pair*, so the metal on
-its own claims nothing. `meridian.gold` and `prosperity.gold` remain each mod's own,
-for the surfaces where the pair does the identifying.
+its own claims nothing. `meridian.gold` and `prosperity.gold` are each mod's own, for
+the surfaces where the pair does the identifying.
 
-A tone is admitted here on the same terms as a palette (§7): it names a material
-rather than a mood, and no mod holds it as a distinguishing half of its pair.
+A tone is admitted here by its own bar, checked the way §7 checks a palette: it names a
+material rather than a mood, and no mod — including the rows §2 reserves for shortlisted
+members — holds it as a distinguishing half of its pair.
 
 ## 3. Typography
 
@@ -146,7 +147,8 @@ Masters live in each repo's `art/`; `docs/` and `assets/` hold derived copies
 A future member's palette is conformant when: surfaces are a dark tint of its primary
 hue in the `#1a..`/`#2e..` value range; both accents pass the pairing rule against every
 row of §2 (including reserved rows); text/surface roles use the shared neutrals
-unchanged; and the logo follows the §4 formula with a single new motif object.
+unchanged; and the logo follows the §4 formula with a single new motif object. A shared
+material tone (§2) is admitted on its own bar, not this one.
 
 ## 8. Textures
 

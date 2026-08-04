@@ -255,8 +255,9 @@ def _alias_targets(token):
     """
     if "." in token:
         return ()
-    hex_ = NAMED_COLORS.get(token)
-    return tuple(n for n, v in NAMED_COLORS.items() if "." in n and v == hex_)
+    hex_ = (NAMED_COLORS.get(token) or "").lower()
+    return tuple(n for n, v in NAMED_COLORS.items()
+                 if "." in n and v.lower() == hex_ and hex_)
 
 
 def _accent_owners(token):
@@ -456,7 +457,7 @@ def parse_color(token):
         if base is None:
             raise SpecError(
                 f"unknown color {token!r} — use #hex, a named token, or a ramp "
-                f"step like 'emerald-2' (run --list-colors)"
+                f"step like 'mercantile.emerald-2' (run --list-colors)"
             )
         if abs(step) > RAMP_MAX_STEP:
             raise SpecError(
@@ -1121,17 +1122,24 @@ def nearest_token(rgba):
     Returns (name, distance, colour). Ramp steps are candidates too — that is
     where most legacy shadow and highlight tones actually live, since they were
     hand-mixed off an accent before ramp steps existed.
+
+    Several tokens can hold one colour: #ffd700 is `metal.gold` and both mods
+    that list gold as an accent. A tie goes to whichever owns nothing, because a
+    raw gold in an arbitrary mod's spec is a material far more often than it is a
+    claim on someone's identity — and suggesting the branded spelling would hand
+    the author a mixed-accent warning as an improvement.
     """
-    best = (None, float("inf"), None)
+    best = (None, float("inf"), None, False)
     for token, hex_ in NAMED_COLORS.items():
         base = parse_color(hex_)
+        owned = bool(ACCENT_OWNERS.get(token))
         for step in range(-RAMP_MAX_STEP, RAMP_MAX_STEP + 1):
             candidate = shade(base, step) if step else base
             d = _rgb_distance(rgba, candidate)
-            if d < best[1]:
+            if d < best[1] or (d == best[1] and best[3] and not owned):
                 name = token if step == 0 else f"{token}{step:+d}"
-                best = (name, d, candidate)
-    return best
+                best = (name, d, candidate, owned)
+    return best[:3]
 
 
 def snap_palette(raw_hex):
@@ -1774,8 +1782,9 @@ def analyze(frames_px, size, used_tokens, raw_hex=(), palette="tokens",
             # mod that appears nowhere in it.
             where = " and ".join(f"{mod} ({', '.join(by_mod[mod])})"
                                  for mod in sorted(by_mod))
-            warn(f"legend mixes accents from {where} — "
-                 f"a mod's accents never appear in another mod's glyph")
+            warn(f"legend mixes accents from {where} — a mod's accents never "
+                 f"appear in another mod's glyph; use your own mod's accent, or "
+                 f"a {SHARED_NAMESPACES[0]}. tone where it is a material")
 
     return lines, findings
 
@@ -1885,7 +1894,7 @@ def main(argv=None):
     ap.add_argument("--ramp", metavar="TOKEN",
                     help="print a tonal ramp off a named token as paste-ready "
                          "legend lines, and exit. A legend can name any step of "
-                         "a token directly (e.g. 'emerald-2', 'gold+1'), which "
+                         "a token directly (e.g. 'mercantile.emerald-2', 'metal.gold+1'), which "
                          "is how a shaded glyph stays on named tokens instead of "
                          "falling back to raw hex")
     ap.add_argument("--ramp-steps", type=int, default=5, metavar="N",
@@ -1931,21 +1940,16 @@ def main(argv=None):
         # Grouped by who owns what, because that is the rule a legend has to
         # hold to — a flat dump reads as one undifferentiated palette and is
         # how a mod's accent ends up in another mod's glyph.
-        groups = {
-            "shared neutrals — the text/surface roles, owned by no mod": [],
-            "shared material tones — a material rather than a brand": [],
-            "per-mod accents — never appear in another mod's art": [],
-            "bare aliases — the same colours without the prefix, owned the same": [],
-        }
+        roles = "shared neutrals — the text/surface roles, owned by no mod"
+        metals = "shared material tones — a material rather than a brand"
+        accents = "per-mod accents — never appear in another mod's art"
+        aliases = "bare aliases — the same colours without the prefix; the owner is unchanged"
+        groups = {roles: [], metals: [], accents: [], aliases: []}
         for name in NAMED_COLORS:
             if "." in name:
-                key = ("shared material tones — a material rather than a brand"
-                       if name.split(".", 1)[0] in SHARED_NAMESPACES
-                       else "per-mod accents — never appear in another mod's art")
-            elif _alias_targets(name):
-                key = "bare aliases — the same colours without the prefix, owned the same"
+                key = metals if name.split(".", 1)[0] in SHARED_NAMESPACES else accents
             else:
-                key = "shared neutrals — the text/surface roles, owned by no mod"
+                key = aliases if _alias_targets(name) else roles
             groups[key].append(name)
         for heading, names in groups.items():
             if not names:

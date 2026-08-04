@@ -32,8 +32,8 @@ never appear in another mod's glyph, and dropping the prefix changes nothing —
 rather than a brand, reach for a `metal.` tone.
 
 The tonal steps your shading needs come from those same tokens: write
-`emerald+1` for one step toward the highlight, `emerald-2` for two toward
-shadow. Run `python3 .ai/skills/mc-textures/scripts/glyph.py --ramp <token>` to
+`mercantile.emerald+1` for one step toward the highlight, `mercantile.emerald-2`
+for two toward shadow. Run `python3 .ai/skills/mc-textures/scripts/glyph.py --ramp <token>` to
 get a whole ramp as paste-ready legend lines (`--ramp-steps N` for a 3- or
 7-step ladder). Reach for raw hex only when a tone genuinely sits off the
 palette — a ramp step keeps the glyph inside the design system, and the steps
