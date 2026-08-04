@@ -42,21 +42,24 @@ def emit(obj, q):
     p = subprocess.run(["jq", "-r", q], input=text, capture_output=True, text=True)
     sys.stdout.write("" if p.stdout.strip() == "null" else p.stdout)
 def parse(argv):
-    # -f and -F are not interchangeable: -f always sends a JSON string, -F infers
-    # the type. Recording which flag carried each field is what lets a test catch
-    # a boolean sent as "true", which the API rejects.
-    method, endpoint, q, fields, typed = "GET", None, None, {}, {}
+    # The body arrives as JSON on stdin, so each value keeps its own type — a
+    # test can tell a real boolean from the string "true", which is what the
+    # refs API rejects. Reading it here rather than off `-f key=value` is also
+    # what lets a file larger than the kernel's per-argument cap be synced.
+    method, endpoint, q, fields = "GET", None, None, {}
     i = 0
     while i < len(argv):
         a = argv[i]
         if a == "-X": method = argv[i+1]; i += 2; continue
         if a == "-q": q = argv[i+1]; i += 2; continue
+        if a == "--input":
+            fields = json.loads(sys.stdin.read()) if argv[i+1] == "-" else {}
+            i += 2; continue
         if a in ("-f", "-F"):
-            k, _, v = argv[i+1].partition("=")
-            fields[k] = v; typed[k] = (a == "-F"); i += 2; continue
+            k, _, v = argv[i+1].partition("="); fields[k] = v; i += 2; continue
         if endpoint is None and not a.startswith("-"): endpoint = a
         i += 1
-    return method, endpoint, q, fields, typed
+    return method, endpoint, q, fields
 def main():
     argv = sys.argv[1:]
     if argv and argv[0] == "pr":
@@ -65,15 +68,14 @@ def main():
         if "create" in argv:
             log({"action": "pr_create"}); sys.stdout.write("https://example/pr/1\n"); return
         return
-    method, endpoint, q, fields, typed = parse(argv[1:])
+    method, endpoint, q, fields = parse(argv[1:])
     repo = STATE["repo"]
     if endpoint == f"repos/{repo}":
         emit({"default_branch": STATE["default_branch"]}, q); return
     if "/git/refs" in endpoint and method == "POST":
         log({"action": "create_ref"}); emit({}, q); return
     if "/git/refs/heads/" in endpoint and method == "PATCH":
-        log({"action": "update_ref", "force": fields.get("force"),
-             "force_typed": typed.get("force")}); emit({}, q); return
+        log({"action": "update_ref", "force": fields.get("force")}); emit({}, q); return
     if "/git/ref/heads/" in endpoint:
         emit({"object": {"sha": STATE["head_sha"]}}, q); return
     if "/git/commits/" in endpoint:
@@ -206,10 +208,20 @@ class OpenSyncPRTest(unittest.TestCase):
         st["tree"][".ai/skills/CATALOG.md"] = "driftsha"   # something to sync
         _, a = self.run_sync(st)
         self.assertEqual(len(a["update_ref"]), 1)
-        reset = a["update_ref"][0]
-        self.assertEqual(reset["force"], "true")
-        self.assertTrue(reset["force_typed"],
-                        "force must go out with -F (typed), not -f (string)")
+        self.assertIs(a["update_ref"][0]["force"], True,
+                      "force must arrive as a JSON boolean, not the string 'true'")
+
+    def test_a_file_larger_than_the_argv_cap_still_syncs(self):
+        # The body travels on stdin, so a file is not bounded by the kernel's
+        # 128 KiB-per-argument limit. Passed as `-f content=…`, a file this size
+        # dies with E2BIG — and the vendored renderers are already close enough
+        # to the cap that ordinary growth reaches it.
+        st = _synced_member()
+        big = ".ai/skills/mc-textures/scripts/glyph.py"
+        st["tree"][big] = "bigdrift"
+        st["contents"][big] = {"content": "# pad\n" * 40000, "sha": "bigdrift"}
+        _, a = self.run_sync(st)
+        self.assertIn(big, a["put"])
 
     def test_non_skill_change_does_not_bump_rev(self):
         st = _synced_member()

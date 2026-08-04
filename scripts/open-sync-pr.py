@@ -65,8 +65,8 @@ VENDORED_PREFIXES = (".ai/skills/", ".ai/commands/")
 CONCORD_REV = ".ai/skills/.concord-rev"
 
 
-def _run(argv: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(argv, capture_output=True, text=True)
+def _run(argv: list[str], stdin: str | None = None) -> subprocess.CompletedProcess:
+    return subprocess.run(argv, input=stdin, capture_output=True, text=True)
 
 
 def _looks_not_found(text: str) -> bool:
@@ -90,20 +90,21 @@ def gh(
     argv = ["gh", "api", endpoint]
     if method:
         argv += ["-X", method]
-    for key, value in (fields or {}).items():
-        # `-f` sends the value as a JSON string, which is right for everything
-        # free-form here — a sha, a branch name, base64 content — and wrong for
-        # a boolean, which the API type-checks. `-F` infers the type instead, so
-        # it is reserved for the values whose type actually matters: a commit
-        # message of "123" must not arrive as a number.
-        if isinstance(value, bool):
-            argv += ["-F", f"{key}={str(value).lower()}"]
-        else:
-            argv += ["-f", f"{key}={value}"]
+    # The body goes over stdin as JSON rather than as `-f key=value` arguments.
+    # A file's base64 content is one argument, and the kernel caps a single
+    # argument at 128 KiB however much room the whole command line has — so
+    # passing it on argv puts a hard ~96 KiB ceiling on any file this script can
+    # sync, and a vendored script that grows past it fails with E2BIG rather
+    # than anything that names the real problem. Encoding the body also keeps
+    # each value's JSON type, which `-f` (always a string) does not: the refs
+    # API type-checks `force`.
+    payload = json.dumps(fields) if fields else None
+    if payload is not None:
+        argv += ["--input", "-"]
 
     last = ""
     for attempt in range(MAX_ATTEMPTS):
-        proc = _run(argv)
+        proc = _run(argv, payload)
         if proc.returncode == 0:
             body = proc.stdout.strip()
             if not body:
