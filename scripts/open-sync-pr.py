@@ -78,7 +78,7 @@ def gh(
     endpoint: str,
     *,
     method: str | None = None,
-    fields: dict[str, str] | None = None,
+    fields: dict[str, object] | None = None,
     allow_missing: bool = False,
 ):
     """Call `gh api`, returning the parsed JSON response.
@@ -91,7 +91,15 @@ def gh(
     if method:
         argv += ["-X", method]
     for key, value in (fields or {}).items():
-        argv += ["-f", f"{key}={value}"]
+        # `-f` sends the value as a JSON string, which is right for everything
+        # free-form here — a sha, a branch name, base64 content — and wrong for
+        # a boolean, which the API type-checks. `-F` infers the type instead, so
+        # it is reserved for the values whose type actually matters: a commit
+        # message of "123" must not arrive as a number.
+        if isinstance(value, bool):
+            argv += ["-F", f"{key}={str(value).lower()}"]
+        else:
+            argv += ["-f", f"{key}={value}"]
 
     last = ""
     for attempt in range(MAX_ATTEMPTS):
@@ -284,7 +292,7 @@ def main(argv: list[str]) -> int:
     # each run starts clean and the PR diff is exactly concord's desired changes.
     if gh(f"repos/{repo}/git/ref/heads/{BRANCH}", allow_missing=True) is not None:
         gh(f"repos/{repo}/git/refs/heads/{BRANCH}", method="PATCH",
-           fields={"sha": head_sha, "force": "true"})
+           fields={"sha": head_sha, "force": True})
     else:
         gh(f"repos/{repo}/git/refs", method="POST",
            fields={"ref": f"refs/heads/{BRANCH}", "sha": head_sha})
