@@ -7,8 +7,9 @@
 
 ## 1. Shared neutral tokens
 
-Identical across every Concord property — websites, listings, OG images. These are the
-only colors that cross mod boundaries.
+Identical across every Concord property — websites, listings, OG images. No mod owns
+them, and on those surfaces they are the only colors that cross mod boundaries. In
+textures they are joined by the shared material tones (§2).
 
 | Token | CSS variable | Hex | Role |
 |---|---|---|---|
@@ -57,6 +58,26 @@ Orange `#E07A3F`.
    full table above.
 3. **HUD tints** use the mod's accent/state colors inside the standard element only
    (see [`../HUD-STANDARD.md`](../HUD-STANDARD.md) §3).
+
+### Shared material tones
+
+Rule 1 governs identity, not substance. A texture sometimes has to depict a material
+any mod may show — a brass pivot on a balance scale, a kintsugi seam across a broken
+heart — and painting it in a mod's accent would stake a brand claim on a fitting.
+Those tones carry the `metal.` namespace and belong to no one:
+
+| Token | Hex | Role |
+|---|---|---|
+| `metal.gold` | `#FFD700` | Gold and brass as a material |
+| `metal.gold-deep` | `#DAA520` | Its shadow tone |
+
+Gold is shared exactly because rule 2 lets Meridian and Prosperity both list it: where
+two mods hold one accent in common, identity is carried by the *pair*, so the metal on
+its own claims nothing. `meridian.gold` and `prosperity.gold` remain each mod's own,
+for the surfaces where the pair does the identifying.
+
+A tone is admitted here on the same terms as a palette (§7): it names a material
+rather than a mood, and no mod holds it as a distinguishing half of its pair.
 
 ## 3. Typography
 
@@ -138,9 +159,12 @@ purity. The only hard cosmetic rule is the vanilla **font** (§3); textures are 
 
 - is **pixel art** — hard pixels, no anti-aliasing or smooth gradients (dither instead),
   a limited palette (≈3–5 colors for a glyph);
-- uses the **design-system colors** as named tokens (`mercantile.emerald`, `ink`, `gold`
-  — run `python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors`), and a mod's accents never appear in
-  another mod's art (§2 rule 1);
+- uses the **design-system colors** as named tokens (`mercantile.emerald`, `ink`,
+  `metal.gold` — run `python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors`,
+  which groups the palette by owner), and a mod's accents never appear in another mod's
+  art (§2 rule 1) — a bare alias carries its mod's identity exactly as the prefixed
+  spelling does, so `crimson` is Tribulation's wherever it is written, and only the
+  shared material tones (§2) are free to appear anywhere;
 - **reads as Minecraft** — sits naturally beside vanilla sprites at the same size; an
   `ink` (`#0a0a0a`) 1px outline so it reads against any background, silhouette before
   detail;

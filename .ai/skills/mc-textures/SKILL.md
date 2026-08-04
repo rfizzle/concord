@@ -19,9 +19,13 @@ A texture is conformant when it:
   32px sprite legitimately runs 20–50 colors. A flat single-tone fill reads as a
   cartoony sticker; that is the failure mode to design against.
 - **uses the design-system palette** — reference colors as named tokens, never raw hex
-  (`python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors` dumps them: shared neutrals like `ink`,
-  `bone`, `gold`, plus per-mod accents like `mercantile.emerald`). A mod's accents never
-  appear in another mod's art. The tonal steps a shaded surface needs are **ramp
+  (`python3 .ai/skills/mc-textures/scripts/glyph.py --list-colors` groups them by owner:
+  shared neutrals like `ink` and `bone`, shared material tones like `metal.gold`, and
+  per-mod accents like `mercantile.emerald`). A mod's accents never appear in another
+  mod's art, and the bare spelling of one is still that mod's — `crimson` is
+  Tribulation's exactly as `tribulation.crimson` is, and the renderer says so either
+  way. Only the `metal.` tones are free to appear anywhere: a brass pivot is a
+  material, not a brand. The tonal steps a shaded surface needs are **ramp
   steps off those tokens** — `emerald+1` toward the highlight, `emerald-2` toward
   shadow — so shading stays inside the palette instead of scattering raw hex through
   the legend. `--ramp <token>` prints a ready-made ramp as paste-ready legend lines, and
@@ -262,7 +266,8 @@ toolchain stays on `box`.
 ## Quick checklist
 
 - [ ] Pixel art: hard edges, limited palette, design-system named tokens (ramp steps
-      for the tonal range, not raw hex), no foreign mod's accents
+      for the tonal range, not raw hex), no foreign mod's accents under either
+      spelling — a shared material belongs to `metal.`, not to a borrowed accent
 - [ ] `ink` outline, single centered motif, legible at native size
 - [ ] `kind:` declared, and an `edge:` line wherever the motif meets the border on purpose
 - [ ] Rendered via `.ai/skills/mc-textures/scripts/glyph.py`; preview read back and judged
