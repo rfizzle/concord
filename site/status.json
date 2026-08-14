@@ -1,9 +1,9 @@
 {
-  "generated": "2026-08-13",
+  "generated": "2026-08-14",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 303,
+    "downloads": 314,
     "followers": 5,
     "openIssues": 29
   },
@@ -27,7 +27,7 @@
       "openIssues": 2,
       "modrinth": {
         "slug": "meridian-enchanting-overhaul",
-        "downloads": 35,
+        "downloads": 42,
         "followers": 1
       }
     },
@@ -73,7 +73,7 @@
       "openIssues": 3,
       "modrinth": {
         "slug": "tribulation-difficulty-overhaul",
-        "downloads": 64,
+        "downloads": 66,
         "followers": 1
       }
     },
@@ -96,7 +96,7 @@
       "openIssues": 3,
       "modrinth": {
         "slug": "prosperity-loot-overhaul",
-        "downloads": 52,
+        "downloads": 54,
         "followers": 1
       }
     },
