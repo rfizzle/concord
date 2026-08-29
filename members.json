@@ -81,7 +81,7 @@
       "tagline": "Every drop counts.",
       "url": "https://distillation.rfizzle.com",
       "store": {
-        "modrinth": { "slug": "distillation-alchemy-overhaul" },
+        "modrinth": { "id": "Klvwaa28", "slug": "distillation-alchemy-overhaul" },
         "curseforge": { "id": "1617729", "slug": "distillation-alchemy-overhaul" }
       },
       "status": "in-development",
@@ -95,7 +95,7 @@
       "tagline": "Worth growing.",
       "url": "https://cultivation.rfizzle.com",
       "store": {
-        "modrinth": { "slug": "cultivation-agriculture-overhaul" },
+        "modrinth": { "id": "V85yEoWP", "slug": "cultivation-agriculture-overhaul" },
         "curseforge": { "id": "1673114", "slug": "cultivation-agriculture-overhaul" }
       },
       "status": "in-development",
@@ -109,7 +109,7 @@
       "tagline": "Worth raising.",
       "url": "https://instinct.rfizzle.com",
       "store": {
-        "modrinth": { "slug": "instinct-husbandry-overhaul" },
+        "modrinth": { "id": "x5aRPdcH", "slug": "instinct-husbandry-overhaul" },
         "curseforge": { "id": "1617731", "slug": "instinct-husbandry-overhaul" }
       },
       "status": "in-development",
