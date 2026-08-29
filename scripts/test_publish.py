@@ -486,5 +486,101 @@ class CurseforgePublishRelationsTest(unittest.TestCase):
         self.assertFalse(ok)
 
 
+_REGISTRY = {
+    "members": [
+        {"id": "tribulation", "store": {
+            "modrinth": {"id": "8KuQhMGI", "slug": "tribulation-difficulty-overhaul"},
+            "curseforge": {"id": "1546072", "slug": "tribulation-difficulty-overhaul"}}},
+        {"id": "meridian", "store": {
+            "modrinth": {"id": "qywREjYt", "slug": "meridian-enchanting-overhaul"},
+            "curseforge": {"id": "1546092", "slug": "meridian-enchanting-overhaul"}}},
+        {"id": "cultivation", "store": {
+            "modrinth": {"slug": "cultivation-agriculture-overhaul"}}},
+    ]
+}
+
+
+class SiblingSlugTest(unittest.TestCase):
+    """A sibling named by mod id must publish under its real store slug.
+
+    The regression is silent and already shipped: prosperity v1.1.0 lists
+    `meridian` in `suggests`, Modrinth could not resolve a project called
+    `meridian`, and the relation was dropped from the published listing with
+    nothing but a warning in the job log.
+    """
+
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self._cwd = os.getcwd()
+        os.chdir(self._dir.name)
+        pathlib.Path("src/main/resources").mkdir(parents=True)
+
+    def tearDown(self):
+        os.chdir(self._cwd)
+        self._dir.cleanup()
+
+    def _deps(self, suggests, *, registry=_REGISTRY,
+              registry_at=".concord/members.json", overrides=None):
+        pathlib.Path("src/main/resources/fabric.mod.json").write_text(json.dumps(
+            {"schemaVersion": 1, "id": "prosperity", "suggests": suggests}))
+        if registry is not None:
+            p = pathlib.Path(registry_at)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(registry))
+        if overrides is not None:
+            p = pathlib.Path(".github/release-slug-overrides.json")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(overrides))
+        return {d["id"]: d for d in publish.load_dependencies()}
+
+    def test_sibling_resolves_to_its_store_slug(self):
+        deps = self._deps({"meridian": "*", "tribulation": "*"})
+        self.assertEqual(deps["meridian"]["modrinth"], "meridian-enchanting-overhaul")
+        self.assertEqual(deps["meridian"]["curseforge"], "meridian-enchanting-overhaul")
+        self.assertEqual(deps["tribulation"]["modrinth"], "tribulation-difficulty-overhaul")
+
+    def test_third_party_id_is_left_alone(self):
+        deps = self._deps({"jade": "*", "meridian": "*"})
+        self.assertEqual(deps["jade"]["modrinth"], "jade")
+        self.assertEqual(deps["jade"]["curseforge"], "jade")
+
+    def test_repo_local_override_beats_the_registry(self):
+        deps = self._deps({"meridian": "*"},
+                          overrides={"meridian": {"modrinth": "hand-picked"}})
+        self.assertEqual(deps["meridian"]["modrinth"], "hand-picked")
+        # The half the override does not state still comes from the registry.
+        self.assertEqual(deps["meridian"]["curseforge"], "meridian-enchanting-overhaul")
+
+    def test_partial_registry_entry_falls_back_per_platform(self):
+        # cultivation has a modrinth slug recorded but no curseforge one.
+        deps = self._deps({"cultivation": "*"})
+        self.assertEqual(deps["cultivation"]["modrinth"], "cultivation-agriculture-overhaul")
+        self.assertEqual(deps["cultivation"]["curseforge"], "cultivation")
+
+    def test_missing_registry_degrades_to_the_bare_id(self):
+        deps = self._deps({"meridian": "*"}, registry=None)
+        self.assertEqual(deps["meridian"]["modrinth"], "meridian")
+
+    def test_unparseable_registry_degrades_without_raising(self):
+        pathlib.Path("src/main/resources/fabric.mod.json").write_text(json.dumps(
+            {"schemaVersion": 1, "id": "prosperity", "suggests": {"meridian": "*"}}))
+        pathlib.Path(".concord").mkdir()
+        pathlib.Path(".concord/members.json").write_text("{not json")
+        deps = {d["id"]: d for d in publish.load_dependencies()}
+        self.assertEqual(deps["meridian"]["modrinth"], "meridian")
+
+    def test_sibling_checkout_path_is_searched_too(self):
+        deps = self._deps({"meridian": "*"}, registry_at="../concord/members.json")
+        self.assertEqual(deps["meridian"]["modrinth"], "meridian-enchanting-overhaul")
+
+    def test_members_file_env_wins_over_the_default_paths(self):
+        other = {"members": [{"id": "meridian",
+                              "store": {"modrinth": {"slug": "from-env"}}}]}
+        pathlib.Path("elsewhere.json").write_text(json.dumps(other))
+        with mock.patch.dict(os.environ, {"MEMBERS_FILE": "elsewhere.json"}):
+            deps = self._deps({"meridian": "*"})
+        self.assertEqual(deps["meridian"]["modrinth"], "from-env")
+
+
 if __name__ == "__main__":
     unittest.main()
