@@ -242,9 +242,11 @@ if it has *persistent ambient state* the player needs while walking around. Futu
 **Visibility:** hidden during F1, open screens, spectator mode, and the death screen —
 all four rules already implemented in Tribulation; normative for everyone.
 
-**Coordination mechanism — fix the current gap.** Today Mercantile hardcodes
-`TRIBULATION_RESERVED_HEIGHT = 22` and offsets if `isModLoaded("tribulation")` — which is
-wrong whenever the Tribulation user disables its HUD or moves its anchor. The standard's
+**Coordination mechanism — closed.** Mercantile once hardcoded a fixed reservation and
+offset on bare `isModLoaded("tribulation")`, which went wrong whenever the Tribulation
+user disabled its HUD or moved its anchor. It now reads the accessors reflectively and
+keeps the fixed value only as a documented fallback for pre-accessor Tribulation
+releases — conformant per [`HUD-STANDARD.md`](HUD-STANDARD.md) §6. The standard's
 coordination rule: each HUD-bearing mod exposes two **client-safe API accessors** in
 its `api` package — `isHudVisible()` and `getHudHeight()` (reflection-backed, safe
 defaults when absent, same pattern as `TribulationAPI.getClientLevel()`). Each mod

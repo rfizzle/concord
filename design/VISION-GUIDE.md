@@ -80,7 +80,13 @@ The suite voice (concord `VISION.md` §2), applied to a player-facing page:
 
 ## The shape
 
-Fixed name `design/VISION.md`, target 60–120 lines — a five-minute read:
+Fixed name `design/VISION.md`, a five-minute read. Length scales with the
+mod's shipped feature count rather than a fixed line budget — the "features,
+as you'll play them" section owes one short entry per feature, so a
+twelve-feature mod cannot say anything useful in the same space as a
+five-feature one. Five of eight members exceeded the old fixed 60–120 target
+and none of them was wrong to; the constraint that matters is **one tight
+paragraph per feature, no feature omitted**:
 
 ```markdown
 # <Mod> — Vision
@@ -153,7 +159,7 @@ Both are true of the same code. Only the second belongs in a vision.
       `VISION.md`, in player words.
 - [ ] Sibling mentions are experiences, each marked never required.
 - [ ] Tagline present, in the suite register.
-- [ ] 60–120 lines — a five-minute read.
+- [ ] One tight paragraph per shipped feature, none omitted — still a five-minute read.
 
 ## How the suite uses it
 
