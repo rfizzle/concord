@@ -12,9 +12,12 @@ CurseForge, being last, only runs when it hasn't already succeeded.
 
 Dependencies come from fabric.mod.json's suggests/recommends (optional), with a
 repo-local .github/release-slug-overrides.json remapping any mod id whose
-platform slug differs from its Fabric id. They are best-effort: an unresolvable
-Modrinth slug is dropped, and a CurseForge upload that fails with relations is
-retried once without them, so a stale sibling slug never blocks a release.
+platform slug differs from its Fabric id. They are best-effort and removed as
+surgically as CurseForge lets us: an unresolvable Modrinth slug is dropped, and
+a CurseForge rejection carrying errorCode 1018 names the offending slug, so only
+that relation is dropped before retrying. Only if the upload still fails does it
+fall back to publishing with no relations at all — a stale sibling slug never
+blocks a release, and never costs the relations that were fine.
 
 The supported environment defaults to client_and_server (the suite is
 client+server mods) and is overridable per mod via the ENVIRONMENT input for the
@@ -28,6 +31,7 @@ import glob
 import json
 import os
 import pathlib
+import re
 import sys
 import time
 
@@ -38,6 +42,21 @@ CURSEFORGE_API = "https://minecraft.curseforge.com/api"
 JAR_CONTENT_TYPE = "application/java-archive"
 OK = (200, 201)
 TIMEOUT = 120
+
+# CurseForge upload-API error codes we can react to rather than just retry.
+# 1018 names the offending slug in its message, which lets us drop that one
+# relation instead of discarding the whole list (the approach Kira-NT/mc-publish
+# takes in curseforge-error.ts).
+CF_INVALID_PROJECT_SLUG = 1018
+CF_INVALID_GAME_VERSION_ID = 1009
+CF_INVALID_SLUG_RE = re.compile(r"Invalid slug in project relations: '([^']*)'")
+
+# Backoff for transient (5xx / transport) failures. CurseForge served four 500s
+# out of five uploads on 2026-08-29 and the release landed on the last attempt
+# the old flat 3x10s budget allowed, so the delay grows and the budget is wider.
+RETRY_ATTEMPTS = 4
+RETRY_BASE_DELAY = 10
+RETRY_MAX_DELAY = 80
 
 
 def log(msg: str) -> None:
@@ -134,11 +153,19 @@ def load_dependencies() -> list[dict]:
     return deps
 
 
-def request_with_retries(method: str, url: str, *, attempts: int = 3, **kwargs):
+def request_with_retries(method: str, url: str, *,
+                         attempts: int = RETRY_ATTEMPTS, **kwargs):
     """Issue a request, retrying only transient failures (transport error or
-    5xx). 2xx and 4xx return immediately so the caller can react (e.g. drop
-    CurseForge relations on a 400). Returns the final Response, or None if every
-    attempt hit a transport error."""
+    5xx) with exponential backoff. 2xx and 4xx return immediately so the caller
+    can react to the body — CurseForge reports a bad relation slug as a 4xx
+    carrying errorCode 1018, which `curseforge_publish` uses to drop just that
+    slug. Returns the final Response, or None if every attempt hit a transport
+    error.
+
+    Note a 5xx is *not* evidence about relations: on 2026-08-29 CurseForge
+    returned 500 both with and without them. Backoff exists for that case, and
+    the relation handling is driven by error codes rather than by exhaustion.
+    """
     response = None
     for attempt in range(1, attempts + 1):
         try:
@@ -152,8 +179,40 @@ def request_with_retries(method: str, url: str, *, attempts: int = 3, **kwargs):
             warn(f"{method} {url} -> HTTP {response.status_code}; "
                  f"attempt {attempt}/{attempts}: {response.text[:300]}")
         if attempt < attempts:
-            time.sleep(10)
+            delay = min(RETRY_BASE_DELAY * (2 ** (attempt - 1)), RETRY_MAX_DELAY)
+            log(f"  retrying in {delay}s")
+            time.sleep(delay)
     return response
+
+
+def curseforge_error(resp) -> dict | None:
+    """Parse a CurseForge upload-API error body, or None if it isn't one."""
+    if resp is None:
+        return None
+    try:
+        body = resp.json()
+    except ValueError:
+        return None
+    if isinstance(body, dict) and isinstance(body.get("errorCode"), int):
+        return body
+    return None
+
+
+def drop_invalid_slug(relations: list[dict], resp) -> str | None:
+    """If `resp` is a 1018 'invalid slug in project relations' error, remove the
+    single slug it names from `relations` in place and return it. Returns None
+    when the error is something else, or names a slug we are not sending —
+    which would otherwise loop forever."""
+    body = curseforge_error(resp)
+    if not body or body.get("errorCode") != CF_INVALID_PROJECT_SLUG:
+        return None
+    match = CF_INVALID_SLUG_RE.search(body.get("errorMessage") or "")
+    if not match:
+        return None
+    slug = match.group(1)
+    before = len(relations)
+    relations[:] = [r for r in relations if r["slug"] != slug]
+    return slug if len(relations) != before else None
 
 
 def read_jar(jar: str) -> bytes:
@@ -338,17 +397,38 @@ def curseforge_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
     log(f"Publishing {jar} to CurseForge project {project}")
     if relations:
         log(f"CurseForge dependencies: {[r['slug'] for r in relations]}")
+
+    # Peel off bad relations one at a time while CurseForge keeps naming them,
+    # so one stale sibling slug costs that slug and not the whole dependency
+    # list. Bounded by the relation count: every pass removes exactly one.
     resp = attempt(include_relations=True)
+    for _ in range(len(relations)):
+        if resp is not None and resp.status_code in OK:
+            break
+        dropped = drop_invalid_slug(relations, resp)
+        if not dropped:
+            break
+        warn(f"CurseForge rejected the relation '{dropped}'; retrying without it")
+        resp = attempt(include_relations=True)
+
+    # Last resort: something about the relations block is wrong in a way
+    # CurseForge did not attribute to a named slug. Publishing without the
+    # optional dependencies beats failing the release.
     if (not resp or resp.status_code not in OK) and relations:
-        warn("CurseForge upload failed; retrying once without optional dependencies")
+        warn("CurseForge upload still failing; retrying once without optional dependencies")
         if resp is not None:
             log(resp.text[:500])
         resp = attempt(include_relations=False)
+
     if not resp or resp.status_code not in OK:
         error(f"CurseForge upload failed (HTTP {getattr(resp, 'status_code', 'n/a')})")
         if resp is not None:
             log(resp.text[:500])
         return False
+    if relations:
+        log(f"CurseForge relations published: {[r['slug'] for r in relations]}")
+    else:
+        warn("CurseForge file published with no dependency relations")
     log(f"✅ Published to CurseForge ({resp.json().get('id', '?')})")
     return True
 
