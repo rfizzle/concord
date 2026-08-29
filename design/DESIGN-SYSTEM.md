@@ -280,6 +280,7 @@ string appears on, one prefix per surface:
 | `item.<mod>.<id>` | Item names (vanilla-mandated) | `item.mercantile.delivery_contract` |
 | `enchantment.<mod>.<id>` | Enchantment names (vanilla-mandated) | `enchantment.tribulation.soulbound` |
 | `fragment.<mod>.*` | **Shared value fragments** — see below | `fragment.respite.moon.waxing_crescent` |
+| `emi.*` / `jei.*` / `rei.*` | Recipe-viewer category titles (**third-party-mandated** — each viewer dictates its own shape, so these do not take a `<mod>`-first prefix) | `emi.category.distillation.brewing` |
 | `entity.<mod>.<id>` | Entity names (vanilla-mandated) | `entity.instinct.pack_leader` |
 | `effect.<mod>.<id>` | Status-effect names (vanilla-mandated) | `effect.respite.weariness` |
 | `itemGroup.<mod>` | The mod's creative tab (vanilla-mandated) | `itemGroup.prosperity` |
@@ -322,6 +323,7 @@ column above has always encoded:
 | Where | Casing | Why |
 |---|---|---|
 | Registry-derived keys (`block.`, `item.`, `entity.`, `effect.`, `enchantment.`, `attribute.`, `death.`, `container.`) | `snake_case` | Vanilla-mandated — the key mirrors a registry id, and registry ids are snake_case. Not ours to rule. |
+| Recipe-viewer keys (`emi.`, `jei.`, `rei.`) | whatever the viewer dictates | Third-party-mandated. The viewer resolves the key, so its shape is not ours to rule either. |
 | `config.<mod>.<field>` labels and their `.tooltip` pairs | `camelCase` | The key mirrors the Java config field it labels, so field and key stay mechanically aligned. [`HUD-STANDARD.md`](../HUD-STANDARD.md) §4 already fixes `hudAnchor` / `hudOffsetX` / `hudOffsetY` on exactly this basis. |
 | `config.<mod>.category.<name>` | `snake_case` | A category names a section, not a field. |
 | Every other authored surface — `command.`, `message.`, `notification.`, `gui.`, `hud.`, `tooltip.`, `info.`, `key.`, `stat.`, `advancements.`, `subtitles.` | `snake_case` | Already unanimous across all eight members (277 keys, zero exceptions) — this codifies what the suite does rather than changing it. |
