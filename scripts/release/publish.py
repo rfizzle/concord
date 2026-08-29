@@ -138,19 +138,66 @@ def load_dependencies() -> list[dict]:
         except (OSError, json.JSONDecodeError) as exc:
             warn(f"Ignoring unparseable {overrides_path} ({exc})")
 
+    siblings = load_sibling_slugs()
+
     ids = sorted(set(meta.get("suggests") or {}) | set(meta.get("recommends") or {}))
     deps = []
     for dep_id in ids:
+        # Precedence: an explicit repo-local override wins, then the hub registry
+        # for siblings, then the bare mod id for third parties.
         override = overrides.get(dep_id, {})
+        sibling = siblings.get(dep_id, {})
         deps.append({
             "id": dep_id,
-            "modrinth": override.get("modrinth", dep_id),
-            "curseforge": override.get("curseforge", dep_id),
+            "modrinth": override.get("modrinth", sibling.get("modrinth", dep_id)),
+            "curseforge": override.get("curseforge", sibling.get("curseforge", dep_id)),
             "type": "optional",
         })
     if deps:
         log(f"Optional dependencies: {[d['id'] for d in deps]}")
+        remapped = [f"{d['id']}->{d['modrinth']}" for d in deps if d["modrinth"] != d["id"]]
+        if remapped:
+            log(f"Resolved store slugs: {remapped}")
     return deps
+
+
+def load_sibling_slugs() -> dict[str, dict]:
+    """Map every Concord member id to its store slugs, from the hub's members.json.
+
+    A member names its siblings in fabric.mod.json's `suggests` by **mod id**
+    (`tribulation`), but both stores list them under a longer slug
+    (`tribulation-difficulty-overhaul`). Left unmapped, Modrinth reports the
+    relation as unresolvable and drops it, so a sibling integration is silently
+    missing from the published listing.
+
+    members.json is the canonical registry of those slugs, so read it rather
+    than restating them in eight repo-local override files where they can drift.
+    The release workflow checks concord out to `.concord/`; MEMBERS_FILE and the
+    sibling-checkout path cover local runs. A missing file is not an error — a
+    bare clone just falls back to the mod id, exactly as before.
+    """
+    for candidate in (env("MEMBERS_FILE"), ".concord/members.json", "../concord/members.json"):
+        if not candidate or not os.path.isfile(candidate):
+            continue
+        try:
+            with open(candidate, encoding="utf-8") as handle:
+                registry = json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            warn(f"Ignoring unparseable {candidate} ({exc})")
+            return {}
+        slugs = {}
+        for member in registry.get("members") or []:
+            store = member.get("store") or {}
+            entry = {}
+            for platform in ("modrinth", "curseforge"):
+                slug = (store.get(platform) or {}).get("slug")
+                if slug:
+                    entry[platform] = slug
+            if member.get("id") and entry:
+                slugs[member["id"]] = entry
+        log(f"Loaded {len(slugs)} sibling store slugs from {candidate}")
+        return slugs
+    return {}
 
 
 def request_with_retries(method: str, url: str, *,
