@@ -137,9 +137,9 @@ the loader hard-fails on a mod the code was written to live without. Every membe
 | `depends.fabric-api` | `"*"` | The real floor is the gradle pin (see below) |
 | `depends.java` | `">=21"` | Matches the toolchain |
 
-Meridian is the one outstanding deviation — exact `"1.21.1"`, a bounded `fabric-api`,
-and `tribulation` under `recommends` with a version floor — tracked as a member work
-item, not a second sanctioned shape.
+All eight members carry this shape. Meridian was the last deviation — exact
+`"1.21.1"`, a bounded `fabric-api`, and `tribulation` under `recommends` with a
+version floor — and adopted the standard shape in rfizzle/meridian#287.
 
 `fabric-api` is unbounded on purpose. The version that actually matters is
 `fabric_version` in [`propagate/versions-common.properties`](propagate/versions-common.properties),
