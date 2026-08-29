@@ -82,7 +82,7 @@
       "url": "https://distillation.rfizzle.com",
       "store": {
         "modrinth": { "slug": "distillation-alchemy-overhaul" },
-        "curseforge": { "slug": "distillation-alchemy-overhaul" }
+        "curseforge": { "id": "1617729", "slug": "distillation-alchemy-overhaul" }
       },
       "status": "in-development",
       "conformance": {
@@ -96,7 +96,7 @@
       "url": "https://cultivation.rfizzle.com",
       "store": {
         "modrinth": { "slug": "cultivation-agriculture-overhaul" },
-        "curseforge": { "slug": "cultivation-agriculture-overhaul" }
+        "curseforge": { "id": "1673114", "slug": "cultivation-agriculture-overhaul" }
       },
       "status": "in-development",
       "conformance": {
@@ -110,7 +110,7 @@
       "url": "https://instinct.rfizzle.com",
       "store": {
         "modrinth": { "slug": "instinct-husbandry-overhaul" },
-        "curseforge": { "slug": "instinct-husbandry-overhaul" }
+        "curseforge": { "id": "1617731", "slug": "instinct-husbandry-overhaul" }
       },
       "status": "in-development",
       "conformance": {
