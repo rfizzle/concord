@@ -279,6 +279,7 @@ string appears on, one prefix per surface:
 | `block.<mod>.<id>` | Block names (vanilla-mandated) | `block.meridian.stoneshelf` |
 | `item.<mod>.<id>` | Item names (vanilla-mandated) | `item.mercantile.delivery_contract` |
 | `enchantment.<mod>.<id>` | Enchantment names (vanilla-mandated) | `enchantment.tribulation.soulbound` |
+| `fragment.<mod>.*` | **Shared value fragments** — see below | `fragment.respite.moon.waxing_crescent` |
 | `entity.<mod>.<id>` | Entity names (vanilla-mandated) | `entity.instinct.pack_leader` |
 | `effect.<mod>.<id>` | Status-effect names (vanilla-mandated) | `effect.respite.weariness` |
 | `itemGroup.<mod>` | The mod's creative tab (vanilla-mandated) | `itemGroup.prosperity` |
@@ -286,6 +287,22 @@ string appears on, one prefix per surface:
 | `death.attack.<mod>.*` | Custom death messages (vanilla-mandated shape) | `death.attack.tribulation.soul_drain` |
 | `container.<mod>.*` | Screen-handler titles (vanilla-mandated) | `container.meridian.library` |
 | `attribute.name.<mod>.*` | Custom attribute names (vanilla-mandated) | `attribute.name.instinct.temperament` |
+
+**Shared value fragments.** One prefix per surface breaks down for a string that is
+not *on* a surface: a noun phrase composed into a `%s` slot on two or more surfaces at
+once. Respite formats a moon phase (`"waxing crescent"`) into both a chronometer
+notification and a Jade tooltip; Tribulation names a champion affix in a mob nameplate
+and again in a tooltip. Filing such a string under either surface makes it a lie on the
+other, and duplicating it under both invites the two copies to drift.
+
+These live under a single reserved `fragment.<mod>.*` prefix — deliberately *not* a
+surface name, because the string has no surface of its own. Nest the domain under the
+mod: `fragment.respite.moon.full`, `fragment.tribulation.affix.vampiric`.
+
+Two things this is not. It is not a licence for a bare-modid prefix — `<mod>.rank.*` is
+still the defect the enum rule below forbids, because a rank *is* shown on a surface. And
+it is not for a string used on exactly one surface: that takes its surface's prefix even
+if it happens to be interpolated.
 
 **Conventions that ride along.**
 
