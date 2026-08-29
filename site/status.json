@@ -1,11 +1,11 @@
 {
-  "generated": "2026-08-28",
+  "generated": "2026-08-29",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 625,
+    "downloads": 635,
     "followers": 10,
-    "openIssues": 29
+    "openIssues": 28
   },
   "members": [
     {
@@ -22,12 +22,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-04"
+        "date": "2026-08-29"
       },
       "openIssues": 2,
       "modrinth": {
         "slug": "meridian-enchanting-overhaul",
-        "downloads": 112,
+        "downloads": 116,
         "followers": 2
       }
     },
@@ -50,7 +50,7 @@
       "openIssues": 6,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 218,
+        "downloads": 219,
         "followers": 3
       }
     },
@@ -68,12 +68,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-04"
+        "date": "2026-08-29"
       },
       "openIssues": 3,
       "modrinth": {
         "slug": "tribulation-difficulty-overhaul",
-        "downloads": 189,
+        "downloads": 192,
         "followers": 3
       }
     },
@@ -91,12 +91,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-04"
+        "date": "2026-08-29"
       },
-      "openIssues": 3,
+      "openIssues": 2,
       "modrinth": {
         "slug": "prosperity-loot-overhaul",
-        "downloads": 106,
+        "downloads": 108,
         "followers": 2
       }
     },
@@ -127,7 +127,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-04"
+        "date": "2026-08-29"
       },
       "openIssues": 4,
       "modrinth": null
@@ -143,7 +143,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-04"
+        "date": "2026-08-29"
       },
       "openIssues": 5,
       "modrinth": null
@@ -159,7 +159,7 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-04"
+        "date": "2026-08-29"
       },
       "openIssues": 4,
       "modrinth": null
