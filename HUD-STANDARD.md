@@ -50,7 +50,8 @@ New slots are assigned here, in this file, by appending — never by renumbering
   dark crimson across tiers); it is the element's only decoration.
 - The glyph is a **purpose-built 16×16 texture**, not a downscaled vanilla item render
   (those go muddy at 16px). Author it through the texture pipeline and commit its `.glyph`
-  source beside the master — see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
+  source under `art/glyphs/`, joined to the shipped sprite by `design/ASSETS.md` —
+  see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
 - **Draw batch integrity.** Both surfaces draw through `GuiGraphics`
   (`blit`/`fill`/`drawString`) and **end every render pass with `graphics.flush()`**.
   The flush commits the batch immediately, so a batching optimizer (ImmediatelyFast) or a
@@ -98,9 +99,29 @@ int     getHudHeight();   // contribution in px (element + gap); 0 if not visibl
 
 Each mod's offset = sum of `getHudHeight()` over all *higher-priority* mods that are
 loaded, queried per render pass (cheap reads of synced client state). Hardcoded sibling
-heights and bare `isModLoaded` displacement (Mercantile's current
-`TRIBULATION_RESERVED_HEIGHT = 22`) are non-conformant: they go stale the moment the
-user disables or moves the sibling's HUD.
+heights and bare `isModLoaded` displacement are non-conformant as a *primary* mechanism:
+they go stale the moment the user disables or moves the sibling's HUD.
+
+**The legacy fallback is conformant.** A sibling released before it exposed the
+accessors has no `getHudHeight()` to read, and a consumer must still lay out against
+it. Resolve the accessors reflectively once, and when the class or methods are absent,
+fall back to a named fixed reservation so behavior against those older releases is
+unchanged:
+
+```java
+if (!FabricLoader.getInstance().isModLoaded(SIBLING_ID)) return 0;
+resolveOnce();
+if (isHudVisibleHandle == null || getHudHeightHandle == null) {
+    return LEGACY_FIXED_OFFSET;   // pre-accessor sibling; documented, not guessed
+}
+```
+
+Two conditions make it conformant rather than a hardcode: the accessors are tried
+*first* on every resolve, and the constant is documented as pre-accessor behavior for
+a specific sibling — not a general assumption about its layout. Mercantile
+(`ReputationHudOverlay.TribulationOffset`) and Prosperity are the reference
+implementations. The fallback retires once every release in the wild exposes the
+accessors.
 
 The ~80 lines of offset logic are deliberately duplicated per mod — convention over
 dependency (`VISION.md` §8.1).

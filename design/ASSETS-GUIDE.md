@@ -55,9 +55,11 @@ table above when the asset lands.
 - **Complete both ways.** Every committed asset has a row; every row has a
   file. No orphan entries, no unlisted assets — the `/align` assets sweep
   holds the manifest to the filesystem.
-- **Every pixel master has its `.glyph`; every sound its `.sfx`** — same
-  path, same basename (DESIGN-SYSTEM §8–9). `MISSING` is the tracked
-  exception, not a shrug: it marks pipeline debt.
+- **Every pixel master has its `.glyph`; every sound its `.sfx`** — the spec
+  under `art/glyphs/` or `art/audio/`, the rendered file under
+  `src/main/resources/` (DESIGN-SYSTEM §8–9). This manifest is the
+  authoritative join between the two, which is why the paths must be literal.
+  `MISSING` is the tracked exception, not a shrug: it marks pipeline debt.
 - **Real paths, exactly.** Source and final columns are literal repo paths a
   reader can open; no hand-waving ("various textures").
 - **Same-PR updates.** An asset change without its manifest row (or a

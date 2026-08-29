@@ -194,10 +194,13 @@ records what was *intended* and why.
 Source-of-truth images and working files. `docs/` and `src/main/resources/assets/`
 hold *derived, optimized copies*; when art changes, the master changes first.
 Generation prompts (Gemini/PixelLab) live next to their outputs in `exploration/`.
-Every pipeline-generated master ships its **`.glyph` source beside it**, same basename
-(`hud-icon-16.png` ↔ `hud-icon-16.glyph`), so the texture is re-renderable for minor edits
-— the spec is the source of truth (concord `design/DESIGN-SYSTEM.md` §8, the `mc-textures`
-skill). Custom, high-quality textures are encouraged.
+Every pipeline-generated texture ships a **`.glyph` spec** — under `art/glyphs/`, or
+beside the master where a mod prefers that — and every custom sound ships a **`.sfx`
+spec** under `art/audio/`. The rendered PNG and `.ogg` are *derived*: they live only
+under `src/main/resources/assets/<mod>/`, and `design/ASSETS.md` is the authoritative
+join between a spec and the path it ships to. The spec is the source of truth, so a
+texture or sound is re-renderable for minor edits (concord `design/DESIGN-SYSTEM.md`
+§8–9, the `mc-textures` and `mc-audio` skills). Custom, high-quality art is encouraged.
 
 ### `site/` — website content, not website output
 The mod repo holds only structured content: `site.json` (identity, nav order, the
