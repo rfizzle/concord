@@ -11,6 +11,7 @@ re-attempts only what's left. Modrinth is idempotent by version_number;
 CurseForge, being last, only runs when it hasn't already succeeded.
 
 Dependencies come from fabric.mod.json's suggests/recommends (optional), with a
+the hub's members.json (member and third-party slugs) plus an optional
 repo-local .github/release-slug-overrides.json remapping any mod id whose
 platform slug differs from its Fabric id. They are best-effort and removed as
 surgically as CurseForge lets us: an unresolvable Modrinth slug is dropped, and
@@ -138,19 +139,19 @@ def load_dependencies() -> list[dict]:
         except (OSError, json.JSONDecodeError) as exc:
             warn(f"Ignoring unparseable {overrides_path} ({exc})")
 
-    siblings = load_sibling_slugs()
+    siblings, third_party = load_hub_slugs()
 
     ids = sorted(set(meta.get("suggests") or {}) | set(meta.get("recommends") or {}))
     deps = []
     for dep_id in ids:
         # Precedence: an explicit repo-local override wins, then the hub registry
-        # for siblings, then the bare mod id for third parties.
+        # (members first, then the third-party map), then the bare mod id.
         override = overrides.get(dep_id, {})
-        sibling = siblings.get(dep_id, {})
+        hub = siblings.get(dep_id) or third_party.get(dep_id, {})
         deps.append({
             "id": dep_id,
-            "modrinth": override.get("modrinth", sibling.get("modrinth", dep_id)),
-            "curseforge": override.get("curseforge", sibling.get("curseforge", dep_id)),
+            "modrinth": override.get("modrinth", hub.get("modrinth", dep_id)),
+            "curseforge": override.get("curseforge", hub.get("curseforge", dep_id)),
             "type": "optional",
         })
     if deps:
@@ -161,8 +162,8 @@ def load_dependencies() -> list[dict]:
     return deps
 
 
-def load_sibling_slugs() -> dict[str, dict]:
-    """Map every Concord member id to its store slugs, from the hub's members.json.
+def load_hub_slugs() -> tuple[dict[str, dict], dict[str, dict]]:
+    """Read the hub's slug registries: (member slugs, third-party slugs).
 
     A member names its siblings in fabric.mod.json's `suggests` by **mod id**
     (`tribulation`), but both stores list them under a longer slug
@@ -170,8 +171,14 @@ def load_sibling_slugs() -> dict[str, dict]:
     relation as unresolvable and drops it, so a sibling integration is silently
     missing from the published listing.
 
-    members.json is the canonical registry of those slugs, so read it rather
-    than restating them in eight repo-local override files where they can drift.
+    The same mismatch hits non-Concord mods: `roughlyenoughitems` lists as `rei`
+    on Modrinth and `roughly-enough-items` on CurseForge. Those live under
+    members.json's `thirdPartySlugs`, because the per-repo override file drifts —
+    five members carried an identical copy of it and cultivation, the sixth to
+    declare REI, had none, so its v1.0.0-beta.1 published without the relation.
+
+    members.json is the canonical registry of both, so read it rather than
+    restating them in eight repo-local override files where they can drift.
     The release workflow checks concord out to `.concord/`; MEMBERS_FILE and the
     sibling-checkout path cover local runs. A missing file is not an error — a
     bare clone just falls back to the mod id, exactly as before.
@@ -184,7 +191,7 @@ def load_sibling_slugs() -> dict[str, dict]:
                 registry = json.load(handle)
         except (OSError, json.JSONDecodeError) as exc:
             warn(f"Ignoring unparseable {candidate} ({exc})")
-            return {}
+            return {}, {}
         slugs = {}
         for member in registry.get("members") or []:
             store = member.get("store") or {}
@@ -195,9 +202,16 @@ def load_sibling_slugs() -> dict[str, dict]:
                     entry[platform] = slug
             if member.get("id") and entry:
                 slugs[member["id"]] = entry
-        log(f"Loaded {len(slugs)} sibling store slugs from {candidate}")
-        return slugs
-    return {}
+        third_party = {}
+        for dep_id, entry in (registry.get("thirdPartySlugs") or {}).items():
+            if not isinstance(entry, dict):
+                continue
+            mapped = {k: v for k, v in entry.items() if k in ("modrinth", "curseforge") and v}
+            if mapped:
+                third_party[dep_id] = mapped
+        log(f"Loaded {len(slugs)} sibling and {len(third_party)} third-party store slugs from {candidate}")
+        return slugs, third_party
+    return {}, {}
 
 
 def request_with_retries(method: str, url: str, *,

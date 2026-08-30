@@ -4,6 +4,13 @@
     "tagline": "Modular overhauls for Minecraft's core systems.",
     "url": "https://concord.rfizzle.com"
   },
+  "thirdPartySlugs": {
+    "_comment": "Non-Concord mods whose store slug differs from the Fabric mod id members name in fabric.mod.json. Kept here rather than in per-repo .github/release-slug-overrides.json files, which drift: five members carried an identical copy and cultivation, the sixth to declare REI, had none — so its v1.0.0-beta.1 published without the relation. A repo-local override still wins over this map.",
+    "roughlyenoughitems": {
+      "modrinth": "rei",
+      "curseforge": "roughly-enough-items"
+    }
+  },
   "members": [
     {
       "id": "meridian",

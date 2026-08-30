@@ -512,7 +512,14 @@ class SiblingSlugTest(unittest.TestCase):
     def setUp(self):
         self._dir = tempfile.TemporaryDirectory()
         self._cwd = os.getcwd()
-        os.chdir(self._dir.name)
+        # Work one level down, so the `../concord/members.json` case this class
+        # exercises stays inside the tempdir. Run from the tempdir root it
+        # resolves to /tmp/concord — outside the fixture, never cleaned up, and
+        # it then satisfies the lookup in every later run on that machine,
+        # silently disarming test_missing_registry_degrades_to_the_bare_id.
+        self._root = pathlib.Path(self._dir.name) / "repo"
+        self._root.mkdir()
+        os.chdir(self._root)
         pathlib.Path("src/main/resources").mkdir(parents=True)
 
     def tearDown(self):
@@ -580,6 +587,97 @@ class SiblingSlugTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {"MEMBERS_FILE": "elsewhere.json"}):
             deps = self._deps({"meridian": "*"})
         self.assertEqual(deps["meridian"]["modrinth"], "from-env")
+
+
+class ThirdPartySlugTest(unittest.TestCase):
+    """A third party whose store slug differs from its Fabric id must resolve too.
+
+    Same silent regression as SiblingSlugTest, one layer out. Five members
+    carried an identical `.github/release-slug-overrides.json` mapping
+    `roughlyenoughitems`; cultivation was the sixth member to declare REI and
+    had no such file, so cultivation v1.0.0-beta.1 published with the relation
+    dropped on Modrinth and peeled by CurseForge. The map belongs in the hub for
+    the same reason the sibling slugs do.
+    """
+
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self._cwd = os.getcwd()
+        self._root = pathlib.Path(self._dir.name) / "repo"
+        self._root.mkdir()
+        os.chdir(self._root)
+        pathlib.Path("src/main/resources").mkdir(parents=True)
+
+    def tearDown(self):
+        os.chdir(self._cwd)
+        self._dir.cleanup()
+
+    def _deps(self, suggests, *, registry, overrides=None):
+        pathlib.Path("src/main/resources/fabric.mod.json").write_text(json.dumps(
+            {"schemaVersion": 1, "id": "cultivation", "suggests": suggests}))
+        p = pathlib.Path(".concord/members.json")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(registry))
+        if overrides is not None:
+            o = pathlib.Path(".github/release-slug-overrides.json")
+            o.parent.mkdir(parents=True, exist_ok=True)
+            o.write_text(json.dumps(overrides))
+        return {d["id"]: d for d in publish.load_dependencies()}
+
+    def _registry(self, third_party=None):
+        reg = dict(_REGISTRY)
+        if third_party is not None:
+            reg["thirdPartySlugs"] = third_party
+        return reg
+
+    def test_third_party_resolves_from_the_hub_map(self):
+        deps = self._deps({"roughlyenoughitems": "*"}, registry=self._registry(
+            {"roughlyenoughitems": {"modrinth": "rei",
+                                    "curseforge": "roughly-enough-items"}}))
+        self.assertEqual(deps["roughlyenoughitems"]["modrinth"], "rei")
+        self.assertEqual(deps["roughlyenoughitems"]["curseforge"], "roughly-enough-items")
+
+    def test_unmapped_third_party_still_uses_the_bare_id(self):
+        deps = self._deps({"jade": "*"}, registry=self._registry(
+            {"roughlyenoughitems": {"modrinth": "rei"}}))
+        self.assertEqual(deps["jade"]["modrinth"], "jade")
+        self.assertEqual(deps["jade"]["curseforge"], "jade")
+
+    def test_repo_local_override_still_beats_the_hub_map(self):
+        deps = self._deps(
+            {"roughlyenoughitems": "*"},
+            registry=self._registry({"roughlyenoughitems": {"modrinth": "rei"}}),
+            overrides={"roughlyenoughitems": {"modrinth": "pinned-locally"}})
+        self.assertEqual(deps["roughlyenoughitems"]["modrinth"], "pinned-locally")
+
+    def test_a_member_id_is_never_shadowed_by_the_third_party_map(self):
+        # A member entry wins outright, so a stray third-party key carrying a
+        # member's id cannot redirect a sibling relation.
+        deps = self._deps({"meridian": "*"}, registry=self._registry(
+            {"meridian": {"modrinth": "wrong-project"}}))
+        self.assertEqual(deps["meridian"]["modrinth"], "meridian-enchanting-overhaul")
+
+    def test_absent_third_party_block_is_not_an_error(self):
+        deps = self._deps({"roughlyenoughitems": "*"}, registry=self._registry())
+        self.assertEqual(deps["roughlyenoughitems"]["modrinth"], "roughlyenoughitems")
+
+    def test_malformed_third_party_entries_are_skipped(self):
+        deps = self._deps({"roughlyenoughitems": "*", "jei": "*"},
+                          registry=self._registry({
+                              "roughlyenoughitems": "not-a-dict",
+                              "jei": {"modrinth": "", "curseforge": "jei-cf"}}))
+        self.assertEqual(deps["roughlyenoughitems"]["modrinth"], "roughlyenoughitems")
+        # The empty half falls back; the populated half still applies.
+        self.assertEqual(deps["jei"]["modrinth"], "jei")
+        self.assertEqual(deps["jei"]["curseforge"], "jei-cf")
+
+    def test_the_shipped_registry_maps_rei(self):
+        """The real members.json must carry the mapping cultivation lost."""
+        registry = json.loads((pathlib.Path(self._cwd) / "members.json").read_text())
+        rei = (registry.get("thirdPartySlugs") or {}).get("roughlyenoughitems")
+        self.assertIsNotNone(rei, "members.json must map roughlyenoughitems")
+        self.assertEqual(rei["modrinth"], "rei")
+        self.assertEqual(rei["curseforge"], "roughly-enough-items")
 
 
 if __name__ == "__main__":
