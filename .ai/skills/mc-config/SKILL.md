@@ -22,14 +22,18 @@ sections and a `configVersion` field. Group fields into sections so the JSON
 stays navigable and the ModMenu screen has natural categories.
 
 ```java
-public class TribulationConfig {
+public class MyModConfig {
     public int configVersion = ConfigMigrator.CURRENT_VERSION;
     public General general = new General();
     public TimeScaling timeScaling = new TimeScaling();
-    public Hud hud = new Hud();                 // client-facing section
+    public Client client = new Client();        // client-facing section (Prosperity's shape)
     // ... one field per section, each its own nested static class
 }
 ```
+
+(Tribulation's HUD fields are *flat* — `enableTierHud`, `hudAnchor`, `hudOffsetX/Y` on
+the root — because its migrator flattened an earlier nested `Hud` section; don't copy
+a `TribulationConfig.Hud` from older docs, it no longer exists.)
 
 Split **server-authoritative** fields (gameplay rules, caps, toggles that change
 balance) from **client-only** fields (HUD anchor, render toggles). Mercantile
