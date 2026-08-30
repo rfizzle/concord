@@ -28,16 +28,21 @@ higher-priority mod is absent or its HUD is disabled.
 | Slot | Mod | Content |
 |---|---|---|
 | 1 | Tribulation | 16×16 skull glyph tinted by tier, 2px level-progress bar |
-| 2 | Mercantile | Reputation tier label, emerald/bell glyph |
-| 3 | Prosperity | Current loot distance tier, chest glyph, tier-color tint |
-| — | Meridian | No slot, by design |
+| 2 | Mercantile | 16×16 balance-scale glyph (`reputation_badge`), 2px tier-tinted bar, no text |
+| 3 | Prosperity | Untinted chest glyph, current loot distance tier as a tier-colored label |
+| — | Meridian | No slot, by design — enchanting screen, Jade/WTHIT, recipe viewers |
+| — | Respite | No slot, by design — weariness rides vanilla status-effect icons; a transient full-screen blink is drawn from `HudRenderCallback` (§1 cosmetic, not a badge) |
+| — | Distillation | No slot, by design — brewing screen and vanilla effect icons |
+| — | Cultivation | No slot, by design — soil overlays, Jade/WTHIT, tooltips |
+| — | Instinct | No slot, by design — crouch-inspect, Jade/WTHIT, `/instinct info` |
 
 New slots are assigned here, in this file, by appending — never by renumbering.
 
 ## 3. Visual spec
 
-- Container: semi-transparent black box, `#000000` at 50–60% opacity, 2px rounded
-  corners.
+- Container: **optional** — a semi-transparent black box, `#000000` at 50–60% opacity,
+  2px rounded corners. Prosperity draws one; Tribulation and Mercantile draw the glyph
+  and bar directly on the screen. Either is conformant.
 - Contents: 16×16 mod glyph (left); optional short text label (right) in the **vanilla
   Minecraft font**, white `#FFFFFF`, standard drop shadow; optional 2px progress bar
   directly under the glyph.
@@ -48,8 +53,9 @@ New slots are assigned here, in this file, by appending — never by renumbering
   Prosperity's specced 1.5s tier-crossing lerp).
 - Glyph tinting by state is encouraged (Tribulation: white → yellow → orange → red →
   dark crimson across tiers); it is the element's only decoration.
-- The glyph is a **purpose-built 16×16 texture**, not a downscaled vanilla item render
-  (those go muddy at 16px). Author it through the texture pipeline and commit its `.glyph`
+- The glyph is a **purpose-built texture drawn at 16×16**, not a downscaled vanilla item
+  render (those go muddy at 16px). Authoring at 32×32 and blitting down to 16 is fine
+  (Tribulation and Prosperity do). Author it through the texture pipeline and commit its `.glyph`
   source under `art/glyphs/`, joined to the shipped sprite by `design/ASSETS.md` —
   see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
 - **Draw batch integrity.** Both surfaces draw through `GuiGraphics`
@@ -129,7 +135,8 @@ dependency (`VISION.md` §8.1).
 ## 7. Reference implementation
 
 `tribulation/src/client/java/com/rfizzle/tribulation/client/TribulationHudOverlay.java`
-— anchor enum + offsets in `TribulationConfig.Hud`, glyph at
+— anchor enum + offsets as the flat `hudAnchor` / `hudOffsetX` / `hudOffsetY` fields on
+`TribulationConfig` (a nested `Hud` section was flattened by its migrator), glyph at
 `assets/tribulation/textures/gui/hud_icon.png`, tier tints, progress bar, level-up lerp,
 and all four visibility rules.
 

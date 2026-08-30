@@ -4,8 +4,12 @@
 > `com.rfizzle.tribulation.api` package, the collection's shape and naming reference.
 > **Tribulation does not yet meet §3.1** — its two provider slots catch `Exception`, and
 > `TribulationLevelCallback` does not isolate in the invoker — which is tracked as a
-> member work item. The working reference for §3.1 is Distillation's and Cultivation's
-> callbacks. Rationale and the cross-mod integration matrix live in
+> member work item. The working references for §3.1 are **Respite's** and **Instinct's**
+> callbacks — the only shipped invokers that carry all three rules (`Throwable` catch,
+> `VirtualMachineError` rethrow, once-gated log naming the guest). Distillation and
+> Cultivation catch `Throwable` in the invoker but lack the rethrow, the gate, and the
+> name; Meridian, Mercantile, Prosperity, and Tribulation catch `Exception` or nothing.
+> Rationale and the cross-mod integration matrix live in
 > [`VISION.md`](VISION.md) §5.
 
 ## 1. Scope
@@ -90,7 +94,7 @@ normative:
    throttle where guests are identified per key. A guest that throws once throws every
    time, and an ungated log puts stack-trace formatting and appender I/O on the server
    thread at the fire site's full rate — Cultivation's harvest callback fires once per
-   destroyed crop block, so one explosion in a farm is a hundred traces in a single
+   harvested crop block, so one explosion in a farm is a hundred traces in a single
    tick. The isolation must not cost more than the throw it absorbs.
 
 A host that satisfies these three cannot be broken by a guest that throws, returns
@@ -200,10 +204,17 @@ pattern.
   is a property of the event, declared once where the event is, rather than a discipline
   every fire site has to remember.
 
+The block below is the standard's **model shape**, not a transcript of a shipped class.
+Cultivation's real `CultivationHarvestCallback` catches `Throwable` but has no
+`VirtualMachineError` rethrow, no once-gate, and does not name the guest (it logs at
+ERROR, once per harvested block) — that gap is member work, tracked in its repo.
+Respite's `RespiteRestCallback` and Instinct's callbacks ship this shape verbatim.
+
 ```java
 /**
  * Fired server-side from the harvest choke point on every path that reaps a supported
- * crop — player, piston, explosion. The {@code drops} list is mutable and is the
+ * crop — player, piston, water, explosion, scythe, villager — and on a sweet-berry pick,
+ * which leaves the bush standing. The {@code drops} list is mutable and is the
  * sanctioned mutation point.
  *
  * <p>A listener that throws is caught, logged, and skipped; it can never break the
@@ -245,9 +256,10 @@ The event's Javadoc states the isolation posture so a consumer knows what a thro
 them: *"A listener that throws is caught, logged, and skipped — it can never break `<the
 host operation>` or the listeners registered after it."* Any Javadoc that promises less
 is a defect in one or the other: fix the code, then fix the promise. That covers both a
-Javadoc that **disclaims** isolation ("a listener that throws is not isolated by
-Respite") and one that promises the old **fire-site** posture ("it may prevent listeners
-registered after it from seeing that trade") — both describe behavior this section no
+Javadoc that **disclaims** isolation (Respite's formerly read "a listener that throws is
+not isolated by Respite"; it now states full isolation) and one that promises the old
+**fire-site** posture (Mercantile's `TradeExecutedCallback` still reads "it may prevent
+listeners registered after it from seeing that trade") — both describe behavior this section no
 longer permits.
 
 ### 6.1 Grandfathered names
@@ -303,9 +315,12 @@ The per-mod API work items (what each mod must add to enable the integration mat
 are tracked in [`VISION.md`](VISION.md) §5.3 and each mod's GitHub Issues (the
 `needs-spec` → `jules` lifecycle; `.plan/` is local-only scratch per
 [`REPO-LAYOUT.md`](REPO-LAYOUT.md) and is never the durable tracker). In
-summary: Tribulation adds boss/threshold/HUD accessors; Meridian and Mercantile promote
-their de-facto surfaces into formal `api` packages with events; Prosperity builds to
-this standard from its first commit.
+summary: every member's `api` package has shipped and is in a tagged release (the last
+four landed with the 2026-08 betas). Prosperity's `LootModifierCallback` predates the
+invoker-isolation rule and its name is grandfathered (§6.1), so "built to this standard
+from its first commit" is not a claim the suite can make; the open work is §3.1
+retrofits in Tribulation, Meridian, Mercantile, and Prosperity, tracked in each repo's
+conformance sweep.
 
 ## 10. Conformance checklist
 
