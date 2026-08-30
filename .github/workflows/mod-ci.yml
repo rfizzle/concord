@@ -42,6 +42,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The listing check asks `git tag --list v*` whether this mod has ever
+          # shipped. A default checkout fetches no tags, so that question would
+          # answer "never released" in every repo and the stale-banner rule
+          # would pass by never running — the same shape as a datagen check
+          # pointed at a directory that does not exist. Tags, depth 1.
+          fetch-tags: true
+
+      # The hub carries members.json (store slugs, taglines) and the shared
+      # check scripts. mod-release.yml already checks concord out this way; this
+      # is the same checkout, and concord#46's art-repeatability step will want
+      # it too rather than adding a second one.
+      - name: Check out concord
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: rfizzle/concord
+          ref: master
+          path: .concord
+
+      # Fails on a store listing that claims an integration the code does not
+      # have, omits a registered block, or still tells players a shipped mod is
+      # unreleased. Every one of those was found live on a published page.
+      - name: Check the store listing against what the mod ships
+        run: python3 .concord/scripts/check-listing-claims.py --members-file .concord/members.json
 
       - name: Set up JDK 21
         uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
