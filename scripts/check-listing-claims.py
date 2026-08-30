@@ -70,21 +70,24 @@ LISTINGS = ("site/listing-modrinth.md", "site/listing-curseforge.md")
 SUMMARY = "site/listing-summary.txt"
 SITE_PAGES = "site/pages"
 
-# A released mod telling players it is not released. Both live pages said this
-# for hours after their first tag: cultivation's listing ("In development …
-# features are being built against them"), distillation's listing ("Not yet
-# released") and its homepage ("Nothing is released yet; there is no download
-# today", under a section still titled "Not Yet Released").
+# A released mod telling players it is not released. This is a curated list of
+# phrasings actually found on live pages, not a general pattern, and that is a
+# deliberate retreat: matching the *shape* (a negation near a shipping word)
+# was tried and found one false positive for every real hit — mercantile's "no
+# resource-pack download and no surprises", its "no-shared-jar" architecture
+# note, prosperity's and tribulation's "no Forge/NeoForge build". A blocking
+# gate that cries wolf gets switched off, so precision wins over recall here.
+#
+# The cost is that the list lags: three review rounds each found this same lie
+# in wording the previous list missed. Add to it when that happens rather than
+# generalising it — and read the pages, because this rule will never be the
+# thing that finds a new phrasing first.
 UNRELEASED_CLAIM = re.compile(
     r"not yet released|nothing is released|no download today|in development"
     r"|being built against|there is nothing to install"
-    # "Distillation is implemented against the spec — not yet a shipped jar."
-    # The same lie in wording the first pass missed. A reviewer caught it by
-    # reading the page and said plainly that it escaped the gate because of the
-    # phrasing, not because it was true. Every phrase here was written by
-    # someone describing a real mod; none was invented for the pattern.
-    r"|not yet a shipped|not a shipped jar|no jar to install"
-    r"|has not shipped|nothing to download", re.I)
+    r"|not yet a shipped|not a shipped jar|has not shipped"
+    r"|no version has been tagged|no build is published"
+    r"|no published build|this page describes the first release", re.I)
 MODRINTH_SUMMARY_CAP = 256
 
 # The suite strip lists every sibling by design, so its bullets are not claims:
@@ -378,7 +381,11 @@ def check_repo(repo, members, verbose=False):
                 hit = UNRELEASED_CLAIM.search(normalize(path.read_text(encoding="utf-8")))
             except OSError:
                 continue
-            if hit:
+            # "no resource-pack download required" is a feature, not a release
+            # state. A negation about a *requirement* is the common innocent
+            # shape, so judge the words around the match before accusing.
+            if hit and not re.search(r"\b(required|needed|necessary|to install)\b",
+                                     hit.string[hit.start():hit.end() + 30], re.I):
                 errors.append(
                     f"{path.relative_to(repo)}: says \"{hit.group(0)}\" but the repo "
                     f"has a release tag — the page is telling players a shipped mod "
