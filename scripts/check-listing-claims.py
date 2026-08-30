@@ -43,8 +43,17 @@ two claims a machine can settle from the repo:
     python3 scripts/check-listing-claims.py --root ../instinct
     python3 scripts/check-listing-claims.py --root .. --all-members
 
-Exits non-zero on a phantom integration, an unlisted block or advancement, or a
-short description over Modrinth's 256-character cap.
+It reads `site/pages/*.json` too. The website publishes the same claims, and
+every phantom integration found in the listings shipped there as well — a check
+that reads only the two Markdown files covers half the surface. Page claims
+report rather than fail: a page is prose, and its backing code may live in a
+sibling repo a member's CI has not checked out. It does fail a mod whose pages
+still say it is unreleased once a `v*` tag exists — that one is unambiguous,
+and cultivation and distillation both told players "not yet released" for hours
+after publishing with nothing to catch it.
+
+Exits non-zero on a phantom integration, an unlisted block or advancement, a
+stale unreleased claim, or a short description over Modrinth's 256-char cap.
 """
 
 from __future__ import annotations
@@ -52,12 +61,23 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LISTINGS = ("site/listing-modrinth.md", "site/listing-curseforge.md")
 SUMMARY = "site/listing-summary.txt"
+SITE_PAGES = "site/pages"
+
+# A released mod telling players it is not released. Both live pages said this
+# for hours after their first tag: cultivation's listing ("In development …
+# features are being built against them"), distillation's listing ("Not yet
+# released") and its homepage ("Nothing is released yet; there is no download
+# today", under a section still titled "Not Yet Released").
+UNRELEASED_CLAIM = re.compile(
+    r"not yet released|nothing is released|no download today|in development"
+    r"|being built against|there is nothing to install", re.I)
 MODRINTH_SUMMARY_CAP = 256
 
 # The suite strip lists every sibling by design, so its bullets are not claims:
@@ -74,6 +94,18 @@ SUITE_BOILERPLATE = re.compile(
 ADVANCEMENTS_SECTION = re.compile(r"^##\s+advancements\s*$", re.I | re.M)
 
 
+def load_taglines(members_file=None):
+    """Map member display name -> tagline, for suite-row recognition."""
+    for candidate in (members_file, ROOT / "members.json",
+                      Path(".concord/members.json"), Path("../concord/members.json")):
+        if not candidate or not Path(candidate).is_file():
+            continue
+        registry = json.loads(Path(candidate).read_text(encoding="utf-8"))
+        return {(m.get("name") or m["id"].title()): m.get("tagline")
+                for m in registry.get("members") or [] if m.get("id")}
+    return {}
+
+
 def load_members(members_file=None):
     """Map member id -> display name, from the hub registry."""
     for candidate in (members_file, ROOT / "members.json",
@@ -86,11 +118,36 @@ def load_members(members_file=None):
     return {}
 
 
-def strip_suite_links(text):
-    """Blank the suite strip's link bullets and boilerplate, keeping every
-    other sentence — including any that happens to sit in the same section."""
+def strip_suite_links(text, members=None):
+    """Blank the suite strip's rows and boilerplate, keeping every other
+    sentence — including any that happens to sit in the same section.
+
+    A suite row is a sibling's name beside its registered tagline, and the
+    markup varies by surface: `- [Meridian](url) — Chart your enchantments.` in
+    Markdown, `<strong class='text-bone'>Meridian</strong> — Chart your
+    enchantments.` in the site JSON. Matching the tagline rather than the markup
+    covers both, and it is exact: a row only counts as suite identity when it
+    carries the tagline members.json records. Anything else that names a
+    sibling is prose, and prose about a sibling is a claim.
+    """
     text = SUITE_BULLET.sub("", text)
+    for name, tagline in (members or {}).items():
+        if not tagline:
+            continue
+        text = re.sub(rf"[^\n]*{re.escape(name)}[^\n]{{0,80}}?{re.escape(tagline)}",
+                      "", text)
     return SUITE_BOILERPLATE.sub("", text)
+
+
+def released(repo):
+    """Has this mod ever shipped? A `v*` tag is the suite's source of version
+    truth — the release workflow triggers on exactly that."""
+    try:
+        proc = subprocess.run(["git", "tag", "--list", "v*"], cwd=repo,
+                              capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0 and bool(proc.stdout.strip())
 
 
 def normalize(text):
@@ -159,7 +216,33 @@ def lang_entries(repo, modid):
 
 def integration_evidence(repo, sibling):
     """Does this repo actually reference `sibling`? Cheap, deliberately broad —
-    a false positive here only means we stay quiet, never that we accuse."""
+    a false positive here only means we stay quiet, never that we accuse.
+
+    Also looks in the sibling's own checkout when one sits alongside this repo,
+    because an integration is often implemented on the other side: tribulation's
+    pages say its HUD "stacks cleanly with HUDs from Meridian, Mercantile", and
+    that is true — mercantile's ReputationHudOverlay is what accounts for it,
+    and tribulation's source says nothing. A member's CI has no sibling
+    checkouts, which is one reason a page claim reports rather than fails.
+    """
+    peer = repo.resolve().parent / sibling
+    if peer.is_dir() and peer != repo.resolve():
+        own = mod_id(repo)
+        for tree in ("src/main/java", "src/client/java", "src/main/resources"):
+            base = peer / tree
+            if not base.exists():
+                continue
+            for path in base.rglob("*"):
+                if not path.is_file() or path.suffix not in (".java", ".json"):
+                    continue
+                if path.name == "fabric.mod.json":
+                    continue
+                try:
+                    if own and own in path.read_text(encoding="utf-8", errors="ignore"):
+                        return f"{sibling}/{path.relative_to(peer)}"
+                except OSError:
+                    continue
+
     if (repo / "src/main/java").exists():
         for path in repo.rglob(f"**/compat/{sibling}"):
             if path.is_dir():
@@ -220,7 +303,8 @@ def check_repo(repo, members, verbose=False):
     # 1. Phantom integrations, judged on the Modrinth copy (the one that
     #    auto-publishes); the two files are meant to be near-identical.
     primary = listings.get(LISTINGS[0]) or next(iter(listings.values()))
-    body = normalize(strip_suite_links(primary.read_text(encoding="utf-8")))
+    taglines = load_taglines()
+    body = normalize(strip_suite_links(primary.read_text(encoding="utf-8"), taglines))
     for sibling, name in sorted(members.items()):
         if sibling == modid:
             continue
@@ -255,7 +339,45 @@ def check_repo(repo, members, verbose=False):
             line = f"{where}: ships {kind} \"{display}\" ({key}), never named"
             (errors if kind in ("block", "advancement") else warnings).append(line)
 
-    # 3. Modrinth caps the short description.
+    # 3. Phantom integrations on the website, which publishes the same claims.
+    #    Each of the 11 found in the listings shipped here too, so a check that
+    #    reads only site/listing-*.md leaves half the surface uncovered.
+    for page in sorted((repo / SITE_PAGES).glob("*.json")):
+        try:
+            text = normalize(strip_suite_links(page.read_text(encoding="utf-8"), taglines))
+        except OSError:
+            continue
+        for sibling, name in sorted(members.items()):
+            if sibling == modid or not re.search(rf"\b{re.escape(name)}\b", text):
+                continue
+            # A comparison ("how is this different from X") is not a claim.
+            if re.search(rf"different from {re.escape(name)}|"
+                         rf"{re.escape(name)} owns\b", text, re.I):
+                continue
+            if not integration_evidence(repo, sibling):
+                # Reported, not failed. A page is prose — "the same approach
+                # Prosperity's indicators use" compares a technique rather than
+                # promising behaviour — and the backing code may live in a
+                # sibling checkout that a member's CI does not have.
+                warnings.append(
+                    f"{SITE_PAGES}/{page.name}: names {name} outside the suite list; "
+                    f"the repo references '{sibling}' nowhere — check it is not "
+                    f"promising an integration that does not exist")
+
+    # 4. A released mod still telling players it is unreleased.
+    if released(repo):
+        for path in list(listings.values()) + sorted((repo / SITE_PAGES).glob("*.json")):
+            try:
+                hit = UNRELEASED_CLAIM.search(normalize(path.read_text(encoding="utf-8")))
+            except OSError:
+                continue
+            if hit:
+                errors.append(
+                    f"{path.relative_to(repo)}: says \"{hit.group(0)}\" but the repo "
+                    f"has a release tag — the page is telling players a shipped mod "
+                    f"is not out yet")
+
+    # 5. Modrinth caps the short description.
     summary = repo / SUMMARY
     if summary.is_file():
         text = " ".join(summary.read_text(encoding="utf-8").split())

@@ -9,6 +9,7 @@ import importlib.util
 import json
 import pathlib
 import sys
+import subprocess
 import tempfile
 import unittest
 
@@ -197,6 +198,60 @@ class ListingClaimsTest(unittest.TestCase):
         errors, warnings = self.run_check()
         self.assertEqual([], errors)
         self.assertEqual([], warnings)
+
+    # --- the website is the other half of the surface --------------------
+
+    def page(self, name, text):
+        d = self.repo / "site/pages"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / name).write_text(text)
+
+    def test_a_page_claim_reports_but_does_not_fail(self):
+        """Prose is looser than a listing, and the backing code may sit in a
+        sibling repo a member's CI has not checked out."""
+        self.listing("A mod.")
+        self.page("features.json", '{"items": ["With Mercantile, clerics stock it."]}')
+        errors, warnings = self.run_check()
+        self.assertEqual([], errors)
+        self.assertTrue(any("Mercantile" in w for w in warnings), warnings)
+
+    def test_a_suite_row_on_a_page_is_not_a_claim(self):
+        """The site JSON writes the suite list in its own markup; matching the
+        registered tagline recognises it without knowing the markup."""
+        self.listing("A mod.")
+        self.page("features.json",
+                  "{\"items\": [\"<strong class='x'>Mercantile</strong> "
+                  "— Every villager remembers.\"]}")
+        errors, warnings = self.run_check()
+        self.assertEqual(([], []), (errors, warnings))
+
+    def test_evidence_in_the_siblings_own_repo_counts(self):
+        """Tribulation's pages say its HUD stacks with Mercantile's, and that
+        is true — mercantile's overlay is what accounts for it."""
+        peer = self.repo.parent / "mercantile" / "src/main/java"
+        peer.mkdir(parents=True)
+        (peer / "Overlay.java").write_text("// stacks under instinct's slot")
+        self.listing("A mod.")
+        self.page("features.json", '{"items": ["Stacks with Mercantile HUDs."]}')
+        errors, warnings = self.run_check()
+        self.assertEqual(([], []), (errors, warnings))
+
+    # --- a shipped mod claiming it has not shipped ------------------------
+
+    def test_an_unreleased_claim_fails_once_a_tag_exists(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                        "commit", "-q", "--allow-empty", "-m", "x"],
+                       cwd=self.repo, check=True)
+        subprocess.run(["git", "tag", "v1.0.0-beta.1"], cwd=self.repo, check=True)
+        self.listing("**Not yet released.** This page describes the first release.")
+        errors, _ = self.run_check()
+        self.assertTrue(any("not out yet" in e for e in errors), errors)
+
+    def test_the_same_wording_is_fine_before_a_tag_exists(self):
+        self.listing("**Not yet released.** This page describes the first release.")
+        errors, _ = self.run_check()
+        self.assertEqual([], errors)
 
     # --- the short description -------------------------------------------
 
