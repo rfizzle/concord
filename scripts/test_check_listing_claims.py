@@ -90,8 +90,20 @@ class ListingClaimsTest(unittest.TestCase):
         errors, _ = self.run_check()
         self.assertEqual([], errors)
 
-    def test_a_suggests_entry_backs_a_claim(self):
+    def test_a_bare_suggests_entry_does_not_back_a_claim(self):
+        """Every member suggests every sibling at `*`, so it excuses nothing.
+
+        Distillation suggests tribulation and claimed "its shard debuffs gain
+        brewable antidotes of their own"; nothing in the repo registers one.
+        Counting the entry as evidence hid a phantom claim.
+        """
         self.meta(suggests={"tribulation": "*"})
+        self.listing("With **Tribulation**, veterancy accrues double.")
+        errors, _ = self.run_check()
+        self.assertTrue(any("Tribulation" in e for e in errors), errors)
+
+    def test_a_depends_entry_backs_a_claim(self):
+        self.meta(depends={"tribulation": ">=1.0.0"})
         self.listing("With **Tribulation**, veterancy accrues double.")
         errors, _ = self.run_check()
         self.assertEqual([], errors)
@@ -128,6 +140,25 @@ class ListingClaimsTest(unittest.TestCase):
         self.listing("Breed a prime animal for **Best in\nShow** — a fine beast.")
         errors, _ = self.run_check()
         self.assertEqual([], errors)
+
+    def test_a_slash_compressed_family_counts_as_named(self):
+        """Meridian writes three registered blocks as one line:
+
+            Shelf of Seabound / Hellbound / End-Fused Rectification
+
+        Each is named there. An earlier draft called all three missing.
+        """
+        self.lang({"block.instinct.rectifier": "Shelf of Seabound Rectification",
+                   "block.instinct.rectifier_t2": "Shelf of Hellbound Rectification"})
+        self.listing("- Shelf of Seabound / Hellbound / End-Fused Rectification\n")
+        errors, _ = self.run_check()
+        self.assertEqual([], errors)
+
+    def test_the_relaxation_does_not_forgive_an_absent_name(self):
+        self.lang({"block.instinct.stoneshelf": "Stoneshelf"})
+        self.listing("- Shelf of Seabound / Hellbound / End-Fused Rectification\n")
+        errors, _ = self.run_check()
+        self.assertTrue(any("Stoneshelf" in e for e in errors), errors)
 
     def test_tooltip_subkeys_are_not_treated_as_content(self):
         """`item.<mod>.<name>.info.*` is a tooltip line, not an item.

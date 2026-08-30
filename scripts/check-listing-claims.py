@@ -19,8 +19,9 @@ two claims a machine can settle from the repo:
 
   1. **Phantom integrations.** A sibling named outside the suite strip reads as
      shipped behaviour ("with X, Y happens"). Require evidence: a `compat/<id>/`
-     package, a `data/<id>/` tree, a `suggests`/`depends` entry, or any source
-     reference. The suite strip itself ("Part of Concord" / "Companion mods")
+     package, a `data/<id>/` tree, a `depends` entry, or any source reference.
+     A bare `suggests` is deliberately not evidence — every member suggests
+     every sibling at `*`, so it would excuse the very claims this catches. The suite strip itself ("Part of Concord" / "Companion mods")
      lists every sibling by design and is excluded.
   2. **Unlisted content.** Every registered block, item, and advancement has a
      display name in the lang file, so a listing can be checked against the
@@ -103,6 +104,26 @@ def normalize(text):
     return re.sub(r"\s+", " ", re.sub(r"[*_`]", "", text))
 
 
+def names(listing, display):
+    """Is `display` named in `listing`?
+
+    A plain phrase match is not enough. A listing legitimately compresses a
+    family of blocks that share a suffix — meridian writes
+
+        Shelf of Seabound / Hellbound / End-Fused Rectification
+
+    for three registered blocks, and each is genuinely named there. So fall
+    back to: do this name's words appear, in order, inside a single line?
+    That accepts the compressed form and still refuses a name the page never
+    mentions. The fallback only ever forgives, so it cannot invent a finding.
+    """
+    if re.search(rf"\b{re.escape(display)}\b", listing, re.I):
+        return True
+    words = [re.escape(w) for w in display.split()]
+    inline = r"\b" + r"\b.{0,40}?\b".join(words) + r"\b"
+    return any(re.search(inline, line, re.I) for line in listing.splitlines())
+
+
 def mod_id(repo):
     for path in sorted(repo.glob("src/main/resources/fabric.mod.json")):
         try:
@@ -149,21 +170,31 @@ def integration_evidence(repo, sibling):
     for data in repo.glob(f"src/main/generated/data/{sibling}"):
         if data.is_dir():
             return f"generated data/{sibling}/"
+    # A bare `suggests` entry is NOT evidence. It declares soft compatibility,
+    # which every member grants every sibling at `*`; it says nothing about an
+    # integration existing. Distillation suggests tribulation and its listing
+    # claimed "its shard debuffs gain brewable antidotes of their own" — no code
+    # anywhere registers one, and counting the entry hid that. `depends` is
+    # different: a hard dependency is only ever declared for real coupling.
     meta = repo / "src/main/resources/fabric.mod.json"
     if meta.is_file():
         try:
             parsed = json.loads(meta.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             parsed = {}
-        for field in ("depends", "recommends", "suggests"):
-            if sibling in (parsed.get(field) or {}):
-                return f"fabric.mod.json {field}"
+        if sibling in (parsed.get("depends") or {}):
+            return "fabric.mod.json depends"
     for tree in ("src/main/java", "src/client/java", "src/main/resources"):
         base = repo / tree
         if not base.exists():
             continue
         for path in base.rglob("*"):
             if not path.is_file() or path.suffix not in (".java", ".json"):
+                continue
+            # Handled explicitly above. Left in the generic scan it re-admits a
+            # bare `suggests` entry as a plain string match, which is the hole
+            # the explicit check was just narrowed to close.
+            if path.name == "fabric.mod.json":
                 continue
             try:
                 if sibling in path.read_text(encoding="utf-8", errors="ignore"):
@@ -217,8 +248,7 @@ def check_repo(repo, members, verbose=False):
     for kind, bucket in entries.items():
         for key, display in sorted(bucket.items(), key=lambda kv: kv[1]):
             needle = normalize(display)
-            missing = [n for n, t in texts.items()
-                       if not re.search(rf"\b{re.escape(needle)}\b", t, re.I)]
+            missing = [n for n, t in texts.items() if not names(t, needle)]
             if not missing:
                 continue
             where = ", ".join(sorted(Path(n).name for n in missing))
