@@ -305,6 +305,14 @@ still the defect the enum rule below forbids, because a rank *is* shown on a sur
 it is not for a string used on exactly one surface: that takes its surface's prefix even
 if it happens to be interpolated.
 
+**Which rule wins for an enum on several surfaces.** Count the surfaces, and let that
+decide. An enum shown on exactly one takes that surface's prefix, per the enum rule
+below. An enum shown on two or more is a shared value fragment by the test above and
+takes `fragment.<mod>.*` — Instinct's rank reaches a command reply, the action bar, a
+Jade line, and an item tooltip, so every single-surface prefix available to it would be
+a lie on three of the four. The enum rule bans the *bare-modid* prefix; it does not
+promise that a surface prefix always exists to replace it.
+
 **Conventions that ride along.**
 
 - Internal enums (tiers, moods, states) expose a `translationKey()` rather than display
@@ -313,9 +321,11 @@ if it happens to be interpolated.
   bolted on in code.
 - Hints that name a key use `Component.keybind` so the client resolves the player's
   actual binding, never a hardcoded key name.
-- **Internal enum keys are surface-prefixed**, never bare-modid: a rank enum's
-  `translationKey()` returns `hud.<mod>.rank.<name>`, not `<mod>.rank.<name>`. The
-  prefix names where the string is shown, exactly as every other key does.
+- **Internal enum keys are surface-prefixed**, never bare-modid: a rank enum shown only
+  on the HUD returns `hud.<mod>.rank.<name>` from `translationKey()`, not
+  `<mod>.rank.<name>`. The prefix names where the string is shown, exactly as every
+  other key does — and where it is shown in several places, the shared-value-fragment
+  rule above sends it to `fragment.<mod>.*` instead.
 
 **Casing.** Casing follows the *surface*, not the mod — which is what the example
 column above has always encoded:
