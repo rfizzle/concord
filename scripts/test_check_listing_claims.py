@@ -248,6 +248,18 @@ class ListingClaimsTest(unittest.TestCase):
         errors, _ = self.run_check()
         self.assertTrue(any("not out yet" in e for e in errors), errors)
 
+    def test_the_shipped_jar_phrasing_is_caught_too(self):
+        """A reviewer found this wording on a live page after the gate passed
+        it, and said plainly that it escaped on phrasing, not on facts."""
+        subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                        "commit", "-q", "--allow-empty", "-m", "x"],
+                       cwd=self.repo, check=True)
+        subprocess.run(["git", "tag", "v1.0.0"], cwd=self.repo, check=True)
+        self.listing("Implemented against the spec — not yet a shipped jar.")
+        errors, _ = self.run_check()
+        self.assertTrue(any("not out yet" in e for e in errors), errors)
+
     def test_the_same_wording_is_fine_before_a_tag_exists(self):
         self.listing("**Not yet released.** This page describes the first release.")
         errors, _ = self.run_check()

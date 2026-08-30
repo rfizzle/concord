@@ -77,7 +77,14 @@ SITE_PAGES = "site/pages"
 # today", under a section still titled "Not Yet Released").
 UNRELEASED_CLAIM = re.compile(
     r"not yet released|nothing is released|no download today|in development"
-    r"|being built against|there is nothing to install", re.I)
+    r"|being built against|there is nothing to install"
+    # "Distillation is implemented against the spec — not yet a shipped jar."
+    # The same lie in wording the first pass missed. A reviewer caught it by
+    # reading the page and said plainly that it escaped the gate because of the
+    # phrasing, not because it was true. Every phrase here was written by
+    # someone describing a real mod; none was invented for the pattern.
+    r"|not yet a shipped|not a shipped jar|no jar to install"
+    r"|has not shipped|nothing to download", re.I)
 MODRINTH_SUMMARY_CAP = 256
 
 # The suite strip lists every sibling by design, so its bullets are not claims:
