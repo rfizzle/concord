@@ -113,7 +113,6 @@ The formula, the spec for every **new** member logo:
 | Respite | Hanging lantern in a circular indigo stone medallion over midnight brickwork |
 | Distillation | Alchemist's still in a rune-carved magenta medallion — copper alembic and coiled piping feeding glowing flasks, on plum brickwork |
 | Cultivation | Bound wheat sheaf with a scythe and hoe crossed behind it, on mossy-green brickwork breaking into tilled furrows |
-| Instinct | Wolf's head in profile within a circular rose-rimmed medallion, over umber brickwork |
 | Instinct | Glowing rose paw print pressed into a weathered stone slab, in a circular russet-leather-rimmed medallion over umber brickwork |
 
 One motif object per mod; the motif may recur in headers and flavor art but never in
@@ -126,10 +125,11 @@ Two sizes per mod, both pixel art:
 - **128×128 mod icon** — `fabric.mod.json`, store listings. Master at
   `art/icon-128.png` in the mod repo.
 - **16×16 glyph** — HUD element (if the mod has a slot), Jade/recipe-viewer contexts.
-  Master at `art/hud-icon-16.png`. Existing: Tribulation skull, Prosperity chest,
-  Respite lantern, Distillation bottle, Cultivation sheaf, and Instinct paw (those
-  four Jade/recipe-viewer contexts only — no HUD slot).
-  Needed: Mercantile (bell or emerald), Meridian (open book — Jade/EMI contexts only).
+  Master is its `.glyph` spec under `art/glyphs/` (Mercantile, Respite, and Instinct
+  also keep a flat `art/hud-icon-16.png`). Existing: Tribulation skull, Mercantile
+  balance scale (`reputation_badge`), Prosperity chest, Respite lantern, Distillation
+  bottle, Cultivation sheaf, and Instinct paw (those four Jade/recipe-viewer contexts
+  only — no HUD slot). Meridian's open book (Jade/EMI contexts only) is the one still owed.
 
 Masters live in each repo's `art/`; `docs/` and `assets/` hold derived copies
 (see [`../REPO-LAYOUT.md`](../REPO-LAYOUT.md)). Each pipeline-generated master ships its
@@ -147,7 +147,7 @@ Masters live in each repo's `art/`; `docs/` and `assets/` hold derived copies
   (`template/src/_includes/base.njk`). Set it only when a mod wants a card distinct
   from its logo — mercantile and instinct do.
 - Cross-mod footer on every mod site: "Part of **Concord** — a modular collection of system overhauls",
-  four 16×16 glyphs + names + taglines, current mod highlighted
+  every member's 16×16 glyph + name + tagline (driven by `members.json`), current mod highlighted
 
 ## 7. Admitting a new palette
 

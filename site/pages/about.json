@@ -1,11 +1,11 @@
 {
   "nav": "Vision",
   "metaTitle": "The Vision — Concord",
-  "metaDescription": "Concord's thesis: four independent mods, each overhauling one vanilla Minecraft system, forming a single risk-and-reward loop over unmodified survival.",
+  "metaDescription": "Concord's thesis: eight independent mods, each overhauling one vanilla Minecraft system, forming a single risk-and-reward loop over unmodified survival.",
   "ogTitle": "The Vision — Concord",
-  "ogDescription": "Why Concord is four independent overhauls instead of one big mod — and the survival loop they form together.",
+  "ogDescription": "Why Concord is eight independent overhauls instead of one big mod — and the survival loop they form together.",
   "title": "The Vision",
-  "lede": "Four independent overhauls of the vanilla systems Minecraft shipped shallow — and the loop they form together.",
+  "lede": "Eight independent overhauls of the vanilla systems Minecraft shipped shallow — and the loop they form together.",
   "sections": [
     {
       "title": "One session, four verbs",
@@ -14,7 +14,7 @@
           "type": "prose",
           "html": [
             "Survive, enchant, trade, discover are the four verbs of a single survival session, in the order a player actually lives them. The world threatens you — <strong class='text-bone'>Tribulation</strong>. You grow stronger to meet it — <strong class='text-bone'>Meridian</strong>. You convert your surplus into what you lack — <strong class='text-bone'>Mercantile</strong>. You push outward for more — <strong class='text-bone'>Prosperity</strong> — which raises the threat, and closes the loop.",
-            "Install all four and survival Minecraft gains the escalation arc of a roguelike, laid over unmodified vanilla. Install any one and it stands entirely on its own."
+            "Install all eight and survival Minecraft gains the escalation arc of a roguelike, laid over unmodified vanilla. Install any one and it stands entirely on its own."
           ]
         }
       ]

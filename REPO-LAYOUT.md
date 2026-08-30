@@ -44,7 +44,7 @@ mirrors this layout; a new member is scaffolded from it before any code exists.
 │   ├── SPEC.md                #   full behavioral spec (the Prosperity model)
 │   └── ASSETS.md              #   asset manifest: .glyph source → final path, MISSING where none
 │
-├── art/                       # art masters & working files (web copies live in docs/)
+├── art/                       # art masters & working files (derived copies live under src/main/resources/assets/)
 │   ├── logo.png               #   full logo master (stone-frame formula)
 │   ├── icon-128.png           #   mod icon master (fabric.mod.json / store listings)
 │   ├── hud-icon-16.png        #   HUD/UI glyph master (omit if mod has no HUD slot)
@@ -95,7 +95,7 @@ README embeds `art/logo.png` instead), no design docs, no stray logs or compiled
 classes. `README.md` is the single prose document at root; everything deeper has a
 directory.
 
-`CLAUDE.md` is a **symlink to `AGENTS.md`** (already true in Tribulation) so every
+`CLAUDE.md` is a **symlink to `AGENTS.md`** so every
 agent finds what it expects without content drift. `AGENTS.md` follows the
 Tribulation skeleton: project overview → build commands → source layout →
 conventions (Mojang mappings, the `MOD_ID` / `LOGGER` / `<Mod>.id()` bootstrap trio
@@ -191,8 +191,9 @@ updated when behavior changes — `README.md`/`docs/` describe what *is*; `desig
 records what was *intended* and why.
 
 ### `art/` — masters
-Source-of-truth images and working files. `docs/` and `src/main/resources/assets/`
-hold *derived, optimized copies*; when art changes, the master changes first.
+Source-of-truth images and working files. `src/main/resources/assets/` (and the
+`site/` assets the template serves) hold *derived, optimized copies*; when art changes,
+the master changes first.
 Generation prompts (Gemini/PixelLab) live next to their outputs in `exploration/`.
 Every pipeline-generated texture ships a **`.glyph` spec** — under `art/glyphs/`, or
 beside the master where a mod prefers that — and every custom sound ships a **`.sfx`
@@ -231,7 +232,7 @@ must stay tag-only per the version scheme in [`AGENTS-COMMON.md`](AGENTS-COMMON.
 ## 3. Naming conventions
 
 - Directories: lowercase, singular (`design/`, `art/`, not `designs/`)
-- Canonical docs: UPPERCASE fixed names (`DESIGN.md`, `SPEC.md`, `BACKLOG.md`) —
+- Canonical docs: UPPERCASE fixed names (`VISION.md`, `DESIGN.md`, `SPEC.md`, `ASSETS.md`) —
   greppable across all repos at the same path
 - Everything else kebab-case (`listing-modrinth.md`, `listing-curseforge.md`)
 - Suite-level documents (this file, `VISION.md`, `API-STANDARD.md`,
@@ -303,5 +304,6 @@ A repo conforms when all of these are true at the same paths:
     step on the task existing and the task itself passes vacuously without the
     entrypoint
 
-Future members (Husbandry, Apothecary, …) are created from this layout before any
-code exists — Prosperity is the template.
+Future members (Tempest, Stratum, …) are created from this layout before any code
+exists — Instinct and Distillation were bootstrapped this way from the Husbandry and
+Apothecary profiles, and their trees are the current template.

@@ -2,12 +2,12 @@
   "type": "home",
   "nav": "Home",
   "metaTitle": "Concord — Modular Overhauls for Minecraft",
-  "metaDescription": "Concord is a collection of independent Minecraft 1.21.1 Fabric mods, each overhauling one vanilla system — four core overhauls of enchanting, villagers, difficulty, and loot, with more in development. Install one or all; they stand alone and light up together.",
+  "metaDescription": "Concord is a collection of independent Minecraft 1.21.1 Fabric mods, each overhauling one vanilla system — eight overhauls of enchanting, villagers, difficulty, loot, rest, brewing, farming, and animals. Install one or all; they stand alone and light up together.",
   "ogTitle": "Concord — Modular Overhauls for Minecraft",
   "ogDescription": "Independent Fabric mods, one escalating survival loop. Enchanting, villagers, difficulty, and loot at the core — each overhauled, none required.",
   "hero": {
-    "lede": "Four core Minecraft mods. One escalating survival loop.",
-    "sub": "Concord takes the vanilla systems the game shipped shallow — enchanting, villagers, difficulty, loot — and gives each its own mod to overhaul it. More overhauls are in development alongside the core four. Install one. Install all. Every mod stands alone, and together they light each other up — never a hard dependency.",
+    "lede": "Eight Minecraft mods. One escalating survival loop.",
+    "sub": "Concord takes the vanilla systems the game shipped shallow — enchanting, villagers, difficulty, loot — and gives each its own mod to overhaul it — eight so far, four of them released and four in public beta. Install one. Install all. Every mod stands alone, and together they light each other up — never a hard dependency.",
     "buttons": [
       {
         "label": "Meet the mods",
@@ -71,7 +71,7 @@
     },
     {
       "id": "mods",
-      "title": "The core four",
+      "title": "The members",
       "lede": "Each completes one vanilla system. Each ships and updates on its own.",
       "blocks": [
         {
@@ -174,7 +174,7 @@
           "lgColumns": 3,
           "items": [
             {
-              "title": "685",
+              "title": "691",
               "html": [
                 "Downloads across the collection"
               ]

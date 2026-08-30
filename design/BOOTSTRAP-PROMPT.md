@@ -40,8 +40,8 @@ Meridian, villagers/trade = Mercantile, difficulty = Tribulation, loot =
 Prosperity). Check the name against the register: one weighty Latinate abstract
 noun, no compounds, no "Craft"/"Plus" suffixes.
 
-- If `../concord/VISION.md` §9 already profiles this domain (Husbandry,
-  Apothecary, Tempest, Stratum), treat that profile — silo boundary, tagline
+- If `../concord/VISION.md` §9 already profiles this domain (Tempest, Stratum —
+  Husbandry and Apothecary became Instinct and Distillation), treat that profile — silo boundary, tagline
   candidate, motif, color signature — as the seed and stay consistent with it.
 - If the domain or a seed feature collides with §8, an existing member's silo,
   or fails an admission test, **stop and report the conflict instead of
