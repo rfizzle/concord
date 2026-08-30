@@ -8,7 +8,9 @@
 # Syncs the long description from listing-file (default site/listing-modrinth.md)
 # and, when summary-file (default site/listing-summary.txt) exists and is
 # non-empty, the 256-char short description too. Gated on MODRINTH_TOKEN: with no
-# token the job no-ops, so a member that has not opted in is unaffected.
+# token a push-triggered run no-ops, so a member that has not opted in is
+# unaffected — but a manual workflow_dispatch fails, because someone asking for a
+# sync should not get a green check for a run that wrote nothing.
 #
 # The token is the same Modrinth PAT used for releases, and must carry BOTH the
 # "Create versions" (publish) and "Write projects" (this) scopes.
@@ -50,7 +52,8 @@ on:
     secrets:
       MODRINTH_TOKEN:
         # Optional: a Modrinth PAT with the "Write projects" scope. Absent ->
-        # the sync no-ops, so a member without it is unaffected.
+        # a push-triggered sync no-ops (a member without it is unaffected), while
+        # a manual dispatch fails rather than reporting a green no-op.
         required: false
 
 env:
@@ -71,13 +74,26 @@ jobs:
         # a step output the sync step gates on.
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ -n "$MODRINTH_TOKEN" ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No MODRINTH_TOKEN; skipping listing sync"
+            exit 0
           fi
+
+          echo "available=false" >> "$GITHUB_OUTPUT"
+
+          # A push-triggered run for a member that has not opted in is expected
+          # to do nothing, and stays green. A manual dispatch is someone asking
+          # for a sync, so silently doing nothing and reporting success hides the
+          # gap — that is how three members' descriptions went unsynced while
+          # every run showed a green check. Fail loudly instead.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "::error::No MODRINTH_TOKEN, so this dispatch synced nothing. Add the secret (a Modrinth PAT with the \"Write projects\" scope) and re-run."
+            exit 1
+          fi
+
+          echo "::notice::No MODRINTH_TOKEN; skipping listing sync"
 
       - name: Sync listing to Modrinth
         if: steps.auth.outputs.available == 'true'
