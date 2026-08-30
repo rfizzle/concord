@@ -51,6 +51,16 @@
       "description": "Blocked on an upstream fix or another issue"
     },
     {
+      "name": "conformance",
+      "color": "5319e7",
+      "description": "Suite conformance drift from a /conform survey"
+    },
+    {
+      "name": "breaking",
+      "color": "b60205",
+      "description": "Breaks a @Stable API surface — lands only at the next major (API-STANDARD §8)"
+    },
+    {
       "name": "compat",
       "color": "c5def5",
       "description": "Third-party (non-Concord) mod compatibility"

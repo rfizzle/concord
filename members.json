@@ -51,7 +51,7 @@
       },
       "status": "released",
       "conformance": {
-        "layoutMigrated": false
+        "layoutMigrated": true
       }
     },
     {
@@ -65,7 +65,7 @@
       },
       "status": "released",
       "conformance": {
-        "layoutMigrated": false
+        "layoutMigrated": true
       }
     },
     {

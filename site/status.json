@@ -3,7 +3,7 @@
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 685,
+    "downloads": 691,
     "followers": 10,
     "openIssues": 23
   },
@@ -50,7 +50,7 @@
       "openIssues": 6,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 228,
+        "downloads": 231,
         "followers": 3
       }
     },
@@ -60,7 +60,7 @@
       "url": "https://tribulation.rfizzle.com",
       "repo": "rfizzle/tribulation",
       "status": "released",
-      "layoutMigrated": false,
+      "layoutMigrated": true,
       "release": {
         "tag": "v1.0.0",
         "date": "2026-07-01"
@@ -73,7 +73,7 @@
       "openIssues": 3,
       "modrinth": {
         "slug": "tribulation-difficulty-overhaul",
-        "downloads": 208,
+        "downloads": 210,
         "followers": 3
       }
     },
@@ -83,7 +83,7 @@
       "url": "https://prosperity.rfizzle.com",
       "repo": "rfizzle/prosperity",
       "status": "released",
-      "layoutMigrated": false,
+      "layoutMigrated": true,
       "release": {
         "tag": "v1.1.0",
         "date": "2026-08-29"
@@ -96,7 +96,7 @@
       "openIssues": 2,
       "modrinth": {
         "slug": "prosperity-loot-overhaul",
-        "downloads": 119,
+        "downloads": 120,
         "followers": 2
       }
     },

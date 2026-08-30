@@ -14,7 +14,7 @@
           "lgColumns": 3,
           "items": [
             {
-              "title": "685",
+              "title": "691",
               "html": [
                 "Downloads across the collection"
               ]
@@ -66,7 +66,7 @@
               "v1.1.0",
               "2026-08-29",
               "<a href='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/mercantile/actions/workflows/ci.yml/badge.svg?branch=master' alt='Mercantile CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>228</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/mercantile-villager-overhaul'>231</a>",
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/mercantile/issues'>6</a>"
             ],
             [
@@ -75,7 +75,7 @@
               "v1.0.0",
               "2026-07-01",
               "<a href='https://github.com/rfizzle/tribulation/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/tribulation/actions/workflows/ci.yml/badge.svg?branch=master' alt='Tribulation CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/tribulation-difficulty-overhaul'>208</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/tribulation-difficulty-overhaul'>210</a>",
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/tribulation/issues'>3</a>"
             ],
             [
@@ -84,7 +84,7 @@
               "v1.1.0",
               "2026-08-29",
               "<a href='https://github.com/rfizzle/prosperity/actions/workflows/ci.yml'><img class='inline h-5' src='https://github.com/rfizzle/prosperity/actions/workflows/ci.yml/badge.svg?branch=master' alt='Prosperity CI status'></a>",
-              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/prosperity-loot-overhaul'>119</a>",
+              "<a class='text-accent hover:text-accent2 underline' href='https://modrinth.com/mod/prosperity-loot-overhaul'>120</a>",
               "<a class='text-accent hover:text-accent2 underline' href='https://github.com/rfizzle/prosperity/issues'>2</a>"
             ],
             [
