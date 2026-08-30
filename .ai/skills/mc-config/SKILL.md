@@ -41,6 +41,13 @@ keeps a flat object with a documented split; Prosperity nests the client fields
 under a `client` block so "the synced view = everything except `client`" is
 structural. Either is fine — pick one and document which side owns each field.
 
+**Ruling (concord#62):** the sync payload *may* carry client-only fields; projecting
+them out is preferred where the schema already nests them (Prosperity, Distillation,
+Meridian) and not worth a `configVersion` migration where it doesn't. What is
+normative is the read side: **a client never reads a presentation field (HUD anchor,
+offsets, render toggles) from the synced object** — those come from the local file
+only. Instinct's tripwire test for a no-sync config is the model if you want a guard.
+
 ## The load lifecycle
 
 The order is load-bearing. Migration runs on **raw JSON before Gson** so renamed

@@ -28,12 +28,8 @@ Fixed priority, top to bottom. Elements shift up to fill gaps when a
 higher-priority mod is absent or its HUD is disabled. **New slots are assigned
 here by appending — never by renumbering.**
 
-| Slot | Mod | Content |
-|---|---|---|
-| 1 | Tribulation | 16×16 skull glyph tinted by tier, 2px level-progress bar |
-| 2 | Mercantile | Reputation tier glyph, tier-tinted progress bar |
-| 3 | Prosperity | Loot distance tier glyph, tier-color tint |
-| — | Meridian | No slot, by design |
+The table lives in `HUD-STANDARD.md` §2 and nowhere else — read it there. Today: 1 Tribulation,
+2 Mercantile, 3 Prosperity; the other five members have no slot by design.
 
 ## Visual spec
 

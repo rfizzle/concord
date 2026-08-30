@@ -90,7 +90,8 @@ verified live.
 ## 2. Directory-by-directory rules
 
 ### Root
-Text only, and only the files listed above. No binaries (logo moves to `art/` —
+Text only, and only the files listed above (plus an optional `.agent/` of symlinks into
+`.ai/*` for tools that look there). No binaries (logo moves to `art/` —
 README embeds `art/logo.png` instead), no design docs, no stray logs or compiled
 classes. `README.md` is the single prose document at root; everything deeper has a
 directory.

@@ -122,7 +122,10 @@ if (FabricLoader.getInstance().isModLoaded("tribulation")) {
 ```
 
 - Every call site is guarded by `FabricLoader.getInstance().isModLoaded("<modid>")`,
-  or lives in a class that is only classloaded behind such a guard.
+  or lives in a class that is only classloaded behind such a guard. A plugin the host
+  discovers through a `fabric.mod.json` entrypoint (`emi`, `rei_client`, `jei_mod_plugin`,
+  `jade`, `waila_plugins.json`) needs no guard — the loader only instantiates it when the
+  host is present (see `mc-compat`).
 - Integration code lives in `compat/<modid>/` packages that fail gracefully when the
   target is absent.
 - Conditional *data* (recipes, trade entries, loot injections that reference a

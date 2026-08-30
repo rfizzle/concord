@@ -16,7 +16,9 @@ The standard governs two on-screen surfaces a mod may render, independently of e
   is held, expanding the badge's headline into the full picture. Optional and independent
   of the badge: a mod may ship a badge, a panel, both, or neither.
 
-Everything that is neither persistent-ambient nor on-demand-detail belongs in screens,
+A **transient cosmetic** drawn from `HudRenderCallback` (Respite's weariness blink) is
+neither: it takes no slot and no accessors, and only the §3 draw-batch rule applies.
+Everything else that is neither persistent-ambient nor on-demand-detail belongs in screens,
 tooltips (Jade/WTHIT), or recipe viewers. Opting out of both is conformant — Meridian has
 no HUD surface by design. Future members default to **no slot**.
 
@@ -100,7 +102,7 @@ accessors** that every HUD-bearing mod exposes in its `api` package, per
 ```java
 // reflection-backed, safe to call when the mod is absent
 boolean isHudVisible();   // false if mod absent, HUD config-disabled, or hidden
-int     getHudHeight();   // contribution in px (element + gap); 0 if not visible
+int     getHudHeight();   // element height PLUS the 2px stack gap (22 for a standard element); 0 if not visible
 ```
 
 Each mod's offset = sum of `getHudHeight()` over all *higher-priority* mods that are

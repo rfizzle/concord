@@ -213,29 +213,12 @@ Rules for coexistence when multiple mods are installed:
 
 The normative collection-level document is [`HUD-STANDARD.md`](HUD-STANDARD.md) in this
 repo (mod repos link to it, never copy it); Tribulation's `TribulationHudOverlay` is the
-reference implementation. The one place reality diverges from it is Mercantile's hardcoded
-offset — see below.
+reference implementation.
 
-**Visual:** semi-transparent black box (50–60% opacity, 2px rounded corners) containing a
-16×16 mod glyph, optional text label in vanilla font (white, drop shadow), optional 2px
-progress bar under the icon. No custom fonts, no frames, no animation beyond color tint
-and Tribulation's 2s level-up lerp. **Standard element height: 20px + 2px inter-element
-gap** (Tribulation's 19px icon+bar rounds into this).
-
-**Position & stacking:** top-left anchor by default (configurable to any corner),
-elements stack vertically in fixed priority order and shift up to fill gaps when a
-higher-priority sibling is absent or has its HUD disabled:
-
-| Slot | Mod | Content |
-|---|---|---|
-| 1 | Tribulation | Skull glyph tinted by tier + level progress bar (icon-only; the level number was removed) |
-| 2 | Mercantile | Balance-scale glyph + tier-tinted bar, no text |
-| 3 | Prosperity | Untinted chest glyph + current distance tier (`Frontier`) as a tier-colored label |
-| — | Meridian | **No slot, by design.** Meridian's info lives in the enchanting screen, Jade/WTHIT, and recipe viewers. |
-| — | Respite | **No slot, by design.** Weariness rides the vanilla status-effect icons; time is read from the sky, the Chronometer block, and `/respite status`. |
-| — | Distillation | **No slot, by design.** Discovery hints and the recipes page live in the brewing screen; active effects use vanilla's own status-effect icons. |
-| — | Cultivation | **No slot, by design.** Soil is read from the ground itself (overlays, Jade/WTHIT, `/cultivation soil`); dietary fatigue lives on food tooltips; meal buffs use vanilla's own status-effect icons. |
-| — | Instinct | **No slot, by design.** Veterancy, bloodline grades, and downed status are properties of specific animals — read by crouch-inspecting them, Jade/WTHIT, and `/instinct info`. |
+The slot registry, visual spec, visibility rules, and coordination mechanism live in
+[`HUD-STANDARD.md`](HUD-STANDARD.md) §2–§6 — one table, edited there only. Summary: a
+20px element + 2px gap per slot, top-left stack in fixed priority (Tribulation, Mercantile,
+Prosperity), and no slot for the other five members.
 
 This opt-out is a feature of the standard, not an omission: a mod takes a HUD slot only
 if it has *persistent ambient state* the player needs while walking around. Future mods
