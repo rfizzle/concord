@@ -507,6 +507,25 @@ class VerifyTests(unittest.TestCase):
         self.assertEqual(rc, 0, err)
         self.assertIn("matches", out)
 
+    def test_trailing_encoder_padding_is_not_drift(self):
+        # libvorbis finalizes some cue lengths with ~1000 samples of near-silent
+        # padding past the final granule, and ffmpeg's Vorbis decode emits it.
+        # A shipped cue whose only difference is trailing sub--60 dBFS silence
+        # is still the spec's cue; raw stream length must not fail it.
+        spec = sfx.parse_spec(self.blip.read_text())
+        samples, sr = sfx.synthesize(spec)
+        samples, _, _, _ = sfx.normalize_loudness(
+            samples, sr, spec["loudness_lufs"], spec["peak_dbfs"])
+        stats = sfx.compute_stats(samples, sr)
+        padded = samples + [0.00005] * int(0.025 * sr)  # ~25 ms below -60 dBFS
+        wav = self.dir / "padded.wav"
+        sfx.write_wav(wav, padded, sr)
+        ogg = self.dir / "padded.ogg"
+        ok, why = sfx.encode_ogg(wav, ogg)
+        self.assertTrue(ok, why)
+        problems = sfx.verify_render(ogg, samples, sr, stats)
+        self.assertEqual([p for p in problems if "duration" in p], [])
+
     def test_different_cue_under_that_name_is_drift(self):
         ogg = self.dir / "b.ogg"
         self._run([str(self.other), "-o", str(ogg), "--no-report"])
