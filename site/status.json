@@ -1,11 +1,11 @@
 {
-  "generated": "2026-08-30",
+  "generated": "2026-08-31",
   "totals": {
     "members": 8,
     "released": 4,
-    "downloads": 691,
+    "downloads": 702,
     "followers": 10,
-    "openIssues": 23
+    "openIssues": 15
   },
   "members": [
     {
@@ -22,12 +22,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-30"
+        "date": "2026-08-31"
       },
-      "openIssues": 2,
+      "openIssues": 1,
       "modrinth": {
         "slug": "meridian-enchanting-overhaul",
-        "downloads": 130,
+        "downloads": 134,
         "followers": 2
       }
     },
@@ -45,12 +45,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-30"
+        "date": "2026-08-31"
       },
-      "openIssues": 6,
+      "openIssues": 7,
       "modrinth": {
         "slug": "mercantile-villager-overhaul",
-        "downloads": 231,
+        "downloads": 235,
         "followers": 3
       }
     },
@@ -68,12 +68,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-30"
+        "date": "2026-08-31"
       },
-      "openIssues": 3,
+      "openIssues": 1,
       "modrinth": {
         "slug": "tribulation-difficulty-overhaul",
-        "downloads": 210,
+        "downloads": 212,
         "followers": 3
       }
     },
@@ -91,12 +91,12 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-30"
+        "date": "2026-08-31"
       },
       "openIssues": 2,
       "modrinth": {
         "slug": "prosperity-loot-overhaul",
-        "downloads": 120,
+        "downloads": 121,
         "followers": 2
       }
     },
@@ -111,9 +111,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-30"
+        "date": "2026-08-31"
       },
-      "openIssues": 1,
+      "openIssues": 0,
       "modrinth": null
     },
     {
@@ -127,9 +127,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-30"
+        "date": "2026-08-31"
       },
-      "openIssues": 3,
+      "openIssues": 1,
       "modrinth": null
     },
     {
@@ -143,9 +143,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-30"
+        "date": "2026-08-31"
       },
-      "openIssues": 4,
+      "openIssues": 2,
       "modrinth": null
     },
     {
@@ -159,9 +159,9 @@
       "ci": {
         "status": "completed",
         "conclusion": "success",
-        "date": "2026-08-30"
+        "date": "2026-08-31"
       },
-      "openIssues": 2,
+      "openIssues": 1,
       "modrinth": null
     }
   ]
