@@ -132,7 +132,7 @@ jobs:
       # Artifacts to confirm the issue body and AGENTS.md are present. The
       # prompt holds no secrets (the token is passed via env).
       - name: Upload spec prompt
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: spec-prompt
           path: /tmp/spec-prompt.txt
