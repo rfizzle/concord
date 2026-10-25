@@ -64,7 +64,7 @@ on:
       model:
         description: "Claude model used to write the release notes"
         type: string
-        default: claude-sonnet-4-6
+        default: claude-sonnet-5-5
       changelog-max-budget-usd:
         type: string
         default: "5.00"

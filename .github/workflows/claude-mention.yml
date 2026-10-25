@@ -29,7 +29,7 @@ on:
     inputs:
       model:
         type: string
-        default: claude-sonnet-4-6
+        default: claude-sonnet-5-5
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true
