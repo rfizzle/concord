@@ -54,6 +54,7 @@
 #     push: { tags: ["v*"] }
 #   permissions:
 #     contents: write
+#     checks: read
 #   jobs:
 #     release:
 #       uses: rfizzle/concord/.github/workflows/mod-release.yml@master
@@ -125,11 +126,12 @@ env:
 jobs:
   gate:
     runs-on: ubuntu-latest
-    # Reads only. check-runs on a commit need no extra scope on a public repo; a
-    # private member's caller stub must also grant checks: read (a reusable
-    # workflow can only narrow the caller's GITHUB_TOKEN, never widen it).
+    # Reads only. The caller stub must grant checks: read for the check-run
+    # lookup (a reusable workflow can only narrow the caller's GITHUB_TOKEN,
+    # never widen it).
     permissions:
       contents: read
+      checks: read
     steps:
       - name: Checkout member (full history and tags)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

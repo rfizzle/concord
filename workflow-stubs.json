@@ -15,7 +15,7 @@
       "uses": "rfizzle/concord/.github/workflows/mod-release.yml@master",
       "permissions": {
         "contents": "write",
-        "pull-requests": "write"
+        "checks": "read"
       }
     },
     {

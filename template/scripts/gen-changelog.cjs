@@ -3,8 +3,8 @@
  * Generate <site>/pages/changelog.json for a Concord member site.
  *
  * The site changelog is derived, never hand-written: it unions the mod's
- * committed changelogs/<version>.md files (hand-authored or recorded by the
- * release pipeline) with its GitHub Releases, so it can't drift from what
+ * committed, hand-authored changelogs/<version>.md files with its GitHub
+ * Releases, so it can't drift from what
  * actually shipped. Runs BEFORE Eleventy — the template reads pages/<slug>.json
  * at config-eval time, so the file must exist first.
  *
