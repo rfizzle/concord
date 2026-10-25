@@ -100,7 +100,7 @@ class ListingClaimsTest(unittest.TestCase):
         self.assertEqual([], errors)
 
     def test_a_bare_suggests_entry_does_not_back_a_claim(self):
-        """Every member suggests every sibling at `*`, so it excuses nothing.
+        """A `suggests` entry declares soft compatibility, not an integration.
 
         Distillation suggests tribulation and claimed "its shard debuffs gain
         brewable antidotes of their own"; nothing in the repo registers one.
@@ -110,6 +110,31 @@ class ListingClaimsTest(unittest.TestCase):
         self.listing("With **Tribulation**, veterancy accrues double.")
         errors, _ = self.run_check()
         self.assertTrue(any("Tribulation" in e for e in errors), errors)
+
+    def test_a_relation_without_a_store_slug_is_an_error(self):
+        self.listing("A mod.")
+        self.meta(depends={"fabric-api": "*", "minecraft": "~1.21.1"},
+                  suggests={"appleskin": "*", "tribulation": "*"})
+        orig = check.load_third_party
+        check.load_third_party = lambda members_file=None: {"fabric-api"}
+        try:
+            errors, _ = self.run_check()
+        finally:
+            check.load_third_party = orig
+        self.assertEqual(1, sum("thirdPartySlugs" in e for e in errors), errors)
+        self.assertTrue(any("'appleskin'" in e for e in errors), errors)
+
+    def test_mapped_sibling_and_builtin_relations_pass(self):
+        self.listing("A mod.")
+        self.meta(depends={"fabric-api": "*", "minecraft": "~1.21.1", "java": ">=21"},
+                  suggests={"appleskin": "*", "tribulation": "*"})
+        orig = check.load_third_party
+        check.load_third_party = lambda members_file=None: {"fabric-api", "appleskin"}
+        try:
+            errors, _ = self.run_check()
+        finally:
+            check.load_third_party = orig
+        self.assertFalse(any("thirdPartySlugs" in e for e in errors), errors)
 
     def test_a_depends_entry_backs_a_claim(self):
         self.meta(depends={"tribulation": ">=1.0.0"})

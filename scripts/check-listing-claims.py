@@ -166,6 +166,18 @@ def load_members(members_file=None):
     return {}
 
 
+def load_third_party(members_file=None):
+    """The hub's thirdPartySlugs ids (the store slugs publish.py can resolve),
+    or None when no registry is reachable."""
+    for candidate in (members_file, ROOT / "members.json",
+                      Path(".concord/members.json"), Path("../concord/members.json")):
+        if not candidate or not Path(candidate).is_file():
+            continue
+        registry = json.loads(Path(candidate).read_text(encoding="utf-8"))
+        return {k for k in (registry.get("thirdPartySlugs") or {}) if not k.startswith("_")}
+    return None
+
+
 def strip_suite_links(text, members=None):
     """Blank the suite strip's rows and boilerplate, keeping every other
     sentence — including any that happens to sit in the same section.
@@ -532,7 +544,26 @@ def check_repo(repo, members, verbose=False, strict_new=None, new_rules=True):
             errors.append(f"{SUMMARY}: {len(text)} chars, over Modrinth's "
                           f"{MODRINTH_SUMMARY_CAP}-character cap")
 
-    # 6. Environment, integration parity and CurseForge copy.
+    # 6. Every third-party relation must have a store slug in the hub registry:
+    #    publish.py fails the release on an unmapped id, so catch it in the PR.
+    third_party = load_third_party()
+    if third_party is not None:
+        try:
+            meta = json.loads((repo / "src/main/resources/fabric.mod.json")
+                              .read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            meta = {}
+        builtin = {"minecraft", "fabricloader", "java", "fabric", modid}
+        for field in ("depends", "recommends", "suggests"):
+            for dep in sorted(meta.get(field) or {}):
+                if dep in builtin or dep in members or dep in third_party:
+                    continue
+                errors.append(
+                    f"fabric.mod.json: {field} '{dep}' has no store slug in the hub's "
+                    f"members.json thirdPartySlugs, so the release publish would fail; "
+                    f"add it there (null for a store it is not on)")
+
+    # 7. Environment, integration parity and CurseForge copy.
     if new_rules:
         strict = STRICT_NEW_RULES if strict_new is None else strict_new
         (errors if strict else warnings).extend(check_new_rules(repo, modid, listings))

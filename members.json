@@ -45,6 +45,10 @@
     "ftbteams": {
       "modrinth": null,
       "curseforge": "ftb-teams-fabric"
+    },
+    "appleskin": {
+      "modrinth": "appleskin",
+      "curseforge": "appleskin"
     }
   },
   "members": [
