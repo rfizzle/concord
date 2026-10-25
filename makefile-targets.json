@@ -88,9 +88,8 @@
       "target": "release",
       "help": "Tag v<version> and push it to trigger the release (usage: make release VERSION=X.Y.Z [NO_PUSH=1])",
       "recipe": [
-        "\t@test -n \"$(VERSION)\" || (echo \"Usage: make release VERSION=X.Y.Z [NO_PUSH=1]\" && exit 1)",
-        "\tgit tag \"v$(VERSION)\"",
-        "\t@$(if $(NO_PUSH),echo \"Tagged v$(VERSION) \u2014 push it with: git push origin v$(VERSION)\",git push origin \"v$(VERSION)\")"
+        "\t@test -n \"$(VERSION)\" || (echo \"Usage: make release VERSION=X.Y.Z[-pre] [NO_PUSH=1]\" && exit 1)",
+        "\tpython3 scripts/concord-release.py $(VERSION) $(if $(NO_PUSH),--no-push)"
       ]
     },
     {

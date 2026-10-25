@@ -11,12 +11,16 @@ on:
     paths:
       - "scripts/release/publish.py"
       - "scripts/test_publish.py"
+      - "propagate/scripts/concord-release.py"
+      - "scripts/test_concord_release.py"
       - ".github/workflows/publish-test.yml"
   push:
     branches: [master]
     paths:
       - "scripts/release/publish.py"
       - "scripts/test_publish.py"
+      - "propagate/scripts/concord-release.py"
+      - "scripts/test_concord_release.py"
       - ".github/workflows/publish-test.yml"
 
 permissions:
@@ -33,3 +37,5 @@ jobs:
         run: python3 -m pip install --user requests
       - name: Run release publisher tests
         run: python3 -m unittest scripts.test_publish
+      - name: Run release tag script tests
+        run: python3 -m unittest scripts.test_concord_release
