@@ -38,8 +38,6 @@ MERIDIAN = {
     "name": "Meridian",
     "url": "https://meridian.rfizzle.com",
     "store": {"modrinth": {"id": "qywREjYt", "slug": "meridian-enchanting-overhaul"}},
-    "status": "released",
-    "conformance": {"layoutMigrated": True},
 }
 
 RESPITE = {
@@ -47,13 +45,11 @@ RESPITE = {
     "name": "Respite",
     "url": "https://respite.rfizzle.com",
     "store": {"modrinth": {"slug": "respite-vitality-overhaul"}},
-    "status": "in-development",
-    "conformance": {"layoutMigrated": False},
 }
 
 
 def _release_url(mid: str) -> str:
-    return f"{gen.GITHUB_API}/repos/rfizzle/{mid}/releases/latest"
+    return f"{gen.GITHUB_API}/repos/rfizzle/{mid}/releases?per_page=10"
 
 
 def _ci_url(mid: str) -> str:
@@ -82,7 +78,10 @@ def make_fetch(responses: dict):
 
 
 MERIDIAN_LIVE = {
-    _release_url("meridian"): (200, {"tag_name": "v1.0.0", "published_at": "2026-07-01T12:43:41Z"}),
+    _release_url("meridian"): (200, [
+        {"tag_name": "v1.0.0", "published_at": "2026-07-01T12:43:41Z", "prerelease": False},
+        {"tag_name": "v1.0.0-beta.1", "published_at": "2026-06-01T00:00:00Z", "prerelease": True},
+    ]),
     _ci_url("meridian"): (200, {"workflow_runs": [
         {"status": "completed", "conclusion": "success", "updated_at": "2026-07-10T07:45:35Z"}
     ]}),
@@ -103,13 +102,15 @@ def _walk_blocks(blocks):
 class FetchMemberTests(unittest.TestCase):
     def test_happy_path(self):
         m = gen.fetch_member(MERIDIAN, make_fetch(MERIDIAN_LIVE))
-        self.assertEqual(m["release"], {"tag": "v1.0.0", "date": "2026-07-01"})
+        self.assertEqual(
+            m["release"], {"tag": "v1.0.0", "date": "2026-07-01", "prerelease": False}
+        )
+        self.assertEqual(m["status"], "released")
         self.assertEqual(m["ci"]["conclusion"], "success")
         self.assertEqual(m["ci"]["date"], "2026-07-10")
         self.assertEqual(m["openIssues"], 8)
         self.assertEqual(m["modrinth"]["downloads"], 1234)
         self.assertEqual(m["repo"], "rfizzle/meridian")
-        self.assertTrue(m["layoutMigrated"])
 
     def test_everything_missing_is_null_not_error(self):
         # All endpoints 404 (unreleased repo, draft Modrinth listing).
@@ -127,6 +128,53 @@ class FetchMemberTests(unittest.TestCase):
         self.assertIsNone(m["ci"])
         self.assertIsNone(m["openIssues"])
         self.assertIsNone(m["modrinth"])
+
+
+class ReleaseStatusTests(unittest.TestCase):
+    def _member_with(self, releases):
+        live = {_release_url("respite"): (200, releases)}
+        return gen.fetch_member(RESPITE, make_fetch(live))
+
+    def test_prerelease_only_is_beta(self):
+        m = self._member_with([
+            {"tag_name": "v1.0.0-beta.1", "published_at": "2026-08-01T00:00:00Z", "prerelease": True},
+        ])
+        self.assertEqual(m["status"], "beta")
+        self.assertEqual(m["release"]["tag"], "v1.0.0-beta.1")
+
+    def test_stable_is_released(self):
+        m = self._member_with([
+            {"tag_name": "v1.0.0", "published_at": "2026-09-01T00:00:00Z", "prerelease": False},
+        ])
+        self.assertEqual(m["status"], "released")
+
+    def test_newest_prerelease_after_stable_is_beta(self):
+        # The first non-draft release decides: a newer pre-release wins.
+        m = self._member_with([
+            {"tag_name": "v1.1.0-rc.1", "published_at": "2026-09-02T00:00:00Z", "prerelease": True},
+            {"tag_name": "v1.0.0", "published_at": "2026-09-01T00:00:00Z", "prerelease": False},
+        ])
+        self.assertEqual(m["status"], "beta")
+
+    def test_drafts_are_skipped(self):
+        m = self._member_with([
+            {"tag_name": "v1.0.0", "draft": True, "prerelease": False},
+            {"tag_name": "v1.0.0-beta.1", "published_at": "2026-08-01T00:00:00Z", "prerelease": True},
+        ])
+        self.assertEqual(m["release"]["tag"], "v1.0.0-beta.1")
+        self.assertEqual(m["status"], "beta")
+
+    def test_only_drafts_or_empty_is_in_development(self):
+        for releases in ([], [{"tag_name": "v1.0.0", "draft": True}]):
+            m = self._member_with(releases)
+            self.assertIsNone(m["release"])
+            self.assertEqual(m["status"], "in-development")
+
+    def test_beta_row_renders_beta(self):
+        m = self._member_with([
+            {"tag_name": "v1.0.0-beta.1", "published_at": "2026-08-01T00:00:00Z", "prerelease": True},
+        ])
+        self.assertIn("beta", gen.member_row(m)[1])
 
 
 class BuildStatusTests(unittest.TestCase):
@@ -148,28 +196,6 @@ class BuildStatusTests(unittest.TestCase):
     def test_members_json_order_preserved(self):
         data = gen.build_status({"members": [RESPITE, MERIDIAN]}, make_fetch(MERIDIAN_LIVE))
         self.assertEqual([m["id"] for m in data["members"]], ["respite", "meridian"])
-
-
-class GeneratedStampTests(unittest.TestCase):
-    def _data(self):
-        return gen.build_status({"members": [MERIDIAN]}, make_fetch(MERIDIAN_LIVE))
-
-    def test_stamp_kept_when_data_unchanged(self):
-        previous = {"generated": "2026-07-01", **self._data()}
-        # Round-trip through JSON like the committed file would be.
-        previous = json.loads(json.dumps(previous))
-        stamp = gen.resolve_generated(self._data(), previous, "2026-07-11")
-        self.assertEqual(stamp, "2026-07-01")
-
-    def test_stamp_bumped_when_data_changed(self):
-        previous = {"generated": "2026-07-01", **self._data()}
-        changed = self._data()
-        changed["totals"]["downloads"] = 9999
-        stamp = gen.resolve_generated(changed, previous, "2026-07-11")
-        self.assertEqual(stamp, "2026-07-11")
-
-    def test_no_previous_file(self):
-        self.assertEqual(gen.resolve_generated(self._data(), None, "2026-07-11"), "2026-07-11")
 
 
 class RenderTests(unittest.TestCase):
@@ -206,16 +232,11 @@ class RenderTests(unittest.TestCase):
         self.assertIn("in development", row[1])
         self.assertEqual(row[2:], [gen.DASH] * 5)
 
-    def test_conformance_not_rendered_publicly(self):
-        page = gen.render_status_page(self._status())
-        self.assertNotIn("Layout", json.dumps(page))
-        self.assertNotIn("migrated", json.dumps(page))
-
     def test_api_values_are_html_escaped(self):
         hostile = dict(MERIDIAN_LIVE)
         hostile[_release_url("meridian")] = (
             200,
-            {"tag_name": "v1<img src=x>", "published_at": "2026-07-01T00:00:00Z"},
+            [{"tag_name": "v1<img src=x>", "published_at": "2026-07-01T00:00:00Z"}],
         )
         hostile[_modrinth_url("qywREjYt")] = (
             200,
@@ -235,18 +256,24 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(cards["items"][0]["title"], gen.DASH)
         self.assertEqual(cards["items"][1]["title"], "0 of 0")
 
-    def test_member_without_store_or_conformance_keys(self):
+    def test_member_without_store_key(self):
         bare = {
             "id": "tempest",
             "name": "Tempest",
             "url": "https://tempest.rfizzle.com",
-            "status": "in-development",
         }
         m = gen.fetch_member(bare, make_fetch({}))
         self.assertIsNone(m["modrinth"])
-        self.assertIsNone(m["layoutMigrated"])
         row = gen.member_row(m)
         self.assertEqual(len(row), 7)
+
+    def test_unreachable_apis_still_render_a_page(self):
+        dead = lambda url, headers=None: (0, None)
+        data = gen.build_status({"members": [MERIDIAN, RESPITE]}, dead)
+        page = gen.render_status_page({"generated": "2026-07-11", **data})
+        json.dumps(page)
+        for row in page["sections"][1]["blocks"][0]["rows"]:
+            self.assertIn("in development", row[1])
 
     def test_page_note_carries_generated_date(self):
         page = gen.render_status_page(self._status())
@@ -283,17 +310,6 @@ class FileIoTests(unittest.TestCase):
             self.assertTrue(text.endswith("\n"))
             self.assertIn(gen.DASH, text)  # ensure_ascii=False, not —
             self.assertEqual(json.loads(text), {"dash": gen.DASH})
-
-    def test_load_previous_tolerates_missing_and_corrupt_files(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = pathlib.Path(tmp) / "status.json"
-            self.assertIsNone(gen.load_previous(path))
-            path.write_text("{ not json", encoding="utf-8")
-            self.assertIsNone(gen.load_previous(path))
-            path.write_text('["not a dict"]', encoding="utf-8")
-            self.assertIsNone(gen.load_previous(path))
-            path.write_text('{"generated": "2026-07-01"}', encoding="utf-8")
-            self.assertEqual(gen.load_previous(path), {"generated": "2026-07-01"})
 
 
 class PatchIndexTests(unittest.TestCase):

@@ -20,10 +20,6 @@
       "store": {
         "modrinth": { "id": "qywREjYt", "slug": "meridian-enchanting-overhaul" },
         "curseforge": { "id": "1546092", "slug": "meridian-enchanting-overhaul" }
-      },
-      "status": "released",
-      "conformance": {
-        "layoutMigrated": true
       }
     },
     {
@@ -34,10 +30,6 @@
       "store": {
         "modrinth": { "id": "Bnp3Drhe", "slug": "mercantile-villager-overhaul" },
         "curseforge": { "id": "1591251", "slug": "mercantile-villager-overhaul" }
-      },
-      "status": "released",
-      "conformance": {
-        "layoutMigrated": true
       }
     },
     {
@@ -48,10 +40,6 @@
       "store": {
         "modrinth": { "id": "8KuQhMGI", "slug": "tribulation-difficulty-overhaul" },
         "curseforge": { "id": "1546072", "slug": "tribulation-difficulty-overhaul" }
-      },
-      "status": "released",
-      "conformance": {
-        "layoutMigrated": true
       }
     },
     {
@@ -62,10 +50,6 @@
       "store": {
         "modrinth": { "id": "bD4rtHdZ", "slug": "prosperity-loot-overhaul" },
         "curseforge": { "id": "1591262", "slug": "prosperity-loot-overhaul" }
-      },
-      "status": "released",
-      "conformance": {
-        "layoutMigrated": true
       }
     },
     {
@@ -76,10 +60,6 @@
       "store": {
         "modrinth": { "id": "Mz4an5lJ", "slug": "respite-vitality-overhaul" },
         "curseforge": { "id": "1608507", "slug": "respite-vitality-overhaul" }
-      },
-      "status": "in-development",
-      "conformance": {
-        "layoutMigrated": true
       }
     },
     {
@@ -90,10 +70,6 @@
       "store": {
         "modrinth": { "id": "Klvwaa28", "slug": "distillation-alchemy-overhaul" },
         "curseforge": { "id": "1617729", "slug": "distillation-alchemy-overhaul" }
-      },
-      "status": "in-development",
-      "conformance": {
-        "layoutMigrated": true
       }
     },
     {
@@ -104,10 +80,6 @@
       "store": {
         "modrinth": { "id": "V85yEoWP", "slug": "cultivation-agriculture-overhaul" },
         "curseforge": { "id": "1673114", "slug": "cultivation-agriculture-overhaul" }
-      },
-      "status": "in-development",
-      "conformance": {
-        "layoutMigrated": true
       }
     },
     {
@@ -118,10 +90,6 @@
       "store": {
         "modrinth": { "id": "x5aRPdcH", "slug": "instinct-husbandry-overhaul" },
         "curseforge": { "id": "1617731", "slug": "instinct-husbandry-overhaul" }
-      },
-      "status": "in-development",
-      "conformance": {
-        "layoutMigrated": true
       }
     }
   ],

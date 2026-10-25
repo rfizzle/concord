@@ -1,6 +1,6 @@
 # Guards the suite status generator: whenever gen-status.py or its tests
-# change, run the unit tests so a regression can't merge — the nightly
-# status.yml workflow runs this script unattended and commits its output.
+# change, run the unit tests so a regression can't merge — site.yml runs this
+# script unattended on every build.
 name: Status generator tests
 
 on:

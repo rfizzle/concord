@@ -147,7 +147,7 @@ row are fine.
 ## Generated for free
 
 Header nav + mobile menu (from `nav`), the cross-mod Concord footer strip
-(from `../members.json` — names, taglines, status; adding a member there
+(from `../members.json` — names, taglines; adding a member there
 updates every site's footer on the next rebuild), the home page `<title>`
 (`Name — Tagline`, single-sourced from `members.json`; other pages keep their
 own `metaTitle`; the tagline is also exposed to templates as `tagline`),

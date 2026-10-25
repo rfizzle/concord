@@ -88,8 +88,8 @@ toolchain-test:
 
 # Regenerate the suite status dashboard (site/status.json, site/pages/status.json,
 # and the landing "suite-status" section) from the public GitHub and Modrinth
-# APIs. The nightly status.yml workflow runs the same script and commits the
-# result when the data changed.
+# APIs. site.yml runs the same script before each site build; the outputs are
+# gitignored.
 status:
 	@$(PY) scripts/gen-status.py
 

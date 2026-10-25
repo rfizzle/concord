@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """Generate the Concord suite status dashboard from public APIs.
 
-Reads members.json and queries the GitHub API (latest release, latest CI run
-on master, open issue count) and the Modrinth API (downloads, followers).
+Reads members.json and queries the GitHub API (releases, latest CI run on
+master, open issue count) and the Modrinth API (downloads, followers).
 Public reads only — GITHUB_TOKEN, when present, merely raises the rate limit.
 Every fetch is best-effort per member: an unreachable endpoint, an unpublished
 Modrinth listing (404), or a repo without releases becomes null data, never a
-failed run, so the committed files always exist and always render.
+failed run, so the site build always has something to render.
 
+A member's status is derived from its GitHub releases (newest non-draft,
+pre-releases included): a stable release means "released", a pre-release means
+"beta", no release means "in-development".
+
+The site build runs this before eleventy; the outputs are not committed, except
+that the landing page's committed suite-status blocks are the fallback shape.
 Writes three files:
 
     site/status.json          raw per-member data + collection totals
@@ -15,10 +21,6 @@ Writes three files:
     site/pages/index.json     refreshes the blocks of the landing section whose
                               id is "suite-status" (file untouched when the
                               section is absent or already current)
-
-The `generated` stamp records the day the data last changed: when a fetch
-returns data identical to the committed site/status.json, the previous stamp
-is kept, so the nightly workflow's diff gate can skip the commit entirely.
 
 Run from the concord repo root:
 
@@ -83,6 +85,26 @@ def _date(iso: str | None) -> str | None:
     return iso[:10] if iso else None
 
 
+def latest_release(releases: list) -> dict | None:
+    """The newest non-draft release (pre-releases included), as
+    {tag, date, prerelease}. The API lists newest first."""
+    for rel in releases:
+        if isinstance(rel, dict) and rel.get("tag_name") and not rel.get("draft"):
+            return {
+                "tag": rel["tag_name"],
+                "date": _date(rel.get("published_at") or rel.get("created_at")),
+                "prerelease": bool(rel.get("prerelease")),
+            }
+    return None
+
+
+def derive_status(release: dict | None) -> str:
+    """released (stable tag) / beta (pre-release only) / in-development (none)."""
+    if not release:
+        return "in-development"
+    return "beta" if release["prerelease"] else "released"
+
+
 def fetch_member(member: dict, fetch) -> dict:
     """Best-effort live status for one member; missing data becomes None."""
     mid = member["id"]
@@ -90,9 +112,9 @@ def fetch_member(member: dict, fetch) -> dict:
     gh = github_headers()
 
     release = None
-    code, data = fetch(f"{GITHUB_API}/repos/{repo}/releases/latest", gh)
-    if code == 200 and isinstance(data, dict) and data.get("tag_name"):
-        release = {"tag": data["tag_name"], "date": _date(data.get("published_at"))}
+    code, data = fetch(f"{GITHUB_API}/repos/{repo}/releases?per_page=10", gh)
+    if code == 200 and isinstance(data, list):
+        release = latest_release(data)
 
     ci = None
     code, data = fetch(
@@ -133,8 +155,7 @@ def fetch_member(member: dict, fetch) -> dict:
         "name": member["name"],
         "url": member["url"],
         "repo": repo,
-        "status": member.get("status"),
-        "layoutMigrated": (member.get("conformance") or {}).get("layoutMigrated"),
+        "status": derive_status(release),
         "release": release,
         "ci": ci,
         "openIssues": open_issues,
@@ -166,15 +187,6 @@ def build_status(members_doc: dict, fetch) -> dict:
     return {"totals": totals, "members": members}
 
 
-def resolve_generated(data: dict, previous: dict | None, today: str) -> str:
-    """Keep the previous stamp when the data is unchanged, else stamp today."""
-    if previous:
-        previous_data = {k: v for k, v in previous.items() if k != "generated"}
-        if previous_data == data:
-            return previous.get("generated", today)
-    return today
-
-
 def fmt_count(n: object) -> str:
     return f"{n:,}" if isinstance(n, int) else DASH
 
@@ -202,13 +214,16 @@ def stat_cards(status: dict) -> dict:
     }
 
 
+STATUS_CELLS = {
+    "released": "<span class='text-accent'>released</span>",
+    "beta": "<span class='text-accent'>beta</span>",
+    "in-development": "<span class='text-ash'>in development</span>",
+}
+
+
 def member_row(m: dict) -> list[str]:
     name = f"<a class='{LINK_CLASS}' href='{m['url']}'>{m['name']}</a>"
-    status = (
-        "<span class='text-accent'>released</span>"
-        if m["status"] == "released"
-        else "<span class='text-ash'>in development</span>"
-    )
+    status = STATUS_CELLS[m["status"]]
     # tag and slug arrive from API responses (member repos and their Modrinth
     # projects are owner-controlled, but escape anyway — the template renders
     # cells with | safe).
@@ -237,8 +252,6 @@ def member_row(m: dict) -> list[str]:
         if isinstance(m["openIssues"], int)
         else DASH
     )
-    # Conformance state (layoutMigrated) stays in the raw site/status.json;
-    # it is maintainer data, not a visitor-facing column.
     return [name, status, version, released, ci, downloads, issues]
 
 
@@ -254,7 +267,7 @@ def render_status_page(status: dict) -> dict:
         "note": (
             f"Downloads count each member's Modrinth listing; members without a public "
             f"listing yet show {DASH}. Refreshed nightly from the GitHub and Modrinth "
-            f"APIs · data last changed {status['generated']}."
+            f"APIs · generated {status['generated']}."
         ),
     }
     return {
@@ -302,18 +315,6 @@ def write_json(path: pathlib.Path, doc: dict) -> None:
     path.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def load_previous(path: pathlib.Path) -> dict | None:
-    """The committed status file, or None when absent or unparseable — a
-    corrupt previous file must not wedge the nightly run; it gets overwritten."""
-    if not path.exists():
-        return None
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-        return doc if isinstance(doc, dict) else None
-    except ValueError:
-        return None
-
-
 def main() -> int:
     if not MEMBERS_JSON.exists():
         print("members.json not found — run from the concord repo root.", file=sys.stderr)
@@ -322,17 +323,16 @@ def main() -> int:
     # never leave a torn half-written tree behind.
     members_doc = json.loads(MEMBERS_JSON.read_text(encoding="utf-8"))
     index_doc = json.loads(INDEX_PAGE_JSON.read_text(encoding="utf-8"))
-    previous = load_previous(STATUS_JSON)
 
     data = build_status(members_doc, http_fetch)
     today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
-    status = {"generated": resolve_generated(data, previous, today), **data}
+    status = {"generated": today, **data}
 
     write_json(STATUS_JSON, status)
     write_json(STATUS_PAGE_JSON, render_status_page(status))
     if patch_index(index_doc, status):
         write_json(INDEX_PAGE_JSON, index_doc)
-    print(f"wrote {STATUS_JSON} and {STATUS_PAGE_JSON} (data last changed {status['generated']})")
+    print(f"wrote {STATUS_JSON} and {STATUS_PAGE_JSON} (generated {status['generated']})")
     return 0
 
 
