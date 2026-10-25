@@ -62,8 +62,8 @@ class ListingClaimsTest(unittest.TestCase):
     def run_check(self):
         return check.check_repo(self.repo, MEMBERS, new_rules=False)
 
-    def run_new(self, strict=None):
-        return check.check_repo(self.repo, MEMBERS, strict_new=strict)
+    def run_new(self):
+        return check.check_repo(self.repo, MEMBERS)[0]
 
     def java(self, rel, text):
         path = self.repo / rel
@@ -318,97 +318,89 @@ class ListingClaimsTest(unittest.TestCase):
         errors, _ = self.run_check()
         self.assertEqual([], errors)
 
-    # --- new rules: warnings by default, errors under strict --------------
+    # --- environment, integration parity, CurseForge copy ----------------
 
     MODRINTH = "[Modrinth](https://modrinth.com/mod/instinct)"
 
     def synced(self):
         self.lang({"block.instinct.kennel_post": "Kennel Post"})
 
-    def test_client_optional_phrasing_warns_when_content_is_registered(self):
+    def test_client_optional_phrasing_fails_when_content_is_registered(self):
         self.synced()
         self.listing("Kennel Post. Required on the **server**; install client-side too "
                      f"for the HUD. {self.MODRINTH}")
-        errors, warnings = self.run_new()
-        self.assertEqual([], errors)
-        self.assertTrue(any("client is required" in w for w in warnings), warnings)
-
-    def test_client_optional_phrasing_errors_under_strict(self):
-        self.synced()
-        self.listing(f"Kennel Post. A client-only feature. {self.MODRINTH}")
-        errors, _ = self.run_new(strict=True)
-        self.assertTrue(any("client is required" in e for e in errors), errors)
+        findings = self.run_new()
+        self.assertTrue(any("client is required" in w for w in findings), findings)
 
     def test_required_on_server_and_client_is_fine(self):
         self.synced()
         self.listing(f"Kennel Post. Required on the server and the client. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertEqual([], warnings)
+        findings = self.run_new()
+        self.assertEqual([], findings)
 
     def test_client_phrasing_ignored_without_registered_content(self):
         self.listing(f"Required on the server only. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertFalse(any("client is required" in w for w in warnings), warnings)
+        findings = self.run_new()
+        self.assertFalse(any("client is required" in w for w in findings), findings)
 
     def test_payload_registration_counts_as_synced_content(self):
         self.java("src/main/java/x/Net.java", "PayloadTypeRegistry.playS2C().register(a, b);")
         self.listing(f"A client-only feature. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertTrue(any("client is required" in w for w in warnings), warnings)
+        findings = self.run_new()
+        self.assertTrue(any("client is required" in w for w in findings), findings)
 
-    def test_compat_package_without_a_declared_id_warns(self):
+    def test_compat_package_without_a_declared_id_fails(self):
         self.java("src/main/java/x/compat/appleskin/Plugin.java", "class Plugin {}")
         self.listing(f"A mod. {self.MODRINTH}")
-        errors, warnings = self.run_new()
-        self.assertEqual([], errors)
-        self.assertTrue(any("'appleskin'" in w for w in warnings), warnings)
+        findings = self.run_new()
+        self.assertTrue(any("'appleskin'" in w for w in findings), findings)
 
     def test_declared_compat_package_is_fine(self):
         self.java("src/main/java/x/compat/appleskin/Plugin.java", "class Plugin {}")
         self.meta(suggests={"appleskin": "*"})
         self.listing(f"A mod. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertEqual([], warnings)
+        findings = self.run_new()
+        self.assertEqual([], findings)
 
     def test_compat_aliases_and_layout_dirs(self):
         self.java("src/main/java/x/compat/rei/P.java", "class P {}")
         self.java("src/main/java/x/compat/common/P.java", "class P {}")
         self.meta(suggests={"roughlyenoughitems": "*"})
         self.listing(f"A mod. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertEqual([], warnings)
+        findings = self.run_new()
+        self.assertEqual([], findings)
 
     def test_is_mod_loaded_literal_must_be_declared(self):
         self.java("src/main/java/x/A.java",
                   'class A { boolean b = FabricLoader.getInstance().isModLoaded("jei"); }')
         self.listing(f"A mod. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertTrue(any("'jei'" in w for w in warnings), warnings)
+        findings = self.run_new()
+        self.assertTrue(any("'jei'" in w for w in findings), findings)
 
     def test_own_mod_id_needs_no_declaration(self):
         self.java("src/main/java/x/A.java", 'class A { boolean b = isModLoaded("instinct"); }')
         self.listing(f"A mod. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertEqual([], warnings)
+        findings = self.run_new()
+        self.assertEqual([], findings)
 
     def test_cloth_config_import_needs_a_declaration(self):
         self.java("src/client/java/x/Screen.java",
                   "import me.shedaniel.clothconfig2.api.ConfigBuilder;")
         self.listing(f"A mod. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertTrue(any("'cloth-config'" in w for w in warnings), warnings)
+        findings = self.run_new()
+        self.assertTrue(any("'cloth-config'" in w for w in findings), findings)
         self.meta(suggests={"cloth-config": "*"})
-        _, warnings = self.run_new()
-        self.assertEqual([], warnings)
+        findings = self.run_new()
+        self.assertEqual([], findings)
 
-    def test_modmenu_entrypoint_importing_cloth_config_warns(self):
+    def test_modmenu_entrypoint_importing_cloth_config_fails(self):
         self.java("src/client/java/x/compat/modmenu/ModMenuIntegration.java",
                   "import me.shedaniel.clothconfig2.api.ConfigBuilder;")
         self.meta(suggests={"cloth-config": "*", "modmenu": "*"},
                   entrypoints={"modmenu": ["x.compat.modmenu.ModMenuIntegration"]})
         self.listing(f"A mod. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertTrue(any("modmenu entrypoint" in w for w in warnings), warnings)
+        findings = self.run_new()
+        self.assertTrue(any("modmenu entrypoint" in w for w in findings), findings)
 
     def test_delegating_modmenu_entrypoint_is_fine(self):
         self.java("src/client/java/x/compat/modmenu/ModMenuIntegration.java", "class M {}")
@@ -417,29 +409,27 @@ class ListingClaimsTest(unittest.TestCase):
         self.meta(suggests={"cloth-config": "*", "modmenu": "*"},
                   entrypoints={"modmenu": ["x.compat.modmenu.ModMenuIntegration"]})
         self.listing(f"A mod. {self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertEqual([], warnings)
+        findings = self.run_new()
+        self.assertEqual([], findings)
 
-    def test_curseforge_also_on_curseforge_warns(self):
+    def test_curseforge_also_on_curseforge_fails(self):
         self.listing(f"A mod. {self.MODRINTH}",
                      curseforge="**Also on [CurseForge](https://www.curseforge.com/x).**\n"
                                 f"{self.MODRINTH}")
-        _, warnings = self.run_new()
-        self.assertTrue(any("Also on CurseForge" in w for w in warnings), warnings)
+        findings = self.run_new()
+        self.assertTrue(any("Also on CurseForge" in w for w in findings), findings)
 
-    def test_curseforge_without_modrinth_link_warns(self):
+    def test_curseforge_without_modrinth_link_fails(self):
         self.listing("A mod.", curseforge="A mod, no links.")
-        _, warnings = self.run_new()
-        self.assertTrue(any("does not link the Modrinth" in w for w in warnings), warnings)
+        findings = self.run_new()
+        self.assertTrue(any("does not link the Modrinth" in w for w in findings), findings)
 
     def test_curseforge_linking_modrinth_is_fine(self):
         self.listing("A mod.",
                      curseforge="**Also on [Modrinth](https://modrinth.com/mod/instinct).**")
-        _, warnings = self.run_new()
-        self.assertEqual([], warnings)
+        findings = self.run_new()
+        self.assertEqual([], findings)
 
-    def test_new_rules_are_warnings_by_default(self):
-        self.assertFalse(check.STRICT_NEW_RULES)
 
     # --- degradation ------------------------------------------------------
 

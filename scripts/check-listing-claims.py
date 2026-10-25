@@ -53,8 +53,7 @@ still say it is unreleased once a `v*` tag exists — that one is unambiguous,
 and cultivation and distillation both told players "not yet released" for hours
 after publishing with nothing to catch it.
 
-Three further rules cover metadata and the CurseForge copy. They report as
-warnings until `--strict-new-rules` (or `STRICT_NEW_RULES`) promotes them:
+Three further rules cover metadata and the CurseForge copy, and fail the check:
 
   - **Environment.** A mod that registers blocks, items, entities or S2C
     payloads needs the client too; listing phrasing that calls the client
@@ -104,10 +103,6 @@ UNRELEASED_CLAIM = re.compile(
     r"|no version has been tagged|no build is published"
     r"|no published build|this page describes the first release", re.I)
 MODRINTH_SUMMARY_CAP = 256
-
-# New rules report as warnings so member CI keeps passing while members catch
-# up. Flip this (or pass --strict-new-rules) to make them errors.
-STRICT_NEW_RULES = False
 
 # compat/ subdirectories that are code layout, not an integrated mod.
 COMPAT_NON_MODS = {"common", "client", "shared", "index", "viewer", "tradeindex"}
@@ -375,7 +370,7 @@ def modmenu_entrypoint_classes(meta):
 
 
 def check_new_rules(repo, modid, listings):
-    """Findings for the rules that start as warnings: a list of strings."""
+    """Findings for the environment, integration-parity and CurseForge rules."""
     out = []
 
     # Environment.
@@ -441,9 +436,8 @@ def check_new_rules(repo, modid, listings):
     return out
 
 
-def check_repo(repo, members, verbose=False, strict_new=None, new_rules=True):
-    """Returns (errors, warnings) as lists of strings. The new rules land in
-    warnings unless `strict_new` (default STRICT_NEW_RULES) promotes them."""
+def check_repo(repo, members, verbose=False, new_rules=True):
+    """Returns (errors, warnings) as lists of strings."""
     repo = Path(repo)
     errors, warnings = [], []
     modid = mod_id(repo)
@@ -565,8 +559,7 @@ def check_repo(repo, members, verbose=False, strict_new=None, new_rules=True):
 
     # 7. Environment, integration parity and CurseForge copy.
     if new_rules:
-        strict = STRICT_NEW_RULES if strict_new is None else strict_new
-        (errors if strict else warnings).extend(check_new_rules(repo, modid, listings))
+        errors.extend(check_new_rules(repo, modid, listings))
     return errors, warnings
 
 
@@ -577,9 +570,6 @@ def main(argv=None):
                     help="treat --root as the parent of every member checkout")
     ap.add_argument("--members-file", default=None,
                     help="path to members.json (default: the hub's own)")
-    ap.add_argument("--strict-new-rules", action="store_true",
-                    help="report the environment, integration-parity and "
-                         "CurseForge rules as errors instead of warnings")
     ap.add_argument("-v", "--verbose", action="store_true",
                     help="also print the evidence backing each accepted claim")
     args = ap.parse_args(argv)
@@ -591,8 +581,7 @@ def main(argv=None):
 
     failed = False
     for repo in repos:
-        errors, warnings = check_repo(repo, members, args.verbose,
-                                       args.strict_new_rules or None)
+        errors, warnings = check_repo(repo, members, args.verbose)
         if errors or warnings or args.verbose:
             print(f"{repo.name or repo}:")
         for line in errors:
