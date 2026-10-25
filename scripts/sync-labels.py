@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Apply concord's shared issue-label manifest to one member repo.
 
-The suite's issue lifecycle (needs-spec -> ready/open-questions -> jules) plus
+The suite's issue lifecycle (needs-spec -> ready/open-questions) plus
 the cross-mod, exploratory, and triage workflow labels must be identical in
 every member repo: same names, colors, and descriptions. labels.json (top-level,
 next to members.json) is the single source of truth; this script reconciles one

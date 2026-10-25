@@ -67,6 +67,12 @@ def main():
             emit([], next((argv[i+1] for i, a in enumerate(argv) if a == "-q"), None)); return
         if "create" in argv:
             log({"action": "pr_create"}); sys.stdout.write("https://example/pr/1\n"); return
+        if "edit" in argv:
+            log({"action": "pr_edit", "argv": argv}); return
+        if "merge" in argv:
+            if os.environ.get("MOCK_MERGE_FAIL"):
+                sys.stderr.write("auto-merge is not allowed\n"); sys.exit(1)
+            log({"action": "pr_merge", "argv": argv}); return
         return
     method, endpoint, q, fields = parse(argv[1:])
     repo = STATE["repo"]
@@ -116,7 +122,7 @@ def _blob_sha(path):
 def _synced_member():
     """A member fully in sync with concord: matching skills/commands + templates."""
     contents, tree = {}, {}
-    for p in _tracked(".ai/skills", ".ai/commands"):
+    for p in _tracked(".ai/skills", ".ai/commands", ".ai/agents"):
         text = open(os.path.join(ROOT, p), encoding="utf-8").read()
         sha = _blob_sha(p)
         contents[p] = {"content": text, "sha": sha}
@@ -142,7 +148,7 @@ class OpenSyncPRTest(unittest.TestCase):
             f.write(GH_MOCK)
         os.chmod(self.gh, 0o755)
 
-    def run_sync(self, state):
+    def run_sync(self, state, extra_env=None):
         state_path = os.path.join(self.tmp, "member_state.json")
         log_path = os.path.join(self.tmp, "actions.log")
         with open(state_path, "w") as f:
@@ -155,6 +161,7 @@ class OpenSyncPRTest(unittest.TestCase):
         env["ACTIONS_LOG"] = log_path
         env["GITHUB_SHA"] = GH_SHA
         env["GH_TOKEN"] = "x"
+        env.update(extra_env or {})
         p = subprocess.run(["python3", "scripts/open-sync-pr.py", "rfizzle/testmember"],
                            cwd=ROOT, env=env, capture_output=True, text=True)
         self.assertEqual(p.returncode, 0, f"script failed:\n{p.stdout}\n{p.stderr}")
@@ -168,6 +175,8 @@ class OpenSyncPRTest(unittest.TestCase):
             "delete": {a["path"]: a for a in actions if a["action"] == "delete"},
             "pr": [a for a in actions if a["action"] == "pr_create"],
             "update_ref": [a for a in actions if a["action"] == "update_ref"],
+            "edit": [a for a in actions if a["action"] == "pr_edit"],
+            "merge": [a for a in actions if a["action"] == "pr_merge"],
         }
 
     def test_drift_creates_updates_deletes_and_bumps_rev(self):
@@ -233,6 +242,36 @@ class OpenSyncPRTest(unittest.TestCase):
                          ".concord-rev tracks the vendored tree, not unrelated files")
         self.assertFalse(a["delete"])
         self.assertEqual(len(a["pr"]), 1)
+
+    def test_sync_pr_is_labeled_and_set_to_auto_merge(self):
+        st = _synced_member()
+        st["tree"][".ai/skills/CATALOG.md"] = "driftsha"
+        _, a = self.run_sync(st)
+        self.assertEqual(len(a["edit"]), 1)
+        self.assertIn("--add-label", a["edit"][0]["argv"])
+        self.assertIn("concord-sync", a["edit"][0]["argv"])
+        self.assertEqual(len(a["merge"]), 1)
+        self.assertIn("--auto", a["merge"][0]["argv"])
+        self.assertIn("--squash", a["merge"][0]["argv"])
+
+    def test_auto_merge_failure_warns_and_continues(self):
+        st = _synced_member()
+        st["tree"][".ai/skills/CATALOG.md"] = "driftsha"
+        _, a = self.run_sync(st, {"MOCK_MERGE_FAIL": "1"})
+        self.assertFalse(a["merge"])
+        self.assertEqual(len(a["pr"]), 1, "the PR is still opened")
+
+    def test_in_sync_does_not_touch_auto_merge(self):
+        _, a = self.run_sync(_synced_member())
+        self.assertFalse(a["edit"])
+        self.assertFalse(a["merge"])
+
+    def test_agents_dir_is_vendored(self):
+        st = _synced_member()
+        st["tree"][".ai/agents/stale.md"] = "stalesha"
+        _, a = self.run_sync(st)
+        self.assertIn(".ai/agents/stale.md", a["delete"],
+                      ".ai/agents is a vendored prefix, mirrored with --delete")
 
 
 if __name__ == "__main__":

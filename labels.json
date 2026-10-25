@@ -18,12 +18,7 @@
     {
       "name": "open-questions",
       "color": "d93f0b",
-      "description": "Spec raised open questions — answer inline, then apply jules"
-    },
-    {
-      "name": "jules",
-      "color": "5319e7",
-      "description": "Hand off to the Jules coding agent for a draft PR"
+      "description": "Spec raised open questions — answer inline, then run /implement"
     },
     {
       "name": "integration",
@@ -64,6 +59,16 @@
       "name": "compat",
       "color": "c5def5",
       "description": "Third-party (non-Concord) mod compatibility"
+    },
+    {
+      "name": "concord-sync",
+      "color": "ededed",
+      "description": "Automated concord-owned file sync PR; excluded from release notes"
+    },
+    {
+      "name": "flaky",
+      "color": "f9d0c4",
+      "description": "Flaky test — fails intermittently without a code change"
     }
   ]
 }

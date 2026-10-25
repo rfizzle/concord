@@ -14,11 +14,12 @@
 #        - everything under propagate/ (e.g. .github/ISSUE_TEMPLATE/*.yml and
 #          versions-common.properties, the suite toolchain pins) at the same
 #          relative path — only wholly concord-owned files belong here; files
-#          repos customize (.gitignore, Makefile) stay copy-paste-by-hand;
-#        - AGENTS.md's <!-- concord:NAME:start/end --> regions, rewritten from
-#          AGENTS-COMMON.md (repo-owned prose outside the markers is untouched; a
-#          member with no markers yet is left alone — seeding is the opt-in);
-#        - the vendored .ai/skills/ and .ai/commands/ trees, mirroring `make
+#          repos customize (Makefile) stay copy-paste-by-hand;
+#        - the <!-- concord:NAME:start/end --> regions of AGENTS.md (from
+#          AGENTS-COMMON.md) and .gitignore (from gitignore-common); repo-owned
+#          text outside the markers is untouched, and a member with no markers
+#          yet is left alone — seeding is the opt-in;
+#        - the vendored .ai/skills/, .ai/commands/ and .ai/agents/ trees, mirroring `make
 #          sync` (rsync -a --delete): concord-dropped files are removed from the
 #          member and .ai/skills/.concord-rev records the source concord commit.
 #      The branch is reset to the default head each run, so the PR diff is exactly
@@ -59,6 +60,8 @@ on:
       - "gitignore-common"
       - ".ai/skills/**"
       - ".ai/commands/**"
+      - ".ai/agents/**"
+      - "propagate/scripts/**"
       - "labels.json"
       - "scripts/inject-agents-regions.py"
       - "scripts/open-sync-pr.py"

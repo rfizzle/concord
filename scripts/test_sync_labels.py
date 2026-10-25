@@ -120,12 +120,12 @@ class SyncLabelsTest(unittest.TestCase):
         }
 
     def test_creates_missing_label(self):
-        state = [l for l in _clone(MANIFEST) if l["name"] != "jules"]
+        state = [l for l in _clone(MANIFEST) if l["name"] != "ready"]
         p, a = self.run_sync(state)
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertIn("jules", a["create"])
-        self.assertEqual(a["create"]["jules"]["color"],
-                         next(l["color"] for l in MANIFEST if l["name"] == "jules"))
+        self.assertIn("ready", a["create"])
+        self.assertEqual(a["create"]["ready"]["color"],
+                         next(l["color"] for l in MANIFEST if l["name"] == "ready"))
         self.assertEqual(len(a["create"]), 1, "only the missing label is created")
         self.assertFalse(a["update"], "matching labels are not updated")
 
@@ -161,25 +161,25 @@ class SyncLabelsTest(unittest.TestCase):
         self.assertFalse(a["update"])
 
     def test_create_conflict_falls_through_to_update(self):
-        # jules is absent from the member, so the script tries to create it — but
+        # ready is absent from the member, so the script tries to create it — but
         # the create races and GitHub returns 422 already-exists. The run must
         # reconcile it with a PATCH and still exit 0, not abort the member.
-        state = [l for l in _clone(MANIFEST) if l["name"] != "jules"]
-        p, a = self.run_sync(state, conflict=["jules"])
+        state = [l for l in _clone(MANIFEST) if l["name"] != "ready"]
+        p, a = self.run_sync(state, conflict=["ready"])
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertNotIn("jules", a["create"], "the raced create is not logged as a success")
-        self.assertIn("jules", a["update"], "a 422 create must fall through to a PATCH")
-        self.assertEqual(a["update"]["jules"]["new_name"], "jules")
+        self.assertNotIn("ready", a["create"], "the raced create is not logged as a success")
+        self.assertIn("ready", a["update"], "a 422 create must fall through to a PATCH")
+        self.assertEqual(a["update"]["ready"]["new_name"], "ready")
 
     def test_case_insensitive_recase_in_place(self):
         state = _clone(MANIFEST)
-        target = next(l for l in state if l["name"] == "jules")
-        target["name"] = "Jules"  # differs only in case — must update, not duplicate
+        target = next(l for l in state if l["name"] == "ready")
+        target["name"] = "Ready"  # differs only in case — must update, not duplicate
         p, a = self.run_sync(state)
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertFalse(a["create"], "a case-only difference must not create a duplicate")
-        self.assertIn("Jules", a["update"])
-        self.assertEqual(a["update"]["Jules"]["new_name"], "jules")
+        self.assertIn("Ready", a["update"])
+        self.assertEqual(a["update"]["Ready"]["new_name"], "ready")
 
 
 class ManifestValidationTest(unittest.TestCase):
