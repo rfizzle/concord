@@ -145,7 +145,13 @@ homes, not store variants — don't "correct" them per-store.
   config/hot-reload line, license. The client/server bullet must state the
   mod's *real* deployment — "Required on the **server**; install client-side
   too for the HUD" vs "Install on the **server** and every **client**." Don't
-  copy another mod's split.
+  copy another mod's split. A mod that registers blocks, items, entities or S2C
+  payloads is required on **both** client and server (a client without the
+  registry entries is rejected on join), so the listing never implies the client
+  is optional: no "server-side only", "client optional" or "works vanilla client".
+- **Optional integrations** lists exactly the mods in `fabric.mod.json`'s
+  `suggests` (plus `recommends`/`depends` entries); every `compat/<id>` package and
+  every `isModLoaded("<id>")` in code must appear there, and vice versa.
 - **Features** carries the weight. One `###` per feature, ordered
   headline-first. Reserve tables for genuinely tabular data (tiers, axes,
   costs); prose for everything else.
