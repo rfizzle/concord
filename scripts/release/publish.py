@@ -7,18 +7,27 @@ self-skips when its token — and, for CurseForge, its project id — is absent.
 
 Modrinth runs first and must succeed before CurseForge is attempted, which
 keeps CurseForge the terminal step: a re-run of a partially-failed release
-re-attempts only what's left. Modrinth is idempotent by version_number;
-CurseForge, being last, only runs when it hasn't already succeeded.
+re-attempts only what's left. Modrinth is idempotent by version_number or jar sha1 and fails closed if it
+cannot tell; CurseForge, being last, skips an upload whose display name is
+already listed on the project.
 
-Dependencies come from fabric.mod.json's suggests/recommends (optional), with a
-the hub's members.json (member and third-party slugs) plus an optional
-repo-local .github/release-slug-overrides.json remapping any mod id whose
-platform slug differs from its Fabric id. They are best-effort and removed as
-surgically as CurseForge lets us: an unresolvable Modrinth slug is dropped, and
-a CurseForge rejection carrying errorCode 1018 names the offending slug, so only
-that relation is dropped before retrying. Only if the upload still fails does it
-fall back to publishing with no relations at all — a stale sibling slug never
-blocks a release, and never costs the relations that were fine.
+Dependencies come from fabric.mod.json: `depends` (minus the platform entries
+minecraft, fabricloader, java and fabric) are required, `suggests`/`recommends`
+are optional. Mod ids map to store slugs through the hub's members.json (member
+and third-party slugs) plus an optional repo-local
+.github/release-slug-overrides.json remapping any mod id whose platform slug
+differs from its Fabric id; a third-party slug of null means the mod is not on
+that store and the relation is skipped without a warning. Optional relations are
+best-effort and removed as surgically as CurseForge lets us: an unresolvable
+Modrinth slug is dropped, and a CurseForge rejection carrying errorCode 1018
+names the offending slug, so only that relation is dropped before retrying.
+Only if the upload still fails does it fall back to publishing with no relations
+at all — a stale sibling slug never blocks a release, and never costs the
+relations that were fine. A required Modrinth dependency that does not resolve
+fails the publish, as does any resolved project that is neither the registered
+Concord sibling nor a mapped third-party slug: a bare mod id can name an
+unrelated project (`tribulation` is not Tribulation) and must not ship as a
+relation.
 
 The supported environment defaults to client_and_server (the suite is
 client+server mods) and is overridable per mod via the ENVIRONMENT input for the
@@ -29,6 +38,7 @@ upload.
 from __future__ import annotations
 
 import glob
+import hashlib
 import json
 import os
 import pathlib
@@ -58,6 +68,10 @@ CF_INVALID_SLUG_RE = re.compile(r"Invalid slug in project relations: '([^']*)'")
 RETRY_ATTEMPTS = 4
 RETRY_BASE_DELAY = 10
 RETRY_MAX_DELAY = 80
+
+# Platform entries in fabric.mod.json `depends` that are not mods to relate to.
+PLATFORM_DEPENDS = {"minecraft", "fabricloader", "java", "fabric"}
+CFWIDGET_API = "https://api.cfwidget.com"
 
 
 def log(msg: str) -> None:
@@ -117,8 +131,13 @@ def find_fabric_mod_json() -> str | None:
 
 
 def load_dependencies() -> list[dict]:
-    """suggests + recommends from fabric.mod.json as optional deps, with slug
-    overrides applied. Returns dicts of {id, modrinth, curseforge, type}."""
+    """depends (required) + suggests/recommends (optional) from fabric.mod.json,
+    with slug overrides applied. Returns dicts of {id, modrinth, curseforge,
+    type, trust, guarded}. A store slug of None means the mod is not on that
+    store. `trust` says how the Modrinth slug is vouched for, for the impostor
+    guard: ("id", project_id) for a sibling, ("slug", slug) for a mapped slug,
+    or None for an id the registry does not map; `guarded` is False when no
+    registry was loaded at all."""
     path = find_fabric_mod_json()
     if not path:
         log("No fabric.mod.json found; no release dependencies")
@@ -140,22 +159,44 @@ def load_dependencies() -> list[dict]:
             warn(f"Ignoring unparseable {overrides_path} ({exc})")
 
     siblings, third_party = load_hub_slugs()
+    registry_loaded = bool(siblings or third_party)
 
-    ids = sorted(set(meta.get("suggests") or {}) | set(meta.get("recommends") or {}))
+    required = {d for d in (meta.get("depends") or {}) if d not in PLATFORM_DEPENDS}
+    required.discard(meta.get("id"))
+    optional = set(meta.get("suggests") or {}) | set(meta.get("recommends") or {})
+    optional.discard(meta.get("id"))
     deps = []
-    for dep_id in ids:
+    for dep_id in sorted(required | optional):
         # Precedence: an explicit repo-local override wins, then the hub registry
         # (members first, then the third-party map), then the bare mod id.
         override = overrides.get(dep_id, {})
         hub = siblings.get(dep_id) or third_party.get(dep_id, {})
+        slugs = {}
+        for platform in ("modrinth", "curseforge"):
+            if platform in override:
+                slugs[platform] = override[platform]
+            elif platform in hub:
+                slugs[platform] = hub[platform]
+            else:
+                slugs[platform] = dep_id
+        trust = None
+        if "modrinth" in override:
+            trust = ("slug", override["modrinth"])
+        elif dep_id in siblings and siblings[dep_id].get("modrinth_id"):
+            trust = ("id", siblings[dep_id]["modrinth_id"])
+        elif "modrinth" in hub:
+            trust = ("slug", hub["modrinth"])
         deps.append({
             "id": dep_id,
-            "modrinth": override.get("modrinth", hub.get("modrinth", dep_id)),
-            "curseforge": override.get("curseforge", hub.get("curseforge", dep_id)),
-            "type": "optional",
+            "modrinth": slugs["modrinth"],
+            "curseforge": slugs["curseforge"],
+            "type": "required" if dep_id in required else "optional",
+            "trust": trust,
+            "guarded": registry_loaded,
         })
     if deps:
-        log(f"Optional dependencies: {[d['id'] for d in deps]}")
+        log(f"Required dependencies: {[d['id'] for d in deps if d['type'] == 'required']}")
+        log(f"Optional dependencies: {[d['id'] for d in deps if d['type'] == 'optional']}")
         remapped = [f"{d['id']}->{d['modrinth']}" for d in deps if d["modrinth"] != d["id"]]
         if remapped:
             log(f"Resolved store slugs: {remapped}")
@@ -177,7 +218,10 @@ def load_hub_slugs() -> tuple[dict[str, dict], dict[str, dict]]:
     five members carried an identical copy of it and cultivation, the sixth to
     declare REI, had none, so its v1.0.0-beta.1 published without the relation.
 
-    members.json is the canonical registry of both, so read it rather than
+    A third-party entry may name a store as null: the mod is not listed there, and
+the relation is skipped on that store without a warning.
+
+members.json is the canonical registry of both, so read it rather than
     restating them in eight repo-local override files where they can drift.
     The release workflow checks concord out to `.concord/`; MEMBERS_FILE and the
     sibling-checkout path cover local runs. A missing file is not an error — a
@@ -200,13 +244,17 @@ def load_hub_slugs() -> tuple[dict[str, dict], dict[str, dict]]:
                 slug = (store.get(platform) or {}).get("slug")
                 if slug:
                     entry[platform] = slug
+            project_id = (store.get("modrinth") or {}).get("id")
+            if entry and project_id:
+                entry["modrinth_id"] = project_id
             if member.get("id") and entry:
                 slugs[member["id"]] = entry
         third_party = {}
         for dep_id, entry in (registry.get("thirdPartySlugs") or {}).items():
             if not isinstance(entry, dict):
                 continue
-            mapped = {k: v for k, v in entry.items() if k in ("modrinth", "curseforge") and v}
+            mapped = {k: v for k, v in entry.items()
+                      if k in ("modrinth", "curseforge") and (v is None or v)}
             if mapped:
                 third_party[dep_id] = mapped
         log(f"Loaded {len(slugs)} sibling and {len(third_party)} third-party store slugs from {candidate}")
@@ -283,6 +331,41 @@ def read_jar(jar: str) -> bytes:
 
 # ---------------------------------------------------------------- Modrinth ---
 
+def modrinth_has_version(headers: dict, project: str, version: str,
+                         sha1: str) -> bool | None:
+    """True if the project already has this version_number or a file with this
+    sha1; False if it does not; None if the listing could not be read."""
+    resp = request_with_retries("GET", f"{MODRINTH_API}/project/{project}/version",
+                                headers=headers)
+    if resp is None or resp.status_code not in OK:
+        return None
+    try:
+        versions = resp.json()
+    except ValueError:
+        return None
+    for v in versions:
+        if v.get("version_number") == version:
+            return True
+        if any((f.get("hashes") or {}).get("sha1") == sha1 for f in v.get("files") or []):
+            return True
+    return False
+
+
+def modrinth_project_trusted(dep: dict, project: dict) -> bool:
+    """Impostor guard: a resolved project must be the registered sibling (by
+    project id) or the mapped third-party slug. Skipped only when no hub
+    registry was loaded, where nothing can be vouched for."""
+    if not dep.get("guarded"):
+        return True
+    trust = dep.get("trust")
+    if not trust:
+        return False
+    kind, value = trust
+    if kind == "id":
+        return project.get("id") == value
+    return value in (project.get("slug"), project.get("id"))
+
+
 def modrinth_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
     token = env("MODRINTH_TOKEN")
     if not token:
@@ -292,10 +375,16 @@ def modrinth_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
     version = env("VERSION")
     headers = {"Authorization": token}
 
-    # Idempotency: skip if this version_number already exists on the project.
-    existing = requests.get(f"{MODRINTH_API}/project/{project}/version",
-                            headers=headers, timeout=TIMEOUT)
-    if existing.ok and any(v.get("version_number") == version for v in existing.json()):
+    jar_bytes = read_jar(jar)
+    sha1 = hashlib.sha1(jar_bytes).hexdigest()
+
+    # Idempotency: skip if this version_number or this exact jar is already on
+    # the project. If we cannot tell, fail rather than risk a duplicate.
+    exists = modrinth_has_version(headers, project, version, sha1)
+    if exists is None:
+        error(f"Could not list Modrinth versions for {project}; refusing to publish blind")
+        return False
+    if exists:
         log(f"Modrinth already has {project} {version}; skipping")
         return True
 
@@ -303,14 +392,26 @@ def modrinth_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
     dependencies = []
     for dep in deps:
         slug = dep["modrinth"]
-        resp = requests.get(f"{MODRINTH_API}/project/{slug}", timeout=TIMEOUT)
-        if resp.ok and resp.json().get("id"):
-            dependencies.append({
-                "project_id": resp.json()["id"],
-                "dependency_type": dep["type"],
-            })
-        else:
+        if slug is None:
+            continue
+        resp = request_with_retries("GET", f"{MODRINTH_API}/project/{slug}")
+        body = resp.json() if resp is not None and resp.status_code in OK else {}
+        if not body.get("id"):
+            if dep["type"] == "required":
+                error(f"Required Modrinth dependency '{slug}' did not resolve")
+                return False
             warn(f"Modrinth dependency '{slug}' did not resolve; skipping")
+            continue
+        if not modrinth_project_trusted(dep, body):
+            error(f"Modrinth dependency '{dep['id']}' resolved '{slug}' to "
+                  f"{body.get('id')} ({body.get('title')!r}), which is neither the "
+                  f"registered Concord sibling nor a mapped third-party slug; "
+                  f"add it to members.json thirdPartySlugs")
+            return False
+        dependencies.append({
+            "project_id": body["id"],
+            "dependency_type": dep["type"],
+        })
 
     prerelease = env("PRERELEASE") == "true"
     data = {
@@ -329,18 +430,34 @@ def modrinth_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
     }
     files = {
         "data": (None, json.dumps(data), "application/json"),
-        "file": (os.path.basename(jar), read_jar(jar), JAR_CONTENT_TYPE),
+        "file": (os.path.basename(jar), jar_bytes, JAR_CONTENT_TYPE),
     }
     log(f"Publishing {jar} to Modrinth project {project}")
-    resp = request_with_retries("POST", f"{MODRINTH_API}/version",
-                                headers=headers, files=files)
-    if not resp or resp.status_code not in OK:
-        error(f"Modrinth upload failed (HTTP {getattr(resp, 'status_code', 'n/a')})")
+    # The create POST is not idempotent, so it is never blindly retried: after
+    # any failure the version list is re-read, and a version that landed despite
+    # the error (a dropped response) counts as success.
+    resp = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        resp = request_with_retries("POST", f"{MODRINTH_API}/version",
+                                    attempts=1, headers=headers, files=files)
+        if resp is not None and resp.status_code in OK:
+            log(f"✅ Published to Modrinth ({resp.json().get('id', '?')})")
+            return True
+        status = getattr(resp, "status_code", "n/a")
         if resp is not None:
             log(resp.text[:500])
-        return False
-    log(f"✅ Published to Modrinth ({resp.json().get('id', '?')})")
-    return True
+        landed = modrinth_has_version(headers, project, version, sha1)
+        if landed:
+            log(f"Modrinth upload errored (HTTP {status}) but {version} is present; treating as published")
+            return True
+        if landed is None or (resp is not None and resp.status_code < 500):
+            break
+        if attempt < RETRY_ATTEMPTS:
+            delay = min(RETRY_BASE_DELAY * (2 ** (attempt - 1)), RETRY_MAX_DELAY)
+            log(f"  retrying upload in {delay}s")
+            time.sleep(delay)
+    error(f"Modrinth upload failed (HTTP {getattr(resp, 'status_code', 'n/a')})")
+    return False
 
 
 # -------------------------------------------------------------- CurseForge ---
@@ -402,6 +519,24 @@ def curseforge_resolve_versions(token: str, game_versions: list[str],
     return sorted(ids | env_ids)
 
 
+def curseforge_has_file(project: str, display_name: str, file_name: str) -> bool | None:
+    """True if the project already lists a file with this display name (or jar
+    name). The upload token cannot list files (the upload API has no read
+    endpoint and the core API needs a separate key), so this reads the public
+    CFWidget mirror. None if the listing is unavailable."""
+    resp = request_with_retries("GET", f"{CFWIDGET_API}/{project}", attempts=2)
+    if resp is None or resp.status_code not in OK:
+        return None
+    try:
+        files = resp.json().get("files")
+    except (ValueError, AttributeError):
+        return None
+    if not isinstance(files, list):
+        return None
+    return any(f.get("display") == display_name or f.get("name") == file_name
+               for f in files)
+
+
 def curseforge_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
     token = env("CURSEFORGE_TOKEN")
     project = env("CURSEFORGE_ID")
@@ -423,11 +558,20 @@ def curseforge_publish(jar: str, changelog: str, deps: list[dict]) -> bool:
         return False
     log(f"Resolved CurseForge version ids: {version_ids}")
 
+    listed = curseforge_has_file(project, env("TITLE"), os.path.basename(jar))
+    if listed:
+        log(f"CurseForge already has {env('TITLE')!r} on project {project}; skipping")
+        return True
+    if listed is None:
+        warn(f"Could not list CurseForge files for project {project}; the "
+             f"duplicate check is skipped and a re-run may upload twice")
+
     relations = [
         {"slug": dep["curseforge"],
          "type": "requiredDependency" if dep["type"] == "required"
                  else "optionalDependency"}
         for dep in deps
+        if dep["curseforge"] is not None
     ]
     prerelease = env("PRERELEASE") == "true"
     jar_bytes = read_jar(jar)

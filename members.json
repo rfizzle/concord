@@ -5,10 +5,46 @@
     "url": "https://concord.rfizzle.com"
   },
   "thirdPartySlugs": {
-    "_comment": "Non-Concord mods whose store slug differs from the Fabric mod id members name in fabric.mod.json. Kept here rather than in per-repo .github/release-slug-overrides.json files, which drift: five members carried an identical copy and cultivation, the sixth to declare REI, had none — so its v1.0.0-beta.1 published without the relation. A repo-local override still wins over this map.",
+    "_comment": "Non-Concord mods members name in fabric.mod.json (suggests, recommends or depends), with their verified store slug per store; null means the mod is not on that store and the relation is skipped. A slug that is not listed here fails the Modrinth publish. Kept here rather than in per-repo .github/release-slug-overrides.json files, which drift: five members carried an identical copy and cultivation, the sixth to declare REI, had none — so its v1.0.0-beta.1 published without the relation. A repo-local override still wins over this map.",
+    "fabric-api": {
+      "modrinth": "fabric-api",
+      "curseforge": "fabric-api"
+    },
+    "modmenu": {
+      "modrinth": "modmenu",
+      "curseforge": "modmenu"
+    },
+    "cloth-config": {
+      "modrinth": "cloth-config",
+      "curseforge": "cloth-config"
+    },
+    "jade": {
+      "modrinth": "jade",
+      "curseforge": "jade"
+    },
+    "wthit": {
+      "modrinth": "wthit",
+      "curseforge": null
+    },
+    "emi": {
+      "modrinth": "emi",
+      "curseforge": "emi"
+    },
+    "jei": {
+      "modrinth": "jei",
+      "curseforge": "jei"
+    },
     "roughlyenoughitems": {
       "modrinth": "rei",
       "curseforge": "roughly-enough-items"
+    },
+    "openpartiesandclaims": {
+      "modrinth": "open-parties-and-claims",
+      "curseforge": "open-parties-and-claims"
+    },
+    "ftbteams": {
+      "modrinth": null,
+      "curseforge": "ftb-teams-fabric"
     }
   },
   "members": [

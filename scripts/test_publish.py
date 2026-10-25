@@ -12,6 +12,7 @@ member repo root, with no FABRIC_MOD_JSON set. Run with:
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import json
 import os
@@ -407,6 +408,7 @@ class CurseforgePublishRelationsTest(unittest.TestCase):
         with mock.patch.dict(os.environ, self.ENV, clear=False), \
              mock.patch.object(publish, "curseforge_resolve_versions",
                                return_value=[1, 2, 3]), \
+             mock.patch.object(publish, "curseforge_has_file", return_value=False), \
              mock.patch.object(publish, "read_jar", return_value=b"jar"), \
              mock.patch.object(publish.requests, "request", fake_request), \
              mock.patch.object(publish.time, "sleep", lambda _s: None):
@@ -678,6 +680,303 @@ class ThirdPartySlugTest(unittest.TestCase):
         self.assertIsNotNone(rei, "members.json must map roughlyenoughitems")
         self.assertEqual(rei["modrinth"], "rei")
         self.assertEqual(rei["curseforge"], "roughly-enough-items")
+
+
+class RequiredDependenciesTest(unittest.TestCase):
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self._cwd = os.getcwd()
+        self._root = pathlib.Path(self._dir.name) / "repo"
+        self._root.mkdir()
+        os.chdir(self._root)
+        pathlib.Path("src/main/resources").mkdir(parents=True)
+
+    def tearDown(self):
+        os.chdir(self._cwd)
+        self._dir.cleanup()
+
+    def _deps(self, meta, registry=None):
+        pathlib.Path("src/main/resources/fabric.mod.json").write_text(
+            json.dumps({"schemaVersion": 1, "id": "mymod", **meta}))
+        if registry is not None:
+            p = pathlib.Path(".concord/members.json")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(registry))
+        return {d["id"]: d for d in publish.load_dependencies()}
+
+    def test_depends_become_required_and_platform_entries_are_skipped(self):
+        deps = self._deps({
+            "depends": {"minecraft": "~1.21", "fabricloader": "*", "java": ">=21",
+                        "fabric": "*", "fabric-api": "*"},
+            "suggests": {"modmenu": "*"}})
+        self.assertEqual(sorted(deps), ["fabric-api", "modmenu"])
+        self.assertEqual(deps["fabric-api"]["type"], "required")
+        self.assertEqual(deps["fabric-api"]["modrinth"], "fabric-api")
+        self.assertEqual(deps["fabric-api"]["curseforge"], "fabric-api")
+        self.assertEqual(deps["modmenu"]["type"], "optional")
+
+    def test_required_wins_when_also_suggested(self):
+        deps = self._deps({"depends": {"fabric-api": "*"},
+                           "recommends": {"fabric-api": "*"}})
+        self.assertEqual(deps["fabric-api"]["type"], "required")
+
+    def test_null_third_party_slug_is_kept_as_none(self):
+        reg = dict(_REGISTRY)
+        reg["thirdPartySlugs"] = {"ftbteams": {"modrinth": None,
+                                               "curseforge": "ftb-teams-fabric"}}
+        deps = self._deps({"suggests": {"ftbteams": "*"}}, registry=reg)
+        self.assertIsNone(deps["ftbteams"]["modrinth"])
+        self.assertEqual(deps["ftbteams"]["curseforge"], "ftb-teams-fabric")
+
+    def test_the_shipped_registry_covers_every_member_dependency(self):
+        registry = json.loads((pathlib.Path(self._cwd) / "members.json").read_text())
+        third = registry["thirdPartySlugs"]
+        for mod_id in ("fabric-api", "modmenu", "cloth-config", "jade", "wthit", "emi",
+                       "jei", "roughlyenoughitems", "openpartiesandclaims", "ftbteams"):
+            self.assertIn(mod_id, third)
+        self.assertEqual(third["openpartiesandclaims"]["modrinth"], "open-parties-and-claims")
+        self.assertIsNone(third["ftbteams"]["modrinth"])
+        self.assertEqual(third["ftbteams"]["curseforge"], "ftb-teams-fabric")
+
+
+def _resp(status=200, payload=None, text=""):
+    r = mock.Mock()
+    r.status_code = status
+    r.ok = status < 400
+    r.json.return_value = payload
+    r.text = text
+    return r
+
+
+class ModrinthPublishTest(unittest.TestCase):
+    ENV = {"MODRINTH_TOKEN": "tok", "MODRINTH_ID": "PROJ", "VERSION": "1.0.0",
+           "GAME_VERSIONS": "1.21.1", "LOADERS": "fabric", "TITLE": "Mymod v1.0.0"}
+
+    def _run(self, deps, responder):
+        """responder(method, url, kwargs) -> Response|None. Returns (ok, calls)."""
+        calls = []
+
+        def fake_request(method, url, **kwargs):
+            calls.append((method, url))
+            resp = responder(method, url, kwargs)
+            if resp is None:
+                raise publish.requests.ConnectionError("dropped")
+            return resp
+
+        with mock.patch.dict(os.environ, self.ENV, clear=False), \
+             mock.patch.object(publish, "read_jar", return_value=b"jar"), \
+             mock.patch.object(publish.requests, "request", fake_request), \
+             mock.patch.object(publish.time, "sleep", lambda _s: None):
+            ok = publish.modrinth_publish("dist/mymod-1.0.0.jar", "notes", deps)
+        return ok, calls
+
+    @staticmethod
+    def _sha(data=b"jar"):
+        return hashlib.sha1(data).hexdigest()
+
+    def test_existing_version_number_skips(self):
+        def responder(m, u, k):
+            return _resp(200, [{"version_number": "1.0.0", "files": []}])
+        ok, calls = self._run([], responder)
+        self.assertTrue(ok)
+        self.assertNotIn("POST", [c[0] for c in calls])
+
+    def test_existing_jar_sha1_skips_even_under_another_version_number(self):
+        def responder(m, u, k):
+            return _resp(200, [{"version_number": "1.0.0-renamed",
+                                "files": [{"hashes": {"sha1": self._sha()}}]}])
+        ok, calls = self._run([], responder)
+        self.assertTrue(ok)
+        self.assertNotIn("POST", [c[0] for c in calls])
+
+    def test_listing_failure_fails_closed(self):
+        def responder(m, u, k):
+            return _resp(403, None, "nope")
+        ok, calls = self._run([], responder)
+        self.assertFalse(ok)
+        self.assertNotIn("POST", [c[0] for c in calls])
+
+    def test_listing_outage_is_retried_before_giving_up(self):
+        seq = iter([_resp(502), _resp(200, [])])
+
+        def responder(m, u, k):
+            if m == "GET":
+                return next(seq)
+            return _resp(200, {"id": "V1"})
+        ok, _ = self._run([], responder)
+        self.assertTrue(ok)
+
+    def test_post_transport_error_with_landed_version_is_success(self):
+        state = {"posted": False}
+
+        def responder(m, u, k):
+            if m == "POST":
+                state["posted"] = True
+                return None
+            if state["posted"]:
+                return _resp(200, [{"version_number": "1.0.0", "files": []}])
+            return _resp(200, [])
+        ok, calls = self._run([], responder)
+        self.assertTrue(ok)
+        self.assertEqual([c[0] for c in calls].count("POST"), 1)
+
+    def test_post_failure_without_landed_version_reposts(self):
+        posts = []
+
+        def responder(m, u, k):
+            if m == "POST":
+                posts.append(1)
+                return None if len(posts) == 1 else _resp(200, {"id": "V1"})
+            return _resp(200, [])
+        ok, _ = self._run([], responder)
+        self.assertTrue(ok)
+        self.assertEqual(len(posts), 2)
+
+    def test_post_4xx_fails_without_repost(self):
+        posts = []
+
+        def responder(m, u, k):
+            if m == "POST":
+                posts.append(1)
+                return _resp(400, None, "bad")
+            return _resp(200, [])
+        ok, _ = self._run([], responder)
+        self.assertFalse(ok)
+        self.assertEqual(len(posts), 1)
+
+    def _dep(self, id_, slug, trust, type_="optional", guarded=True):
+        return {"id": id_, "modrinth": slug, "curseforge": slug, "type": type_,
+                "trust": trust, "guarded": guarded}
+
+    def _dep_responder(self, projects, sent=None):
+        def responder(m, u, k):
+            if m == "POST":
+                if sent is not None:
+                    sent.append(json.loads(k["files"]["data"][1]))
+                return _resp(200, {"id": "V1"})
+            if u.endswith("/version"):
+                return _resp(200, [])
+            slug = u.rsplit("/", 1)[1]
+            if slug in projects:
+                return _resp(200, projects[slug])
+            return _resp(404, None)
+        return responder
+
+    def test_impostor_for_a_sibling_fails_the_publish(self):
+        """`tribulation` resolves to an unrelated project (bm6drbvC), not 8KuQhMGI."""
+        dep = self._dep("tribulation", "tribulation", ("id", "8KuQhMGI"))
+        ok, calls = self._run([dep], self._dep_responder(
+            {"tribulation": {"id": "bm6drbvC", "slug": "tribulation", "title": "Other"}}))
+        self.assertFalse(ok)
+        self.assertNotIn("POST", [c[0] for c in calls])
+
+    def test_unmapped_dependency_fails_when_the_registry_is_loaded(self):
+        dep = self._dep("mystery", "mystery", None)
+        ok, _ = self._run([dep], self._dep_responder(
+            {"mystery": {"id": "XXXX", "slug": "mystery", "title": "?"}}))
+        self.assertFalse(ok)
+
+    def test_unmapped_dependency_passes_without_a_registry(self):
+        dep = self._dep("mystery", "mystery", None, guarded=False)
+        sent = []
+        ok, _ = self._run([dep], self._dep_responder(
+            {"mystery": {"id": "XXXX", "slug": "mystery", "title": "?"}}, sent))
+        self.assertTrue(ok)
+        self.assertEqual(sent[0]["dependencies"][0]["project_id"], "XXXX")
+
+    def test_sibling_and_mapped_slug_pass_and_publish_dependencies(self):
+        deps = [self._dep("tribulation", "tribulation-difficulty-overhaul",
+                          ("id", "8KuQhMGI")),
+                self._dep("fabric-api", "fabric-api", ("slug", "fabric-api"), "required")]
+        sent = []
+        ok, _ = self._run(deps, self._dep_responder({
+            "tribulation-difficulty-overhaul": {"id": "8KuQhMGI", "slug": "x", "title": "T"},
+            "fabric-api": {"id": "P7dR8mSH", "slug": "fabric-api", "title": "Fabric API"}},
+            sent))
+        self.assertTrue(ok)
+        self.assertEqual(
+            [(d["project_id"], d["dependency_type"]) for d in sent[0]["dependencies"]],
+            [("8KuQhMGI", "optional"), ("P7dR8mSH", "required")])
+
+    def test_null_modrinth_slug_is_skipped_silently(self):
+        dep = self._dep("ftbteams", None, None)
+        sent = []
+        ok, calls = self._run([dep], self._dep_responder({}, sent))
+        self.assertTrue(ok)
+        self.assertEqual(sent[0]["dependencies"], [])
+        self.assertFalse([c for c in calls if "/project/None" in c[1]])
+
+    def test_unresolvable_optional_is_dropped_but_required_fails(self):
+        opt = self._dep("a", "a", ("slug", "a"))
+        ok, _ = self._run([opt], self._dep_responder({}))
+        self.assertTrue(ok)
+        req = self._dep("b", "b", ("slug", "b"), "required")
+        ok, calls = self._run([req], self._dep_responder({}))
+        self.assertFalse(ok)
+        self.assertNotIn("POST", [c[0] for c in calls])
+
+
+class CurseforgeDuplicateCheckTest(unittest.TestCase):
+    def _has(self, resp):
+        with mock.patch.object(publish.requests, "request", return_value=resp), \
+             mock.patch.object(publish.time, "sleep", lambda _s: None):
+            return publish.curseforge_has_file("1234", "Mymod v1.0.0", "mymod-1.0.0.jar")
+
+    def test_matching_display_name_is_found(self):
+        self.assertTrue(self._has(_resp(200, {"files": [
+            {"display": "Mymod v1.0.0", "name": "other.jar"}]})))
+
+    def test_matching_jar_name_is_found(self):
+        self.assertTrue(self._has(_resp(200, {"files": [
+            {"display": "x", "name": "mymod-1.0.0.jar"}]})))
+
+    def test_absent_file_is_false(self):
+        self.assertFalse(self._has(_resp(200, {"files": [
+            {"display": "Mymod v0.9.0", "name": "mymod-0.9.0.jar"}]})))
+
+    def test_unavailable_listing_is_none(self):
+        self.assertIsNone(self._has(_resp(404, None)))
+        self.assertIsNone(self._has(_resp(200, {"nofiles": 1})))
+
+    def test_publish_skips_when_already_listed(self):
+        env = CurseforgePublishRelationsTest.ENV
+        with mock.patch.dict(os.environ, env, clear=False), \
+             mock.patch.object(publish, "curseforge_resolve_versions",
+                               return_value=[1, 2, 3]), \
+             mock.patch.object(publish, "curseforge_has_file", return_value=True), \
+             mock.patch.object(publish.requests, "request",
+                               side_effect=AssertionError("must not upload")):
+            self.assertTrue(publish.curseforge_publish("dist/mymod-1.0.0.jar", "n", []))
+
+    def test_publish_warns_and_uploads_when_listing_is_impossible(self):
+        env = CurseforgePublishRelationsTest.ENV
+        with mock.patch.dict(os.environ, env, clear=False), \
+             mock.patch.object(publish, "curseforge_resolve_versions",
+                               return_value=[1, 2, 3]), \
+             mock.patch.object(publish, "curseforge_has_file", return_value=None), \
+             mock.patch.object(publish, "warn") as warn, \
+             mock.patch.object(publish, "read_jar", return_value=b"jar"), \
+             mock.patch.object(publish.requests, "request",
+                               return_value=_resp(200, {"id": 9})):
+            self.assertTrue(publish.curseforge_publish("dist/mymod-1.0.0.jar", "n", []))
+        self.assertTrue(any("duplicate check" in c.args[0] for c in warn.call_args_list))
+
+    def test_null_curseforge_slug_sends_no_relation(self):
+        env = CurseforgePublishRelationsTest.ENV
+        sent = []
+
+        def fake(method, url, **kw):
+            sent.append(json.loads(kw["data"]["metadata"]))
+            return _resp(200, {"id": 9})
+        deps = [{"id": "wthit", "modrinth": "wthit", "curseforge": None, "type": "optional"}]
+        with mock.patch.dict(os.environ, env, clear=False), \
+             mock.patch.object(publish, "curseforge_resolve_versions",
+                               return_value=[1, 2, 3]), \
+             mock.patch.object(publish, "curseforge_has_file", return_value=False), \
+             mock.patch.object(publish, "read_jar", return_value=b"jar"), \
+             mock.patch.object(publish.requests, "request", fake):
+            self.assertTrue(publish.curseforge_publish("dist/mymod-1.0.0.jar", "n", deps))
+        self.assertNotIn("relations", sent[0])
 
 
 if __name__ == "__main__":
