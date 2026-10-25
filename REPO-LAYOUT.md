@@ -64,7 +64,7 @@ mirrors this layout; a new member is scaffolded from it before any code exists.
 │   └── <version>.md           #   e.g. 1.0.0.md — published verbatim if present;
 │                              #   otherwise the GitHub release body is the record
 │
-├── scripts/                   # OPTIONAL repo automation (generators, a tag-only release.sh)
+├── scripts/                   # repo automation; concord-release.py is hub-owned (synced)
 │
 ├── src/                       # code only — Loom split source sets
 │   ├── main/                  #   server + common
@@ -218,10 +218,11 @@ Generated `_site/` output is never committed.
 
 ### `scripts/`
 Optional. Executable automation only — anything an agent or human runs by hand;
-Makefile targets wrap these. `make release` (tag-and-push) is the standard
-release entry point; a repo-local `release.sh` is optional sugar around it and
-must stay tag-only per the version scheme in [`AGENTS-COMMON.md`](AGENTS-COMMON.md)
-— it never writes a version into `gradle.properties`.
+Makefile targets wrap these. `make release VERSION=X.Y.Z` is the only release
+entry point: it runs the hub-owned `scripts/concord-release.py` (synced verbatim),
+which tags and pushes per the version scheme in [`AGENTS-COMMON.md`](AGENTS-COMMON.md)
+and never writes a version into `gradle.properties`. Don't add a repo-local
+release script.
 
 ---
 
