@@ -197,14 +197,12 @@ def build_desired(repo: str, default: str, tree: dict[str, str]) -> dict[str, by
     """Map dest path in the member -> the exact bytes concord wants to stage."""
     desired: dict[str, bytes] = {}
 
-    # propagate/* — verbatim concord-owned files, at the same relative path.
-    propagate = os.path.join(os.getcwd(), "propagate")
-    for root, _dirs, files in os.walk(propagate):
-        for name in files:
-            src = os.path.join(root, name)
-            dest = os.path.relpath(src, propagate)
-            with open(src, "rb") as handle:
-                desired[dest] = handle.read()
+    # propagate/* — verbatim concord-owned files, at the same relative path. The
+    # git-tracked set, so a __pycache__ left by running propagate/scripts tests
+    # never ships to members.
+    for src in git_tracked("propagate"):
+        with open(src, "rb") as handle:
+            desired[os.path.relpath(src, "propagate")] = handle.read()
 
     # .ai/skills/**, .ai/commands/**, .ai/agents/** — the git-tracked set (never the working
     # tree) so build caches like __pycache__ are excluded; the working-tree file
