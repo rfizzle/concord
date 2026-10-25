@@ -30,7 +30,7 @@ help:
 	@echo "release-test   run the release publisher's unit tests"
 	@echo "gametest-check report members whose gametest suite is misregistered"
 	@echo "gametest-test  run the gametest-manifest checker's unit tests"
-	@echo "makefile-check report members whose Makefile drifts from makefile-targets.json"
+	@echo "makefile-check report members whose Makefile drifts from concord.mk"
 	@echo "makefile-test  run the Makefile-target checker's unit tests"
 
 catalog:
@@ -141,10 +141,9 @@ gametest-test:
 	@$(PY) -m unittest scripts.test_check_gametest_manifest
 
 # Diff each sibling member's Makefile against the canonical target contract in
-# makefile-targets.json — the 13 universal targets byte-for-byte (modulo the jar
-# name), the two conditional ones against whether build.gradle wires what they
-# drive, and the help menu as an ordered projection of the contract's
-# descriptions. The scheduled makefile-drift workflow runs the same check against
+# makefile-targets.json — each must `include concord.mk`, carry an unmodified copy
+# of the hub's propagate/concord.mk, and redefine none of its targets. The
+# scheduled makefile-drift workflow runs the same check against
 # freshly-fetched member files; it is not a PR gate, so a known gap in one member
 # never blocks an unrelated pull request.
 makefile-check:

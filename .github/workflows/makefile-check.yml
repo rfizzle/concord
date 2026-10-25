@@ -1,8 +1,8 @@
 # Guards scripts/check-makefile-targets.py — the checker that holds every member
-# Makefile to the canonical target contract in makefile-targets.json. The drift it
-# looks for is silent by nature: a missing `coverage` target still leaves a
-# working build, it just points readers at the unit-only report, so nothing
-# surfaces until someone quotes the wrong coverage number. Exercise the
+# Makefile to the shared concord.mk contract in makefile-targets.json. The drift it
+# looks for is silent by nature: a member that redefines `coverage` still builds,
+# it just stops pointing readers at the merged report, so nothing surfaces until
+# someone quotes the wrong coverage number. Exercise the
 # drift/note classification before it can merge.
 #
 # Only the hermetic unit tests run here. A live scan across the members is
@@ -17,6 +17,7 @@ on:
       - "scripts/check-makefile-targets.py"
       - "scripts/test_check_makefile_targets.py"
       - "makefile-targets.json"
+      - "propagate/concord.mk"
       - ".github/workflows/makefile-check.yml"
   push:
     branches: [master]
@@ -24,6 +25,7 @@ on:
       - "scripts/check-makefile-targets.py"
       - "scripts/test_check_makefile_targets.py"
       - "makefile-targets.json"
+      - "propagate/concord.mk"
       - ".github/workflows/makefile-check.yml"
 
 permissions:

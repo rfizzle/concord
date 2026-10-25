@@ -1,37 +1,33 @@
 #!/usr/bin/env python3
-"""Check each member repo's Makefile against the canonical target contract.
+"""Check each member repo's Makefile against the shared concord.mk contract.
 
-A member's Makefile is the same file across the suite with a different jar name.
-That uniformity is what lets any agent or human drop into any member repo and
-know that `make coverage` means the merged report and `make release` only tags.
-It needs a checker because every way it breaks is quiet: a member missing a
-target still builds and tests fine, and a reworded help line still prints.
+The universal Makefile targets (`build`, `test`, `coverage`, `ci`, `release`, ...)
+live in one hub-owned file, propagate/concord.mk, that the sync PR copies verbatim
+into every member. A member's own Makefile does `include concord.mk` and adds only
+its member-specific targets. That uniformity is what lets any agent or human drop
+into any member repo and know that `make coverage` means the merged report and
+`make release` only tags. It needs a checker because every way it breaks is quiet:
+a Makefile that stops including the file still builds and tests fine, and a
+redefined target silently shadows the shared recipe.
 
 What counts as drift, per member:
 
-  - a `universal` target is missing, or its recipe/prerequisites differ from
-    makefile-targets.json (after substituting the member id for {modid})
-  - a `conditional` target is missing while its `requiredWhen` condition holds
-    (e.g. no `coverage` target in a repo whose build.gradle wires
-    jacocoMergedReport)
-  - the `help` menu describes a target with wording other than the manifest's,
-    lists a target the Makefile does not define, omits one it does, or orders
-    them against helpOrder
-  - a defined target is absent from `.PHONY`, where a same-named file would
-    silently shadow it
+  - the Makefile does not `include concord.mk`
+  - concord.mk is missing from the member, or differs from the hub's copy
+  - the Makefile defines a target concord.mk owns (a redefinition shadows or
+    overrides the shared recipe; the fix goes in the hub, not the member)
 
-Everything else is a note: a conditional target absent with its condition not
-holding, a target this contract says nothing about, or a member not checked out.
-The contract is a floor, not a ceiling — a member is free to add targets.
+And once, for the hub itself: makefile-targets.json must list exactly the targets
+propagate/concord.mk defines, so the contract and the file cannot diverge.
 
-`help` is deliberately not compared byte-for-byte. It is the one recipe that
-legitimately varies, because it lists only the targets that member has; it is
-checked as an ordered projection of the manifest's descriptions instead.
+Everything else is a note: a target this contract says nothing about (a member is
+free to add targets), or a member not checked out. The contract is a floor, not a
+ceiling.
 
 Member ids come from members.json; each member repo is read from <root>/<id>/.
 Locally that is the sibling checkout (../<member>, the default); the scheduled
-makefile-drift workflow mirrors each member's Makefile and build.gradle into a
-temp tree and points --root at it.
+makefile-drift workflow mirrors each member's Makefile and concord.mk into a temp
+tree and points --root at it.
 
     python3 scripts/check-makefile-targets.py            # check ../<member> siblings
     python3 scripts/check-makefile-targets.py --root DIR # check <DIR>/<member>/...
@@ -48,10 +44,11 @@ import pathlib
 import re
 import sys
 
-MODID_TOKEN = "{modid}"
-TARGET_RE = re.compile(r"^([a-zA-Z][\w-]*)\s*:(?!=)(.*)$")
-HELP_RE = re.compile(r'^\t@echo "  ([\w-]+)\s+(.*)"$')
-PHONY_RE = re.compile(r"^\.PHONY\s*:(.*)$")
+# A rule line: one or more target names, then a single or double colon that is not
+# part of `:=`/`::=`. Variable assignments (`X := 1`, `X ?= 1`) and recipe lines
+# (tab-prefixed) never match.
+RULE_RE = re.compile(r"^([^\s:#=\t.$%][^:#=]*?)\s*::?(?![=:])")
+INCLUDE_RE = re.compile(r"^-?include\s+(\S+)\s*$")
 
 
 def _load_json(path: pathlib.Path, what: str) -> dict:
@@ -85,28 +82,15 @@ def load_contract(path: pathlib.Path) -> dict:
     """Load and validate the contract, so a malformed one fails with a clean
     message rather than a KeyError from deep inside a comparison."""
     data = _load_json(path, "makefile-targets.json")
-    for key in ("universal", "conditional", "helpOrder", "helpPreamble"):
-        if key not in data:
-            raise _malformed(f"has no '{key}'")
-    for group in ("universal", "conditional"):
-        for spec in data[group]:
-            name = spec.get("target")
-            if not name:
-                raise _malformed(f"has a {group} entry with no 'target'")
-            if "recipe" not in spec:
-                raise _malformed(f"'{name}' has no 'recipe'")
-            if "help" not in spec:
-                raise _malformed(f"'{name}' has no 'help'")
-            if group == "conditional":
-                condition = spec.get("requiredWhen")
-                if not isinstance(condition, dict) or not {
-                    "file", "contains"
-                } <= condition.keys():
-                    raise _malformed(
-                        f"'{name}' needs requiredWhen.file and requiredWhen.contains"
-                    )
-                if not spec.get("because"):
-                    raise _malformed(f"'{name}' has no 'because'")
+    if not isinstance(data.get("include"), str) or not data["include"]:
+        raise _malformed("has no 'include' file name")
+    targets = data.get("targets")
+    if not isinstance(targets, list) or not targets or not all(
+        isinstance(t, str) and t for t in targets
+    ):
+        raise _malformed("has no 'targets' list of target names")
+    if len(set(targets)) != len(targets):
+        raise _malformed("lists a target more than once")
     return data
 
 
@@ -126,108 +110,47 @@ def _join_continuations(lines: list[str]) -> list[str]:
     return joined
 
 
-def parse_makefile(text: str) -> tuple[dict, list[str]]:
-    """(targets, phony) from Makefile source.
+def parse_makefile(text: str) -> tuple[set[str], list[str]]:
+    """(defined target names, included file names) from Makefile source.
 
-    A target's recipe is the run of tab-prefixed lines beneath it. Blank lines
-    and comments inside that run are skipped rather than ending it, because make
-    ignores them and keeps reading — a member is free to comment a recipe without
-    that reading as a changed recipe.
+    Recipe lines (tab-prefixed) and comments are skipped. Special targets such as
+    `.PHONY` and pattern rules are not targets for this purpose.
     """
-    lines = _join_continuations(text.splitlines())
-    targets: dict[str, dict] = {}
-    phony: list[str] = []
-
-    for i, line in enumerate(lines):
-        declared = PHONY_RE.match(line)
-        if declared:
-            phony.extend(declared.group(1).split())
-
-        if line.startswith("\t"):
+    targets: set[str] = set()
+    includes: list[str] = []
+    for line in _join_continuations(text.splitlines()):
+        if line.startswith("\t") or line.lstrip().startswith("#"):
             continue
-        matched = TARGET_RE.match(line)
-        if not matched:
+        included = INCLUDE_RE.match(line)
+        if included:
+            includes.append(included.group(1))
             continue
-        recipe = []
-        for following in lines[i + 1:]:
-            if following.startswith("\t"):
-                # A tab-prefixed comment or blank is formatting, not a command:
-                # make ignores it, so comparing it would make an explanatory
-                # comment read as a changed recipe.
-                if following.strip() and not following.lstrip().startswith("#"):
-                    recipe.append(following)
-                continue
-            if following.strip() == "" or following.lstrip().startswith("#"):
-                continue
-            break
-        targets[matched.group(1)] = {
-            "prerequisites": matched.group(2).strip(),
-            "recipe": recipe,
-        }
-
-    return targets, phony
+        matched = RULE_RE.match(line)
+        if matched:
+            for name in matched.group(1).split():
+                if not name.startswith(".") and "%" not in name and "$" not in name:
+                    targets.add(name)
+    return targets, includes
 
 
-def help_entries(targets: dict) -> list[tuple[str, str]]:
-    """The (target, description) pairs the `help` recipe prints.
-
-    Read only from the help recipe: any other target may legitimately echo a
-    two-space-indented line, and treating those as help entries invents drift.
-    """
-    if "help" not in targets:
-        return []
-    entries = []
-    for line in targets["help"]["recipe"]:
-        described = HELP_RE.match(line)
-        if described:
-            entries.append((described.group(1), described.group(2)))
-    return entries
-
-
-def _expected(spec: dict, mod_id: str) -> tuple[str, list[str]]:
-    recipe = [line.replace(MODID_TOKEN, mod_id) for line in spec["recipe"]]
-    return spec.get("prerequisites", "").replace(MODID_TOKEN, mod_id), recipe
-
-
-COMMENT_RE = re.compile(r"//[^\n]*|/\*.*?\*/", re.DOTALL)
-
-
-def _condition_holds(member_dir: pathlib.Path, condition: dict) -> bool:
-    """True when the member wires the thing a conditional target drives.
-
-    Comments are stripped first: a `// TODO: wire jacocoMergedReport` must not
-    read as the task being wired, which would demand a target for machinery that
-    does not exist.
-    """
-    probe = member_dir / condition["file"]
-    try:
-        source = probe.read_text(encoding="utf-8")
-    except (FileNotFoundError, UnicodeDecodeError, IsADirectoryError, PermissionError):
-        return False
-    return condition["contains"] in COMMENT_RE.sub("", source)
-
-
-def _compare_recipe(name: str, spec: dict, found: dict, mod_id: str) -> list[str]:
+def check_hub(contract: dict, hub_text: str) -> list[str]:
+    """Drift between makefile-targets.json and the targets propagate/concord.mk defines."""
+    defined, _ = parse_makefile(hub_text)
+    listed = set(contract["targets"])
     drift = []
-    want_prereq, want_recipe = _expected(spec, mod_id)
-    if found["prerequisites"] != want_prereq:
-        drift.append(
-            f"{name}: prerequisites are '{found['prerequisites']}', "
-            f"expected '{want_prereq}'"
-        )
-    if found["recipe"] != want_recipe:
-        drift.append(
-            f"{name}: recipe differs from the contract "
-            f"(has {len(found['recipe'])} line(s), expected {len(want_recipe)})"
-        )
+    for name in sorted(defined - listed):
+        drift.append(f"hub: {contract['include']} defines '{name}', which makefile-targets.json does not list")
+    for name in sorted(listed - defined):
+        drift.append(f"hub: makefile-targets.json lists '{name}', which {contract['include']} does not define")
     return drift
 
 
-def check_member(member_dir: pathlib.Path, mod_id: str, contract: dict
+def check_member(member_dir: pathlib.Path, contract: dict, hub_bytes: bytes | None
                  ) -> tuple[list[str], list[str]]:
     """(drift, notes) for one member. `member_dir` is <root>/<id>."""
     drift: list[str] = []
     notes: list[str] = []
+    include = contract["include"]
 
     makefile = member_dir / "Makefile"
     try:
@@ -237,108 +160,36 @@ def check_member(member_dir: pathlib.Path, mod_id: str, contract: dict
     except (UnicodeDecodeError, IsADirectoryError, PermissionError) as exc:
         return ([], [f"Makefile is unreadable ({type(exc).__name__}) — cannot check"])
 
-    targets, phony = parse_makefile(text)
-    help_lines = help_entries(targets)
-    governed: list[str] = []
+    targets, includes = parse_makefile(text)
 
-    for spec in contract["universal"]:
-        name = spec["target"]
-        governed.append(name)
-        if name not in targets:
-            drift.append(f"{name}: target is missing")
-            continue
-        drift.extend(_compare_recipe(name, spec, targets[name], mod_id))
+    if include not in includes:
+        drift.append(f"Makefile does not `include {include}`")
 
-    for spec in contract["conditional"]:
-        name = spec["target"]
-        governed.append(name)
-        holds = _condition_holds(member_dir, spec["requiredWhen"])
-        if name not in targets:
-            if holds:
-                condition = spec["requiredWhen"]
-                drift.append(
-                    f"{name}: target is missing while {condition['file']} "
-                    f"has '{condition['contains']}' — {spec['because']}"
-                )
-            else:
-                notes.append(f"{name}: absent, and not wired in this member")
-            continue
-        drift.extend(_compare_recipe(name, spec, targets[name], mod_id))
+    shared = member_dir / include
+    try:
+        member_bytes = shared.read_bytes()
+    except FileNotFoundError:
+        drift.append(f"{include} is missing — it is propagated from the hub")
+    except (IsADirectoryError, PermissionError) as exc:
+        drift.append(f"{include} is unreadable ({type(exc).__name__})")
+    else:
+        if hub_bytes is not None and member_bytes != hub_bytes:
+            drift.append(
+                f"{include} differs from the hub's propagate/{include} — "
+                "it is hub-owned; change it in the hub, not the member"
+            )
 
-    drift.extend(_check_help(targets, help_lines, contract, governed))
-    drift.extend(_check_phony(targets, phony, governed))
+    owned = set(contract["targets"])
+    for name in sorted(targets & owned):
+        drift.append(
+            f"{name}: redefined in the Makefile, but {include} owns it — "
+            "change the hub's recipe instead of overriding it"
+        )
 
-    for name in sorted(targets):
-        if name not in governed and name != "help":
-            notes.append(f"{name}: target is not in the contract")
+    for name in sorted(targets - owned):
+        notes.append(f"{name}: member-specific target (not in the contract)")
 
     return (drift, notes)
-
-
-def _check_help(targets: dict, help_lines: list[tuple[str, str]], contract: dict,
-                governed: list[str]) -> list[str]:
-    """help must project the manifest's descriptions over the targets present."""
-    if "help" not in targets:
-        return ["help: target is missing"]
-
-    drift_preamble = []
-    recipe = targets["help"]["recipe"]
-    if not recipe or recipe[0] != contract["helpPreamble"]:
-        drift_preamble.append(
-            f"help: opens with {recipe[0]!r} " if recipe else "help: has no recipe "
-        )
-        drift_preamble[-1] += f"— expected {contract['helpPreamble']!r}"
-
-    described = {name: text for name, text in help_lines}
-    canonical = {
-        spec["target"]: spec["help"]
-        for spec in contract["universal"] + contract["conditional"]
-    }
-
-    drift = drift_preamble
-    seen = set()
-    for name, _ in help_lines:
-        if name in seen:
-            drift.append(f"help: lists {name} more than once")
-        seen.add(name)
-
-    for name, text in help_lines:
-        if name in canonical and text != canonical[name]:
-            drift.append(
-                f"help: describes {name} as '{text}', "
-                f"expected '{canonical[name]}'"
-            )
-        if name not in targets:
-            drift.append(f"help: lists {name}, which this Makefile does not define")
-
-    for name in governed:
-        if name in targets and name not in described:
-            drift.append(f"help: does not list {name}, which this Makefile defines")
-
-    listed = [name for name, _ in help_lines if name in contract["helpOrder"]]
-    expected_order = [name for name in contract["helpOrder"] if name in listed]
-    if listed != expected_order:
-        drift.append(
-            f"help: lists targets in the order {listed}, expected {expected_order}"
-        )
-
-    return drift
-
-
-def _check_phony(targets: dict, phony: list[str], governed: list[str]) -> list[str]:
-    """A contract target absent from .PHONY is shadowed by a file of that name.
-
-    Only contract targets — plus `help` — are checked. A member's own targets may
-    legitimately be file-backed (`node_modules: package.json`), where declaring
-    them phony would be the bug rather than the fix.
-    """
-    if not phony:
-        return [".PHONY: no .PHONY declaration"]
-    return [
-        f".PHONY: does not list {name}, so a file of that name shadows the target"
-        for name in ["help"] + sorted(governed)
-        if name in targets and name not in phony
-    ]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -350,15 +201,35 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--members", default="members.json")
     parser.add_argument("--contract", default="makefile-targets.json")
+    parser.add_argument(
+        "--hub-file",
+        default=None,
+        help="the hub's concord.mk (default: propagate/<include> next to the contract)",
+    )
     args = parser.parse_args(argv)
 
-    contract = load_contract(pathlib.Path(args.contract))
+    contract_path = pathlib.Path(args.contract)
+    contract = load_contract(contract_path)
     ids = member_ids(pathlib.Path(args.members))
     root = pathlib.Path(args.root)
+
+    hub_path = (
+        pathlib.Path(args.hub_file)
+        if args.hub_file
+        else contract_path.resolve().parent / "propagate" / contract["include"]
+    )
+    try:
+        hub_bytes = hub_path.read_bytes()
+    except FileNotFoundError:
+        print(f"error: hub file not found at {hub_path}", file=sys.stderr)
+        raise SystemExit(2)
 
     drift: list[str] = []
     notes: list[str] = []
     checked_members = 0
+
+    for reason in check_hub(contract, hub_bytes.decode("utf-8")):
+        drift.append(f"drift: {reason}")
 
     for mid in ids:
         member_dir = root / mid
@@ -366,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
             notes.append(f"skip: {mid} not checked out at {member_dir}")
             continue
         checked_members += 1
-        member_drift, member_notes = check_member(member_dir, mid, contract)
+        member_drift, member_notes = check_member(member_dir, contract, hub_bytes)
         for reason in member_drift:
             drift.append(f"drift: {mid} — {reason}")
         for note in member_notes:
@@ -379,9 +250,9 @@ def main(argv: list[str] | None = None) -> int:
         for line in drift:
             print(line, file=sys.stderr)
         print(
-            f"\n{len(drift)} Makefile target finding(s) across {checked_members} "
-            "member(s). Fix the member Makefile(s) or update "
-            "makefile-targets.json.",
+            f"\n{len(drift)} Makefile finding(s) across {checked_members} "
+            f"member(s). Fix the member Makefile(s), or the hub's {contract['include']} "
+            "and makefile-targets.json together.",
             file=sys.stderr,
         )
         return 1
@@ -389,8 +260,8 @@ def main(argv: list[str] | None = None) -> int:
     if checked_members == 0:
         print("no members checked out — nothing to compare.")
         return 0
-    print(f"all member Makefiles match the target contract "
-          f"({checked_members} member(s)).")
+    print(f"all member Makefiles include {contract['include']} and redefine none of its "
+          f"targets ({checked_members} member(s)).")
     return 0
 
 

@@ -1,15 +1,11 @@
-# Detects members whose Makefile has drifted from the canonical target contract in
-# makefile-targets.json — a missing target, a changed recipe, or a reworded help
-# line. The drift is silent by nature: a member without `coverage` still builds
-# and tests fine, it just has no documented way to reach the merged report, so the
-# gap only surfaces when someone quotes the unit-only number as the mod's coverage.
-# Fetches each member's Makefile and build.gradle fresh via the GitHub API (the
-# members aren't checked out in CI) into a temp mirror, then runs the same checker
-# as `make makefile-check`.
-#
-# build.gradle is mirrored because the contract's two conditional targets are owed
-# only when it wires what they drive — without it every member would read as
-# legitimately having no coverage or datagen target.
+# Detects members whose Makefile has drifted from the shared concord.mk contract in
+# makefile-targets.json: a Makefile that no longer includes concord.mk, a locally edited copy
+# of the hub-owned file, or a redefinition of a target it owns. The drift is silent by nature:
+# a member that overrides `coverage` still builds and tests fine, it just stops pointing
+# readers at the merged report, so the gap only surfaces when someone quotes the unit-only
+# number as the mod's coverage.
+# Fetches each member's Makefile and concord.mk fresh via the GitHub API (the members aren't
+# checked out in CI) into a temp mirror, then runs the same checker as `make makefile-check`.
 #
 # Reuses CONCORD_DISPATCH_TOKEN (the propagate credential) for read access to
 # member repos. Runs weekly and on demand — not on push/PR — so a member with a
@@ -29,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Mirror member Makefiles and build files
+      - name: Mirror member Makefiles and concord.mk
         env:
           GH_TOKEN: ${{ secrets.CONCORD_DISPATCH_TOKEN }}
         run: |
@@ -45,9 +41,9 @@ jobs:
             dir="$root/$id"
             mkdir -p "$dir"
             # Both files are expected in every member. A 404 is a finding for the
-            # checker (it reports a missing Makefile as a note), not an infra
-            # failure.
-            for file in Makefile build.gradle; do
+            # checker (a missing concord.mk is drift, a missing Makefile a note),
+            # not an infra failure.
+            for file in Makefile concord.mk; do
               if content=$(gh api "repos/rfizzle/$id/contents/$file" --jq '.content' 2>err.txt); then
                 if ! printf '%s' "$content" | base64 -d > "$dir/$file"; then
                   echo "::error::base64 decode failed for $id/$file"
