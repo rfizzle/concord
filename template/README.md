@@ -31,8 +31,9 @@ SITE_DIR=$PWD/site npx -y @11ty/eleventy@3.0.0 \
   --input=../concord/template/src --output=_site --serve
 ```
 
-When `template/**` or `members.json` changes on master, `propagate.yml`
-dispatches a rebuild to every member repo (`concord-template-updated` event).
+When `template/**` or `members.json` changes on master or stable, `propagate.yml`
+dispatches a rebuild to that channel's member repos (`concord-template-updated`
+event); packs rebuild on stable.
 
 ## site.json
 

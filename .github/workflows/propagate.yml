@@ -1,20 +1,28 @@
 # Concord — template & file propagation.
 #
+# Runs per release channel (see workflow-stubs.json). A push to master targets
+# the canary members whose canary ref is master; a push to stable (the ref
+# `make promote` fast-forwards) targets every member not in the canary map, plus
+# the packs for site rebuilds. Any other ref targets nothing. The run checks out
+# the ref that triggered it, so a member gets its propagated files, skills and
+# the build kit from the same hub ref its workflows run.
+#
 # Three propagation mechanisms, one workflow:
 #
 #   1. Site rebuilds — when the shared site template (or the member registry)
-#      changes, dispatch a `concord-template-updated` event to every member AND
-#      pack repo so all sites pick up the change within minutes. Nothing is
-#      committed to those repos; their site workflows rebuild against
-#      concord@master.
+#      changes, dispatch a `concord-template-updated` event to the channel's
+#      member repos (and, on stable, the pack repos) so their sites pick up the
+#      change within minutes. Nothing is committed to those repos; their site
+#      workflows rebuild against the channel's hub ref (concord-ref).
 #
 #   2. File sync (PR-based) — concord-owned payloads are proposed to every member
 #      via a single `concord-sync` pull request, because member default branches
 #      are protected and reject direct commits. Each run stages onto the branch:
 #        - everything under propagate/ (e.g. .github/ISSUE_TEMPLATE/*.yml and
 #          versions-common.properties, the suite toolchain pins) at the same
-#          relative path — only wholly concord-owned files belong here; files
-#          repos customize (Makefile) stay copy-paste-by-hand;
+#          relative path (including concord.mk, the shared build kit) — only
+#          wholly concord-owned files belong here; files a repo customizes
+#          (its Makefile, which includes concord.mk) stay repo-owned;
 #        - the <!-- concord:NAME:start/end --> regions of AGENTS.md (from
 #          AGENTS-COMMON.md) and .gitignore (from gitignore-common); repo-owned
 #          text outside the markers is untouched, and a member with no markers
@@ -51,7 +59,7 @@ name: Propagate template to member sites
 
 on:
   push:
-    branches: [master]
+    branches: [master, stable]
     paths:
       - "template/**"
       - "members.json"
@@ -66,6 +74,7 @@ on:
       - "scripts/inject-agents-regions.py"
       - "scripts/open-sync-pr.py"
       - "scripts/sync-labels.py"
+      - "workflow-stubs.json"
   workflow_dispatch:
 
 jobs:
@@ -77,17 +86,36 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: list
-        # repos = file-sync targets: members only. A pack is not a Fabric mod, so
-        #   the AGENTS.md regions and propagate/ files do not apply to it.
-        # sites = site-rebuild targets: members + packs. A pack ships a
-        #   template-built site too, so it must rebuild on template/registry
-        #   changes even though it takes no file sync.
+        # repos = file-sync targets: the channel's members only. A pack is not a
+        #   Fabric mod, so the AGENTS.md regions and propagate/ files do not
+        #   apply to it.
+        #   master -> members whose canary ref is master
+        #   stable -> members not in the canary map
+        #   other  -> none
+        # sites = site-rebuild targets: the channel's members, plus the packs on
+        #   stable. A pack ships a template-built site too, so it must rebuild on
+        #   template/registry changes even though it takes no file sync.
+        env:
+          REF: ${{ github.ref_name }}
         run: |
-          echo "repos=$(jq -c '[.members[].id]' members.json)" >> "$GITHUB_OUTPUT"
-          echo "sites=$(jq -c '[.members[].id] + [.packs[].id]' members.json)" >> "$GITHUB_OUTPUT"
+          canary=$(jq -c '.canary' workflow-stubs.json)
+          repos=$(jq -c --arg ref "$REF" --argjson canary "$canary" '
+            [.members[].id] as $all
+            | if $ref == "master" then [$all[] | select($canary[.] == "master")]
+              elif $ref == "stable" then [$all[] | select($canary[.] == null)]
+              else [] end' members.json)
+          if [ "$REF" = "stable" ]; then
+            sites=$(jq -c --argjson repos "$repos" '$repos + [.packs[].id]' members.json)
+          else
+            sites=$repos
+          fi
+          echo "repos=$repos" >> "$GITHUB_OUTPUT"
+          echo "sites=$sites" >> "$GITHUB_OUTPUT"
 
+  # A matrix over [] is an error, so each matrix job skips on an empty list.
   dispatch:
     needs: members
+    if: needs.members.outputs.sites != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -104,6 +132,7 @@ jobs:
 
   sync-pr:
     needs: members
+    if: needs.members.outputs.repos != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -118,6 +147,7 @@ jobs:
 
   labels:
     needs: members
+    if: needs.members.outputs.repos != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
