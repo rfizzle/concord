@@ -16,12 +16,17 @@ Each step prints one line and the run stops at the first failure (exit 1):
   2. list the commits being promoted
   3. the hub's own check runs on the target are green (none is also fine: hub
      checks are path-filtered)
-  4. every hub unit test module (scripts/test_*.py) passes
-  5. for each canary member: no open `concord-sync` PR (the hub change has not
-     landed there yet), then its CI, dispatched on master, finishes green
-  6. push the target to refs/heads/stable (skipped with --dry-run)
+  4. every hub unit test module (scripts/test_*.py) passes, run from a clean
+     checkout of the target so the tests are the target's
+  5. the hub's propagate runs on master have finished and the latest is green,
+     so the canary's concord-sync PR exists if the change needs one
+  6. for each canary member: no open `concord-sync` PR (the hub change has not
+     landed there yet), then its CI, dispatched on master, finishes green. The
+     canary runs whatever master is at that moment, so promote origin/master
+     unless you have a reason not to.
+  7. push the target to refs/heads/stable (skipped with --dry-run)
 
-Step 5 dispatches the canary's CI, so every member's ci.yml stub must declare
+Step 6 dispatches the canary's CI, so every member's ci.yml stub must declare
 `workflow_dispatch:`.
 
 Needs `git` with push rights on origin and an authenticated `gh`. Run from the
@@ -46,6 +51,8 @@ GOOD_CONCLUSIONS = {"success", "skipped", "neutral"}
 CI_TIMEOUT = 45 * 60  # seconds to wait for a canary's CI run
 POLL_INTERVAL = 20  # seconds between run-list polls
 APPEAR_TIMEOUT = 3 * 60  # seconds for a dispatched run to show up
+CLOCK_SLACK = 60  # seconds; the local clock and GitHub's createdAt can disagree
+PROPAGATE_WORKFLOW = "propagate.yml"
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -158,6 +165,30 @@ def check_hub_runs(sha: str) -> int:
     return len(runs)
 
 
+def check_checkout(target: str) -> None:
+    """The unit tests run from the working tree, so it must be the target."""
+    head = git("rev-parse", "HEAD")
+    if head != target:
+        raise Fail(f"HEAD is {head[:10]}, not the target; check out {target[:10]} first")
+    if git("status", "--porcelain"):
+        raise Fail("working tree is not clean; commit or discard changes first")
+
+
+def check_propagated() -> str:
+    """Fail while a master propagate run is unfinished or the latest one failed."""
+    out = gh(
+        "run", "list", "-R", HUB, "--workflow", PROPAGATE_WORKFLOW, "--branch", "master",
+        "--limit", "10", "--json", "status,conclusion,url",
+    )
+    runs = json.loads(out or "[]")
+    for run in runs:
+        if run["status"] != "completed":
+            raise Fail(f"hub propagate run is {run['status']}; wait for it: {run['url']}")
+    if runs and runs[0]["conclusion"] not in GOOD_CONCLUSIONS:
+        raise Fail(f"latest hub propagate run concluded {runs[0]['conclusion']}: {runs[0]['url']}")
+    return runs[0]["url"] if runs else "none"
+
+
 def check_no_sync_pr(member: str) -> None:
     out = gh(
         "pr", "list", "-R", f"{OWNER}/{member}", "--state", "open",
@@ -186,7 +217,7 @@ def _list_runs(member: str) -> list[dict]:
 
 def run_canary_ci(member: str) -> str:
     """Dispatch the member's CI on master and wait for it; return the run URL."""
-    dispatched = now()
+    dispatched = now() - datetime.timedelta(seconds=CLOCK_SLACK)
     gh("workflow", "run", CI_WORKFLOW, "-R", f"{OWNER}/{member}", "--ref", "master")
     started = monotonic()
     run = None
@@ -227,11 +258,17 @@ def promote(sha: str | None, dry_run: bool) -> None:
     runs = check_hub_runs(target)
     ok(f"hub checks green at {short} ({runs} check run(s))")
 
+    check_checkout(target)
     modules = test_modules()
     failed = run_unit_tests(modules)
     if failed:
         raise Fail(f"hub unit tests failed: {', '.join(failed)}")
     ok(f"hub unit tests pass ({len(modules)} module(s))")
+
+    ok(f"hub propagate settled (latest: {check_propagated()})")
+    master = git("rev-parse", "origin/master")
+    if target != master:
+        info(f"note: origin/master is {master[:10]}; the canary CI below runs that, not {short}")
 
     for member in canary_members():
         check_no_sync_pr(member)

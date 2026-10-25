@@ -40,6 +40,10 @@ class Fake:
         self.check_runs = [{"name": "Site", "status": "completed", "conclusion": "success"}]
         self.sync_prs: list[dict] = []
         self.test_failures: list[str] = []
+        self.head = TARGET
+        self.dirty = ""
+        self.master = TARGET
+        self.propagate_runs = [{"status": "completed", "conclusion": "success", "url": "https://example.test/p/1"}]
         self.ci_conclusion = "success"
         self.ci_polls_to_finish = 2  # polls with status in_progress before completing
         self.calls: list[tuple] = []
@@ -61,7 +65,13 @@ class Fake:
         self.calls.append(("git", *args))
         if args[0] == "fetch":
             return ""
+        if args[0] == "status":
+            return self.dirty
         if args[0] == "rev-parse":
+            if args[1:] == ("HEAD",):
+                return self.head
+            if args[1:] == ("origin/master",):
+                return self.master
             if "origin/stable^{commit}" in args:
                 return self.stable or ""
             return self.target
@@ -85,6 +95,8 @@ class Fake:
         if args[0] == "workflow":
             self._dispatched_at = self.t
             return ""
+        if args[0] == "run" and "propagate.yml" in args:
+            return json.dumps(self.propagate_runs)
         if args[0] == "run":
             if self._dispatched_at is None:
                 return "[]"
@@ -223,6 +235,38 @@ class PromoteTest(unittest.TestCase):
         self.assertEqual(self.fake.pushes(), [("git", "push", "origin", f"{TARGET}:refs/heads/stable")])
         self.assertIn("instinct CI green on master", out)
         self.assertIn("feat: one", out)
+
+    def test_checkout_not_at_target_fails(self) -> None:
+        self.fake.head = STABLE
+        code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("check out", err)
+        self.assertNotIn(("tests",), [c[:1] for c in self.fake.calls])
+
+    def test_dirty_tree_fails(self) -> None:
+        self.fake.dirty = " M scripts/promote.py"
+        code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("not clean", err)
+
+    def test_unfinished_propagate_run_fails(self) -> None:
+        self.fake.propagate_runs.insert(0, {"status": "in_progress", "conclusion": "", "url": "https://example.test/p/2"})
+        code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("https://example.test/p/2", err)
+        self.assertNotIn(("gh", "workflow"), [c[:2] for c in self.fake.calls])
+
+    def test_failed_latest_propagate_run_fails(self) -> None:
+        self.fake.propagate_runs[0]["conclusion"] = "failure"
+        code, _, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("propagate run concluded failure", err)
+
+    def test_target_behind_master_notes_what_the_canary_runs(self) -> None:
+        self.fake.master = "c" * 40
+        code, out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertIn("the canary CI below runs that", out)
 
     def test_canary_ci_is_dispatched_on_master(self) -> None:
         self.run_main()
