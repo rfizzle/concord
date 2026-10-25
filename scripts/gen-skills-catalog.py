@@ -12,11 +12,15 @@ Source of truth is the `description:` field, which by convention reads
 
     python3 scripts/gen-skills-catalog.py        # write CATALOG.md
     python3 scripts/gen-skills-catalog.py --check # exit 1 if it would change
+
+`--check` also fails on a member source line reference (`File.java:NN`) in any
+skill: member line numbers rot, so skills name the class only.
 """
 
 from __future__ import annotations
 
 import pathlib
+import re
 import sys
 
 SKILLS_DIR = pathlib.Path(".ai/skills")
@@ -32,7 +36,7 @@ and vendored into every member repo via `make sync` — this catalog rides
 along, so it is always in step with the skills actually present.
 
 **How each agent consumes them:** Claude Code auto-loads skills via the
-`.claude/skills` symlink. Google Jules, OpenCode, and any other tool should read
+`.claude/skills` symlink. OpenCode and any other tool should read
 the relevant `SKILL.md` directly **before** working in its subject area — use the
 "Pull it in when…" column to decide which.
 
@@ -68,6 +72,25 @@ def split_description(desc: str) -> tuple[str, str]:
     return summary, trigger
 
 
+LINE_REF = re.compile(
+    r"\b[A-Za-z_][\w-]*\.(?:java|kt|gradle|json|py|yml|yaml|md):\d+\b"
+)
+
+
+def find_line_refs(skills_dir: pathlib.Path = SKILLS_DIR) -> list[str]:
+    """Return 'path:lineno: match' for every File.ext:NN reference in skills."""
+    hits = []
+    for path in sorted(skills_dir.rglob("*.md")):
+        if path.name == "CATALOG.md":
+            continue
+        for lineno, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), 1
+        ):
+            for m in LINE_REF.finditer(line):
+                hits.append(f"{path}:{lineno}: {m.group(0)}")
+    return hits
+
+
 def render() -> str:
     rows = []
     for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
@@ -83,6 +106,14 @@ def main() -> int:
     check = "--check" in sys.argv[1:]
     content = render()
     if check:
+        refs = find_line_refs()
+        if refs:
+            print(
+                "Member line-number references in skills (name the class only):\n  "
+                + "\n  ".join(refs),
+                file=sys.stderr,
+            )
+            return 1
         current = CATALOG.read_text(encoding="utf-8") if CATALOG.exists() else ""
         if current != content:
             print(
