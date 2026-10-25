@@ -20,9 +20,10 @@ two claims a machine can settle from the repo:
   1. **Phantom integrations.** A sibling named outside the suite strip reads as
      shipped behaviour ("with X, Y happens"). Require evidence: a `compat/<id>/`
      package, a `data/<id>/` tree, a `depends` entry, or any source reference.
-     A bare `suggests` is deliberately not evidence — every member suggests
-     every sibling at `*`, so it would excuse the very claims this catches. The suite strip itself ("Part of Concord" / "Companion mods")
-     lists every sibling by design and is excluded.
+     A bare `suggests` is deliberately not evidence — it declares optional
+     compatibility, not that a feature exists, so it would excuse the very
+     claims this catches. The suite strip itself ("Part of Concord" /
+     "Companion mods") lists every sibling by design and is excluded.
   2. **Unlisted content.** Every registered block, item, and advancement has a
      display name in the lang file, so a listing can be checked against the
      inventory it is describing.
@@ -51,6 +52,20 @@ sibling repo a member's CI has not checked out. It does fail a mod whose pages
 still say it is unreleased once a `v*` tag exists — that one is unambiguous,
 and cultivation and distillation both told players "not yet released" for hours
 after publishing with nothing to catch it.
+
+Three further rules cover metadata and the CurseForge copy. They report as
+warnings until `--strict-new-rules` (or `STRICT_NEW_RULES`) promotes them:
+
+  - **Environment.** A mod that registers blocks, items, entities or S2C
+    payloads needs the client too; listing phrasing that calls the client
+    optional ("required on the server", "client-only feature", "install
+    client-side too") sends players into a broken join.
+  - **Integration parity.** Every `compat/<id>/` package and `isModLoaded("<id>")`
+    literal must be declared in `fabric.mod.json` `suggests`/`recommends`/
+    `depends`, as must Cloth Config when any class imports it; a `modmenu`
+    entrypoint must not import Cloth Config itself (it must load without it).
+  - **CurseForge copy.** It must link the Modrinth project and must not offer
+    its own CurseForge page as "also on".
 
 Exits non-zero on a phantom integration, an unlisted block or advancement, a
 stale unreleased claim, or a short description over Modrinth's 256-char cap.
@@ -89,6 +104,29 @@ UNRELEASED_CLAIM = re.compile(
     r"|no version has been tagged|no build is published"
     r"|no published build|this page describes the first release", re.I)
 MODRINTH_SUMMARY_CAP = 256
+
+# New rules report as warnings so member CI keeps passing while members catch
+# up. Flip this (or pass --strict-new-rules) to make them errors.
+STRICT_NEW_RULES = False
+
+# compat/ subdirectories that are code layout, not an integrated mod.
+COMPAT_NON_MODS = {"common", "client", "shared", "index", "viewer", "tradeindex"}
+# compat/ directory name -> fabric mod id, where they differ.
+COMPAT_ALIASES = {"rei": "roughlyenoughitems", "opac": "openpartiesandclaims"}
+CLOTH_CONFIG_ID = "cloth-config"
+CLOTH_IMPORT = "me.shedaniel.clothconfig2"
+
+# Phrasing that tells players the client is optional, matched on normalized
+# text (no emphasis markers). "Required on the server" is fine when the same
+# breath says the client needs it too.
+CLIENT_OPTIONAL = re.compile(
+    r"required on the server(?!\s*(?:and|&)\s*(?:the\s+)?client)"
+    r"|client-only\b|server-side only|server-only|only (?:needed )?on the server"
+    r"|install (?:it )?(?:on the )?client(?:-side)?(?: as well| too)"
+    r"|client-side too|optional on the client|client(?:-side)? is optional",
+    re.I)
+SYNCED_SOURCE = re.compile(r"PayloadTypeRegistry|CustomPacketPayload|playS2C\(\)")
+CF_ALSO_ON = re.compile(r"also on\b[^\n]{0,40}?\[?curseforge\b", re.I)
 
 # The suite strip lists every sibling by design, so its bullets are not claims:
 #   - [Meridian](https://meridian.rfizzle.com) — Chart your enchantments.
@@ -263,9 +301,8 @@ def integration_evidence(repo, sibling):
     for data in repo.glob(f"src/main/generated/data/{sibling}"):
         if data.is_dir():
             return f"generated data/{sibling}/"
-    # A bare `suggests` entry is NOT evidence. It declares soft compatibility,
-    # which every member grants every sibling at `*`; it says nothing about an
-    # integration existing. Distillation suggests tribulation and its listing
+    # A bare `suggests` entry is NOT evidence. It declares soft compatibility;
+    # it says nothing about an integration existing. Distillation suggests tribulation and its listing
     # claimed "its shard debuffs gain brewable antidotes of their own" — no code
     # anywhere registers one, and counting the entry hid that. `depends` is
     # different: a hard dependency is only ever declared for real coupling.
@@ -297,8 +334,104 @@ def integration_evidence(repo, sibling):
     return None
 
 
-def check_repo(repo, members, verbose=False):
-    """Returns (errors, warnings) as lists of strings."""
+def registers_synced_content(repo, modid):
+    """Does the mod register blocks, items, entities or S2C payloads? Any of
+    them breaks a join without the client, so the client is not optional."""
+    lang = repo / f"src/main/resources/assets/{modid}/lang/en_us.json"
+    try:
+        keys = list(json.loads(lang.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError):
+        keys = []
+    for key in keys:
+        parts = key.split(".")
+        if len(parts) > 2 and parts[0] in ("block", "item", "entity") and parts[1] == modid:
+            return True
+    src = repo / "src"
+    for path in src.rglob("*.java") if src.is_dir() else []:
+        try:
+            if SYNCED_SOURCE.search(path.read_text(encoding="utf-8", errors="ignore")):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def modmenu_entrypoint_classes(meta):
+    entries = (meta.get("entrypoints") or {}).get("modmenu") or []
+    classes = [e.get("value") if isinstance(e, dict) else e for e in entries]
+    return {c for c in classes if c}
+
+
+def check_new_rules(repo, modid, listings):
+    """Findings for the rules that start as warnings: a list of strings."""
+    out = []
+
+    # Environment.
+    if registers_synced_content(repo, modid):
+        for name, path in sorted(listings.items()):
+            text = normalize(path.read_text(encoding="utf-8"))
+            phrases = sorted({m.group(0).lower() for m in CLIENT_OPTIONAL.finditer(text)})
+            if phrases:
+                quoted = ", ".join(f"\"{p}\"" for p in phrases)
+                out.append(f"{Path(name).name}: says {quoted} but the mod registers "
+                           f"blocks, items, entities or S2C payloads, so the client "
+                           f"is required — do not describe it as optional")
+
+    # Integration parity.
+    try:
+        meta = json.loads((repo / "src/main/resources/fabric.mod.json")
+                          .read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        meta = {}
+    declared = set()
+    for field in ("depends", "recommends", "suggests"):
+        declared.update((meta.get(field) or {}).keys())
+    src = repo / "src"
+    wanted, cloth_users = {}, []
+    for path in sorted(src.rglob("*.java")) if src.is_dir() else []:
+        rel = path.relative_to(repo).parts
+        if "compat" in rel[:-2]:
+            sub = rel[rel.index("compat") + 1]
+            if sub not in COMPAT_NON_MODS:
+                wanted.setdefault(COMPAT_ALIASES.get(sub, sub), f"compat/{sub}/")
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        for found in re.findall(r'isModLoaded\("([^"]+)"\)', text):
+            wanted.setdefault(found, f'isModLoaded("{found}")')
+        if CLOTH_IMPORT in text:
+            wanted.setdefault(CLOTH_CONFIG_ID, "a Cloth Config import")
+            cloth_users.append(rel)
+    for ident, why in sorted(wanted.items()):
+        if ident != modid and ident not in declared:
+            out.append(f"fabric.mod.json: the source references '{ident}' ({why}) but "
+                       f"it is not in suggests, recommends or depends")
+    entrypoints = modmenu_entrypoint_classes(meta)
+    for rel in cloth_users:
+        if "java" not in rel:
+            continue
+        fqcn = ".".join(rel[rel.index("java") + 1:])[:-len(".java")]
+        if fqcn in entrypoints:
+            out.append(f"{'/'.join(rel)}: the modmenu entrypoint imports Cloth Config "
+                       f"directly; guard on isModLoaded and delegate to a separate "
+                       f"class so the mod loads without it")
+
+    # CurseForge copy.
+    cf = listings.get(LISTINGS[1])
+    if cf:
+        text = cf.read_text(encoding="utf-8")
+        if CF_ALSO_ON.search(text):
+            out.append(f"{cf.name}: says \"Also on CurseForge\" — this file is the "
+                       f"CurseForge page, so link the Modrinth project instead")
+        if not re.search(r"modrinth\.com/mod/", text):
+            out.append(f"{cf.name}: does not link the Modrinth project")
+    return out
+
+
+def check_repo(repo, members, verbose=False, strict_new=None, new_rules=True):
+    """Returns (errors, warnings) as lists of strings. The new rules land in
+    warnings unless `strict_new` (default STRICT_NEW_RULES) promotes them."""
     repo = Path(repo)
     errors, warnings = [], []
     modid = mod_id(repo)
@@ -398,6 +531,11 @@ def check_repo(repo, members, verbose=False):
         if len(text) > MODRINTH_SUMMARY_CAP:
             errors.append(f"{SUMMARY}: {len(text)} chars, over Modrinth's "
                           f"{MODRINTH_SUMMARY_CAP}-character cap")
+
+    # 6. Environment, integration parity and CurseForge copy.
+    if new_rules:
+        strict = STRICT_NEW_RULES if strict_new is None else strict_new
+        (errors if strict else warnings).extend(check_new_rules(repo, modid, listings))
     return errors, warnings
 
 
@@ -408,6 +546,9 @@ def main(argv=None):
                     help="treat --root as the parent of every member checkout")
     ap.add_argument("--members-file", default=None,
                     help="path to members.json (default: the hub's own)")
+    ap.add_argument("--strict-new-rules", action="store_true",
+                    help="report the environment, integration-parity and "
+                         "CurseForge rules as errors instead of warnings")
     ap.add_argument("-v", "--verbose", action="store_true",
                     help="also print the evidence backing each accepted claim")
     args = ap.parse_args(argv)
@@ -419,7 +560,8 @@ def main(argv=None):
 
     failed = False
     for repo in repos:
-        errors, warnings = check_repo(repo, members, args.verbose)
+        errors, warnings = check_repo(repo, members, args.verbose,
+                                       args.strict_new_rules or None)
         if errors or warnings or args.verbose:
             print(f"{repo.name or repo}:")
         for line in errors:
