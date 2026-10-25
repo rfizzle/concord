@@ -5,10 +5,18 @@ canonical contract in workflow-stubs.json.
 Member stubs are thin wrappers that `uses:` one of concord's reusable workflows.
 The reusable workflows deliberately cap their job tokens, so a stub that grants
 extra permissions silently widens what a compromised step can reach. This guard
-diffs the two fields that must never drift — the `uses:` ref and the top-level
-`permissions:` block — against the canonical manifest, and ignores everything a
-member is free to vary (the `on:` triggers, `with:` inputs like curseforge-id,
-and concurrency).
+diffs the fields that must never drift — the `uses:` workflow and its `@<ref>`,
+the top-level `permissions:` block, and the `concord-ref` input — against the
+canonical manifest, and ignores everything a member is free to vary (the `on:`
+triggers, other `with:` inputs like curseforge-id, and concurrency).
+
+Release channels: the manifest's top-level `ref` (stable) is what members call;
+its `canary` map (member id -> hub ref) names members that call a different ref
+(master). For a reusable workflow that declares a `concord-ref` input (read from
+the hub's own .github/workflows/<file>.yml next to the manifest), a canary
+member's calling job must pass `with.concord-ref` equal to its ref, so the
+workflow and the hub files it loads come from the same ref; any other member
+must omit it or pass the default ref.
 
 Member ids come from members.json; each member repo is read from
 <root>/<id>/.github/workflows/<stub>. Locally that is the sibling checkout
@@ -48,7 +56,8 @@ def _load_json(path: pathlib.Path, what: str) -> dict:
         raise SystemExit(2)
 
 
-def load_manifest(path: pathlib.Path) -> list[dict]:
+def load_manifest(path: pathlib.Path) -> tuple[list[dict], str, dict]:
+    """The stubs list, the default (stable) hub ref, and the canary map."""
     data = _load_json(path, "workflow-stubs.json")
     stubs = data.get("stubs")
     if not isinstance(stubs, list):
@@ -62,7 +71,35 @@ def load_manifest(path: pathlib.Path) -> list[dict]:
                 file=sys.stderr,
             )
             raise SystemExit(2)
-    return stubs
+    ref = data.get("ref")
+    if not isinstance(ref, str) or not ref:
+        print("error: workflow-stubs.json has no 'ref' string", file=sys.stderr)
+        raise SystemExit(2)
+    canary = data.get("canary", {})
+    if not isinstance(canary, dict) or not all(
+        isinstance(v, str) and v for v in canary.values()
+    ):
+        print("error: workflow-stubs.json 'canary' must map member id -> ref", file=sys.stderr)
+        raise SystemExit(2)
+    return stubs, ref, canary
+
+
+def declares_concord_ref(hub_root: pathlib.Path, uses: str) -> bool:
+    """Whether the hub's reusable workflow behind `uses` declares a
+    `concord-ref` workflow_call input. A workflow missing from the hub tree
+    declares nothing."""
+    wf = hub_root / ".github" / "workflows" / uses.rsplit("/", 1)[-1]
+    try:
+        doc = yaml.safe_load(wf.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return False
+    if not isinstance(doc, dict):
+        return False
+    # PyYAML (YAML 1.1) parses the bare key `on` as boolean True.
+    on = doc.get("on", doc.get(True))
+    call = on.get("workflow_call") if isinstance(on, dict) else None
+    inputs = call.get("inputs") if isinstance(call, dict) else None
+    return isinstance(inputs, dict) and "concord-ref" in inputs
 
 
 def member_ids(path: pathlib.Path) -> list[str]:
@@ -103,8 +140,32 @@ def diff_permissions(expected: dict, found) -> list[str]:
     return reasons
 
 
-def check_stub(stub: dict, wf_path: pathlib.Path) -> list[str]:
-    """Findings for one member stub file. Empty list means it matches."""
+def check_concord_ref(job: dict, ref: str, canary_ref: str | None) -> list[str]:
+    """Findings for the calling job's `with.concord-ref`: a canary member must
+    pass its ref; any other member must omit it or pass the default ref."""
+    with_ = job.get("with")
+    found = with_.get("concord-ref") if isinstance(with_, dict) else None
+    if canary_ref:
+        if found != canary_ref:
+            shown = "missing" if found is None else f"'{found}'"
+            return [f"with: concord-ref is {shown}, expected '{canary_ref}' (canary)"]
+    elif found is not None and found != ref:
+        return [f"with: concord-ref is '{found}', expected it omitted or '{ref}'"]
+    return []
+
+
+def check_stub(
+    stub: dict,
+    wf_path: pathlib.Path,
+    ref: str,
+    canary_ref: str | None = None,
+    has_concord_ref: bool = False,
+) -> list[str]:
+    """Findings for one member stub file. Empty list means it matches.
+
+    `ref` is the default (stable) hub ref; `canary_ref` is set for a canary
+    member and replaces it; `has_concord_ref` is whether the reusable workflow
+    declares a `concord-ref` input."""
     if not wf_path.exists():
         return ["missing stub file"]
     try:
@@ -114,16 +175,20 @@ def check_stub(stub: dict, wf_path: pathlib.Path) -> list[str]:
     if not isinstance(doc, dict):
         return ["malformed stub: top level is not a mapping"]
 
+    want = canary_ref or ref
+    expected = f"{stub['uses']}@{want}"
     calls = concord_jobs(doc)
     findings = []
     if not calls:
         findings.append(
-            f"uses: no job calls a concord reusable workflow, expected {stub['uses']}"
+            f"uses: no job calls a concord reusable workflow, expected {expected}"
         )
     else:
         for job in calls:
-            if job["uses"] != stub["uses"]:
-                findings.append(f"uses: is '{job['uses']}', expected '{stub['uses']}'")
+            if job["uses"] != expected:
+                findings.append(f"uses: is '{job['uses']}', expected '{expected}'")
+            if has_concord_ref:
+                findings += check_concord_ref(job, ref, canary_ref)
 
     # A calling job's own `permissions:` overrides the workflow top-level block
     # for the reusable call, so the effective grant is what must be checked —
@@ -163,7 +228,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--members", default="members.json")
     args = parser.parse_args(argv)
 
-    stubs = load_manifest(pathlib.Path(args.manifest))
+    manifest = pathlib.Path(args.manifest)
+    stubs, ref, canary = load_manifest(manifest)
+    hub_root = manifest.resolve().parent
     ids = member_ids(pathlib.Path(args.members))
     known_names = {s["member"] for s in stubs}
     root = pathlib.Path(args.root)
@@ -181,7 +248,8 @@ def main(argv: list[str] | None = None) -> int:
         wf_dir = member_dir / ".github" / "workflows"
         for stub in stubs:
             wf_path = wf_dir / stub["member"]
-            for reason in check_stub(stub, wf_path):
+            has_ref = declares_concord_ref(hub_root, stub["uses"])
+            for reason in check_stub(stub, wf_path, ref, canary.get(mid), has_ref):
                 drift.append(f"drift: {mid}/{stub['member']} — {reason}")
         for name in unknown_concord_stubs(wf_dir, known_names):
             notes.append(

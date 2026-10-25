@@ -1,9 +1,13 @@
 {
-  "description": "Canonical caller-stub contract for the .github/workflows/*.yml stubs in every member repo. Each member stub is a thin wrapper that `uses:` one of concord's reusable workflows; this file is the machine-readable source of truth for the two fields that must never drift — the `uses:` ref and the `permissions:` block. Enforced by scripts/check-workflow-stubs.py (see `make stubs-check`). Per-repo variation — `on:` triggers, `with:` inputs (curseforge-id, modrinth-id, mod-id), and concurrency — is deliberately NOT compared, so a member stays free to set them. Edit this file when a reusable workflow's required caller permissions or ref change, and keep the matching header-comment stub in the reusable workflow in step.",
+  "description": "Canonical caller-stub contract for the .github/workflows/*.yml stubs in every member repo. Each member stub is a thin wrapper that `uses:` one of concord's reusable workflows; this file is the machine-readable source of truth for the fields that must never drift — the `uses:` workflow, its `@<ref>` channel, and the `permissions:` block. Members call `@<ref>` (top-level `ref`, the stable channel). A canary member (the `canary` map, member id -> hub ref) calls `@<its ref>` and must pass `concord-ref: <its ref>` to every reusable workflow that declares a `concord-ref` input, so the workflow and the hub files it loads come from the same ref. A non-canary member omits `concord-ref` (the default is the stable ref). Promotion to the stable ref is `make promote`. Enforced by scripts/check-workflow-stubs.py (see `make stubs-check`). Per-repo variation — `on:` triggers, other `with:` inputs (curseforge-id, modrinth-id, mod-id), and concurrency — is deliberately NOT compared, so a member stays free to set them. Edit this file when a reusable workflow's required caller permissions or the channel assignment change, and keep the matching header-comment stub in the reusable workflow in step.",
+  "ref": "stable",
+  "canary": {
+    "instinct": "master"
+  },
   "stubs": [
     {
       "member": "ci.yml",
-      "uses": "rfizzle/concord/.github/workflows/mod-ci.yml@master",
+      "uses": "rfizzle/concord/.github/workflows/mod-ci.yml",
       "permissions": {
         "contents": "read",
         "checks": "write",
@@ -12,7 +16,7 @@
     },
     {
       "member": "release.yml",
-      "uses": "rfizzle/concord/.github/workflows/mod-release.yml@master",
+      "uses": "rfizzle/concord/.github/workflows/mod-release.yml",
       "permissions": {
         "contents": "write",
         "checks": "read"
@@ -20,14 +24,14 @@
     },
     {
       "member": "listing-sync.yml",
-      "uses": "rfizzle/concord/.github/workflows/mod-listing-sync.yml@master",
+      "uses": "rfizzle/concord/.github/workflows/mod-listing-sync.yml",
       "permissions": {
         "contents": "read"
       }
     },
     {
       "member": "site.yml",
-      "uses": "rfizzle/concord/.github/workflows/build-site.yml@master",
+      "uses": "rfizzle/concord/.github/workflows/build-site.yml",
       "permissions": {
         "contents": "read",
         "pages": "write",
@@ -36,7 +40,7 @@
     },
     {
       "member": "build-artifact.yml",
-      "uses": "rfizzle/concord/.github/workflows/mod-build-artifact.yml@master",
+      "uses": "rfizzle/concord/.github/workflows/mod-build-artifact.yml",
       "permissions": {
         "contents": "read",
         "pull-requests": "write",
@@ -46,7 +50,7 @@
     },
     {
       "member": "claude-code-review.yml",
-      "uses": "rfizzle/concord/.github/workflows/claude-review.yml@master",
+      "uses": "rfizzle/concord/.github/workflows/claude-review.yml",
       "permissions": {
         "contents": "read",
         "pull-requests": "write",
@@ -56,7 +60,7 @@
     },
     {
       "member": "claude-spec.yml",
-      "uses": "rfizzle/concord/.github/workflows/claude-spec.yml@master",
+      "uses": "rfizzle/concord/.github/workflows/claude-spec.yml",
       "permissions": {
         "contents": "read",
         "issues": "write"
@@ -64,7 +68,7 @@
     },
     {
       "member": "claude.yml",
-      "uses": "rfizzle/concord/.github/workflows/claude-mention.yml@master",
+      "uses": "rfizzle/concord/.github/workflows/claude-mention.yml",
       "permissions": {
         "contents": "write",
         "pull-requests": "write",

@@ -27,11 +27,13 @@ _spec.loader.exec_module(checker)
 
 
 MANIFEST = {
+    "ref": "stable",
+    "canary": {"instinct": "master"},
     "stubs": [
         {
             "member": "ci.yml",
             "reusable": "mod-ci.yml",
-            "uses": "rfizzle/concord/.github/workflows/mod-ci.yml@master",
+            "uses": "rfizzle/concord/.github/workflows/mod-ci.yml",
             "permissions": {
                 "contents": "read",
                 "checks": "write",
@@ -41,7 +43,7 @@ MANIFEST = {
         {
             "member": "release.yml",
             "reusable": "mod-release.yml",
-            "uses": "rfizzle/concord/.github/workflows/mod-release.yml@master",
+            "uses": "rfizzle/concord/.github/workflows/mod-release.yml",
             "permissions": {"contents": "write", "pull-requests": "write"},
         },
     ]
@@ -65,6 +67,24 @@ def _stub_yaml(perms: dict, uses: str, *, extras: str = "") -> str:
     return "\n".join(lines) + "\n" + extras + "    secrets: inherit\n"
 
 
+def _uses(i: int, ref: str = "stable") -> str:
+    return f"{MANIFEST['stubs'][i]['uses']}@{ref}"
+
+
+# The hub's reusable workflows: mod-ci declares a concord-ref input, mod-release
+# declares none, so the checker must ignore `with.concord-ref` on the latter.
+HUB_WORKFLOWS = {
+    "mod-ci.yml": (
+        "name: Mod CI\non:\n  workflow_call:\n    inputs:\n"
+        "      concord-ref:\n        type: string\n        default: stable\n"
+    ),
+    "mod-release.yml": (
+        "name: Mod Release\non:\n  workflow_call:\n    inputs:\n"
+        "      mod-id:\n        type: string\n        default: ''\n"
+    ),
+}
+
+
 class CheckWorkflowStubs(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -75,6 +95,10 @@ class CheckWorkflowStubs(unittest.TestCase):
         self.members.write_text(
             json.dumps({"members": [{"id": "meridian"}]}), encoding="utf-8"
         )
+        hub_wf = self.root / ".github" / "workflows"
+        hub_wf.mkdir(parents=True)
+        for name, text in HUB_WORKFLOWS.items():
+            (hub_wf / name).write_text(text, encoding="utf-8")
         self.wf_dir = self.root / "meridian" / ".github" / "workflows"
         self.wf_dir.mkdir(parents=True)
 
@@ -86,7 +110,7 @@ class CheckWorkflowStubs(unittest.TestCase):
 
     def _write_correct(self) -> None:
         for stub in MANIFEST["stubs"]:
-            self._write(stub["member"], _stub_yaml(stub["permissions"], stub["uses"]))
+            self._write(stub["member"], _stub_yaml(stub["permissions"], _uses(MANIFEST["stubs"].index(stub))))
 
     def _run(self) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
@@ -112,7 +136,7 @@ class CheckWorkflowStubs(unittest.TestCase):
     def test_extra_permission_is_drift(self) -> None:
         self._write_correct()
         perms = dict(MANIFEST["stubs"][0]["permissions"], **{"issues": "read"})
-        self._write("ci.yml", _stub_yaml(perms, MANIFEST["stubs"][0]["uses"]))
+        self._write("ci.yml", _stub_yaml(perms, _uses(0)))
         code, _, err = self._run()
         self.assertEqual(code, 1)
         self.assertIn("unexpected 'issues: read'", err)
@@ -124,7 +148,7 @@ class CheckWorkflowStubs(unittest.TestCase):
             "release.yml",
             _stub_yaml(
                 {"contents": "write"},  # dropped pull-requests: write
-                MANIFEST["stubs"][1]["uses"],
+                _uses(1),
             ),
         )
         code, _, err = self._run()
@@ -137,7 +161,7 @@ class CheckWorkflowStubs(unittest.TestCase):
             "ci.yml",
             _stub_yaml(
                 MANIFEST["stubs"][0]["permissions"],
-                "rfizzle/concord/.github/workflows/mod-ci.yml@v1",
+                _uses(0, "v1"),
             ),
         )
         code, _, err = self._run()
@@ -165,7 +189,7 @@ class CheckWorkflowStubs(unittest.TestCase):
         stub = MANIFEST["stubs"][1]
         yaml_with_inputs = _stub_yaml(
             stub["permissions"],
-            stub["uses"],
+            _uses(1),
             extras='    with:\n      curseforge-id: "1546092"\n      modrinth-id: "qywREjYt"\n',
         )
         self._write("release.yml", yaml_with_inputs)
@@ -178,7 +202,7 @@ class CheckWorkflowStubs(unittest.TestCase):
             "rogue.yml",
             _stub_yaml(
                 {"contents": "read"},
-                "rfizzle/concord/.github/workflows/mod-ci.yml@master",
+                "rfizzle/concord/.github/workflows/mod-ci.yml@stable",
             ),
         )
         code, _, err = self._run()
@@ -191,7 +215,7 @@ class CheckWorkflowStubs(unittest.TestCase):
             "ci.yml",
             "name: Stub\non:\n  push:\n    branches: [master]\n"
             "permissions: write-all\njobs:\n  job:\n"
-            "    uses: rfizzle/concord/.github/workflows/mod-ci.yml@master\n",
+            "    uses: rfizzle/concord/.github/workflows/mod-ci.yml@stable\n",
         )
         code, _, err = self._run()
         self.assertEqual(code, 1)
@@ -215,7 +239,7 @@ class CheckWorkflowStubs(unittest.TestCase):
             "jobs:\n  job:\n"
             "    permissions:\n      contents: read\n      checks: write\n"
             "      pull-requests: write\n      issues: read\n"
-            "    uses: rfizzle/concord/.github/workflows/mod-ci.yml@master\n",
+            "    uses: rfizzle/concord/.github/workflows/mod-ci.yml@stable\n",
         )
         code, _, err = self._run()
         self.assertEqual(code, 1)
@@ -237,6 +261,96 @@ class CheckWorkflowStubs(unittest.TestCase):
             )
         self.assertEqual(cm.exception.code, 2)
 
+    # -- release channels ----------------------------------------------------
+
+    def _use_member(self, mid: str) -> None:
+        self.members.write_text(
+            json.dumps({"members": [{"id": mid}]}), encoding="utf-8"
+        )
+        self.wf_dir = self.root / mid / ".github" / "workflows"
+        self.wf_dir.mkdir(parents=True)
+
+    def _ci(self, ref: str, concord_ref: str | None = None) -> None:
+        extras = f"    with:\n      concord-ref: {concord_ref}\n" if concord_ref else ""
+        self._write(
+            "ci.yml",
+            _stub_yaml(MANIFEST["stubs"][0]["permissions"], _uses(0, ref), extras=extras),
+        )
+
+    def _only_ci(self) -> None:
+        # Pass the other stub through unchanged so only ci.yml can drift.
+        stub = MANIFEST["stubs"][1]
+        self._write("release.yml", _stub_yaml(stub["permissions"], _uses(1)))
+
+    def test_stable_member_on_stable_passes(self) -> None:
+        self._ci("stable")
+        self._only_ci()
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+
+    def test_stable_member_on_master_fails(self) -> None:
+        self._ci("master")
+        self._only_ci()
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("mod-ci.yml@master", err)
+        self.assertIn("expected 'rfizzle/concord/.github/workflows/mod-ci.yml@stable'", err)
+
+    def test_canary_on_master_with_concord_ref_passes(self) -> None:
+        self._use_member("instinct")
+        self._ci("master", "master")
+        stub = MANIFEST["stubs"][1]
+        self._write("release.yml", _stub_yaml(stub["permissions"], _uses(1, "master")))
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+
+    def test_canary_missing_concord_ref_fails(self) -> None:
+        self._use_member("instinct")
+        self._ci("master")
+        stub = MANIFEST["stubs"][1]
+        self._write("release.yml", _stub_yaml(stub["permissions"], _uses(1, "master")))
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("concord-ref is missing, expected 'master' (canary)", err)
+        self.assertNotIn("release.yml", err)
+
+    def test_canary_on_stable_fails(self) -> None:
+        self._use_member("instinct")
+        self._ci("stable", "master")
+        stub = MANIFEST["stubs"][1]
+        self._write("release.yml", _stub_yaml(stub["permissions"], _uses(1, "master")))
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("mod-ci.yml@stable", err)
+        self.assertIn("mod-ci.yml@master", err)
+
+    def test_stable_member_passing_master_concord_ref_fails(self) -> None:
+        self._ci("stable", "master")
+        self._only_ci()
+        code, _, err = self._run()
+        self.assertEqual(code, 1)
+        self.assertIn("concord-ref is 'master', expected it omitted or 'stable'", err)
+
+    def test_stable_member_passing_default_concord_ref_passes(self) -> None:
+        self._ci("stable", "stable")
+        self._only_ci()
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+
+    def test_reusable_without_concord_ref_input_ignores_with(self) -> None:
+        self._ci("stable")
+        stub = MANIFEST["stubs"][1]
+        self._write(
+            "release.yml",
+            _stub_yaml(
+                stub["permissions"],
+                _uses(1),
+                extras="    with:\n      concord-ref: master\n",
+            ),
+        )
+        code, _, err = self._run()
+        self.assertEqual(code, 0, err)
+
     def test_no_members_checked_out_passes(self) -> None:
         self.members.write_text(
             json.dumps({"members": [{"id": "absent"}]}), encoding="utf-8"
@@ -249,7 +363,9 @@ class CheckWorkflowStubs(unittest.TestCase):
 class RealManifest(unittest.TestCase):
     def test_repo_manifest_parses_and_is_complete(self) -> None:
         repo_root = _HERE.parent
-        stubs = checker.load_manifest(repo_root / "workflow-stubs.json")
+        stubs, ref, canary = checker.load_manifest(repo_root / "workflow-stubs.json")
+        self.assertEqual(ref, "stable")
+        self.assertEqual(canary, {"instinct": "master"})
         names = {s["member"] for s in stubs}
         # The eight member caller stubs the suite ships.
         self.assertEqual(
@@ -267,6 +383,8 @@ class RealManifest(unittest.TestCase):
         )
         for stub in stubs:
             self.assertTrue(stub["uses"].startswith(checker.CONCORD_PREFIX))
+            self.assertNotIn("@", stub["uses"])
+            self.assertTrue((repo_root / ".github" / "workflows" / stub["uses"].rsplit("/", 1)[-1]).is_file())
             self.assertIsInstance(stub["permissions"], dict)
             self.assertTrue(stub["permissions"])
 
