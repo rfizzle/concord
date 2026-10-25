@@ -43,22 +43,20 @@ New slots are assigned here, in this file, by appending — never by renumbering
 ## 3. Visual spec
 
 - Container: **optional** — a semi-transparent black box, `#000000` at 50–60% opacity,
-  2px rounded corners. Prosperity draws one; Tribulation and Mercantile draw the glyph
-  and bar directly on the screen. Either is conformant.
+  2px rounded corners. Drawing the glyph and bar directly on the screen is equally
+  conformant.
 - Contents: 16×16 mod glyph (left); optional short text label (right) in the **vanilla
   Minecraft font**, white `#FFFFFF`, standard drop shadow; optional 2px progress bar
   directly under the glyph.
 - **Standard element height: 20px**, with a **2px gap** between stacked elements.
-  (Tribulation's 16px icon + 1px gap + 2px bar = 19px rounds into the 20px box.)
+  (A 16px icon + 1px gap + 2px bar = 19px rounds into the 20px box.)
 - No custom fonts, no ornate frames, no animation beyond simple color tint and brief
-  transition lerps (reference: Tribulation's 2s gold-to-tier-color level-up lerp;
-  Prosperity's specced 1.5s tier-crossing lerp).
+  transition lerps.
 - Glyph tinting by state is encouraged (Tribulation: white → yellow → orange → red →
   dark crimson across tiers); it is the element's only decoration.
 - The glyph is a **purpose-built texture drawn at 16×16**, not a downscaled vanilla item
-  render (those go muddy at 16px). Authoring at 32×32 and blitting down to 16 is fine
-  (Tribulation and Prosperity do). Author it through the texture pipeline and commit its `.glyph`
-  source under `art/glyphs/`, joined to the shipped sprite by `design/ASSETS.md` —
+  render (those go muddy at 16px). Authoring at 32×32 and blitting down to 16 is fine. Author it through the texture pipeline and commit its
+  `.glyph` source under `art/glyphs/`, joined to the shipped sprite by `design/ASSETS.md` —
   see [`design/DESIGN-SYSTEM.md`](design/DESIGN-SYSTEM.md) §8.
 - **Draw batch integrity.** Both surfaces draw through `GuiGraphics`
   (`blit`/`fill`/`drawString`) and **end every render pass with `graphics.flush()`**.
@@ -136,11 +134,9 @@ dependency (`VISION.md` §8.1).
 
 ## 7. Reference implementation
 
-`tribulation/src/client/java/com/rfizzle/tribulation/client/TribulationHudOverlay.java`
-— anchor enum + offsets as the flat `hudAnchor` / `hudOffsetX` / `hudOffsetY` fields on
-`TribulationConfig` (a nested `Hud` section was flattened by its migrator), glyph at
-`assets/tribulation/textures/gui/hud_icon.png`, tier tints, progress bar, level-up lerp,
-and all four visibility rules.
+Tribulation's `TribulationHudOverlay` — anchor enum + flat `hudAnchor` /
+`hudOffsetX` / `hudOffsetY` config fields, glyph, tier tints, progress bar, and all four
+visibility rules.
 
 ## 8. Hold-to-peek detail panel
 
@@ -202,4 +198,3 @@ Reference implementations: Tribulation's `TierDetailPanelRenderer`, Mercantile's
       defaulting to Left Alt (never Tab), "`<Domain>` Detail" header, non-capturing (not a
       `Screen`), the badge's four visibility rules reused, no slot/accessors, paged (not
       scrolled) overflow, and no duplication of recipe-viewer/tooltip catalogs
-- [ ] `AGENTS.md` declares "conforms to Concord HUD Standard"

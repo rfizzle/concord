@@ -60,8 +60,9 @@ mirrors this layout; a new member is scaffolded from it before any code exists.
 │   ├── listing-summary.txt    #   ≤256 chars — synced to the Modrinth description
 │   └── github-description.txt #   the GitHub "About" blurb (manual)
 │
-├── changelogs/                # OPTIONAL hand-authored release notes
-│   └── <version>.md           #   e.g. 1.0.0.md — published verbatim if present
+├── changelogs/                # OPTIONAL curated release notes
+│   └── <version>.md           #   e.g. 1.0.0.md — published verbatim if present;
+│                              #   otherwise the GitHub release body is the record
 │
 ├── scripts/                   # OPTIONAL repo automation (generators, a tag-only release.sh)
 │
@@ -173,8 +174,8 @@ in concord's README). Reusable role prompts belong in concord.
 
 ### `.plan/` — planning (local only)
 A local dev scratchpad, **never committed** — the whole directory is gitignored.
-Durable work tracking lives in GitHub Issues (the `needs-spec` → `jules`
-lifecycle); anything under `.plan/` is personal working state.
+Durable work tracking lives in GitHub Issues (the `needs-spec` → `spec` → `ready`
+lifecycle, implemented with `/implement`); anything under `.plan/` is personal working state.
 
 ### `design/` — pre-implementation truth
 The **why and what**, kept out of the published site. Fixed names: `VISION.md`
@@ -306,5 +307,4 @@ A repo conforms when all of these are true at the same paths:
     entrypoint
 
 Future members (Tempest, Stratum, …) are created from this layout before any code
-exists — Instinct and Distillation were bootstrapped this way from the Husbandry and
-Apothecary profiles, and their trees are the current template.
+exists.

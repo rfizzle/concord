@@ -5,8 +5,7 @@
 > Synthesized 2026-06-10 from source-grounded profiles of the four founding mod repos
 > (`../meridian`, `../mercantile`, `../tribulation`, `../prosperity`) and extended as
 > Respite, Distillation, Cultivation, and Instinct were admitted; originating
-> handoff archived at `design/handoffs/suite-vision-handoff.md`. §5.3 and the §6/§7
-> shipped markers were restated against tagged code on 2026-08-31.
+> handoff archived at `design/handoffs/suite-vision-handoff.md`.
 >
 > The normative standards are [`HUD-STANDARD.md`](HUD-STANDARD.md),
 > [`API-STANDARD.md`](API-STANDARD.md), and
@@ -295,10 +294,8 @@ matching CurseForge listing cross-links.
 - **Slugs:** the bare mod names are taken by unrelated projects on both stores, so
   the suite convention is `<mod>-<domain>-overhaul`. All eight members have a
   CurseForge project and a Modrinth project under that convention; the ids and slugs
-  are canonical in [`members.json`](members.json) (the four released mods' Modrinth
-  projects are approved; the four 2026-08 betas are published to drafts pending
-  submission). Link as `modrinth.com/mod/<slug>` and badge with
-  `img.shields.io/modrinth/dt/<id>`.
+  are canonical in [`members.json`](members.json). Link as `modrinth.com/mod/<slug>` and
+  badge with `img.shields.io/modrinth/dt/<id>`.
   READMEs and sites link a store only once its listing is publicly live
   (GitHub Releases is always listed and is the canonical source).
 
@@ -399,10 +396,8 @@ members, present or future.
 
 ### 5.3 API surface per mod — shipped and remaining
 
-Restated against tagged code on 2026-08-31. **All eight `api` packages have shipped**
-and are in a tagged release; the four newest landed with the 2026-08 `v1.0.0-beta.1`
-releases. The isolation posture of each event is tracked in
-[`API-STANDARD.md`](API-STANDARD.md) §3.1 and each mod's conformance sweep, not here.
+Every member ships an `api` package. The isolation posture of each event is governed
+by [`API-STANDARD.md`](API-STANDARD.md) §3.1, not restated here.
 
 **Tribulation** (`com.rfizzle.tribulation.api`, the shape and naming reference):
 - `getLevel`, `getTier`, `getEffectiveLevel(Entity)`, `getClientLevel`, `getScaledTier`,
@@ -630,10 +625,7 @@ flagship compats are in place. Remaining work:
 Ordered; each step's dependency noted.
 
 1. **API Standard.** The conventions doc is [`API-STANDARD.md`](API-STANDARD.md).
-   All eight `api` packages are in place, including the additions this step once listed
-   (Prosperity's tier accessors, Meridian's loot-cap enforcement + enchant-roll call,
-   Mercantile's exclusive-trades resource conditions). What remains is the §3.1
-   isolation retrofit in the four founding mods, tracked in their conformance sweeps.
+   All eight `api` packages are in place.
 2. **HUD Convention (with step 1).** The convention is [`HUD-STANDARD.md`](HUD-STANDARD.md).
    The HUD accessors live in each `api` package; Mercantile adopts the accessor pattern for
    cross-mod stacking in place of any hardcoded offset.
