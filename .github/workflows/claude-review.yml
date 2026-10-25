@@ -120,11 +120,12 @@ jobs:
           # it via refs/pull/N/head, so this works for fork PRs too. Take the
           # first open one. Tab-separated so bodies/titles can't split fields.
           INFO="$(gh api "repos/$REPO/commits/$SHA/pulls" \
-            --jq '[.[] | select(.state=="open")][0] | "\(.number)\t\(.draft)\t\(.base.ref)"' \
+            --jq '[.[] | select(.state=="open")][0] | "\(.number)\t\(.draft)\t\(.base.ref)\t\(.head.ref)"' \
             2>/dev/null || true)"
           PR="$(printf '%s' "$INFO" | cut -f1)"
           DRAFT="$(printf '%s' "$INFO" | cut -f2)"
           BASE="$(printf '%s' "$INFO" | cut -f3)"
+          HEAD_REF="$(printf '%s' "$INFO" | cut -f4)"
 
           if [ -z "$PR" ] || [ "$PR" = "null" ]; then
             echo "No open PR for $SHA (likely a push build); skipping review."
@@ -132,6 +133,11 @@ jobs:
           fi
           if [ "$DRAFT" = "true" ]; then
             echo "PR #$PR is a draft; skipping review."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          if [ "$HEAD_REF" = "concord-sync" ]; then
+            echo "PR #$PR is a concord-sync bot PR (hub-reviewed); skipping review."
             echo "proceed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
 
@@ -187,7 +193,7 @@ jobs:
           case "$CI_CONCLUSION" in
             success) HEAD="CI PASSED on this commit." ;;
             failure|timed_out|startup_failure)
-              HEAD="CI FAILED on this commit (conclusion: ${CI_CONCLUSION}). Treat as a 🔴 must-fix and tie the failure to the diff." ;;
+              HEAD="CI FAILED on this commit (conclusion: ${CI_CONCLUSION}). Name the failing step and test; see the prompt for how to grade it." ;;
             cancelled|skipped|"")
               HEAD="CI did not complete cleanly (conclusion: ${CI_CONCLUSION:-unknown}). Correctness is UNVERIFIED by CI — do not score it ✓ on reading alone." ;;
             *) HEAD="CI conclusion: ${CI_CONCLUSION}." ;;
@@ -199,11 +205,29 @@ jobs:
             echo "CI jobs (conclusion|name):"
             if [ -n "$CI_RUN_ID" ]; then
               gh api "repos/$REPO/actions/runs/$CI_RUN_ID/jobs" --paginate \
-                --jq '.jobs[] | "  \(.conclusion // .status)|\(.name)"' 2>/dev/null \
+                --jq '.jobs[] | "  \(.conclusion // .status)|\(.name)", (.steps[]? | select(.conclusion=="failure") | "    failed step: \(.name)")' 2>/dev/null \
                 || echo "  (per-job details unavailable)"
             else
               echo "  (no ci-run-id provided)"
             fi
+
+            # Failure excerpt: the lines that identify the failing step and
+            # test, so the reviewer names them instead of guessing a cause.
+            case "$CI_CONCLUSION" in
+              failure|timed_out|startup_failure)
+                if [ -n "$CI_RUN_ID" ]; then
+                  echo
+                  echo "CI failure log excerpt (filtered, max 40 lines):"
+                  if LOG="$(gh run view "$CI_RUN_ID" --repo "$REPO" --log-failed 2>/dev/null)" && [ -n "$LOG" ]; then
+                    printf '%s\n' "$LOG" \
+                      | grep -E 'FAILED|AssertException|required tests failed|Caused by|error:' \
+                      | cut -c1-300 | head -n 40 || true
+                  else
+                    echo "  (failed-step log unavailable; name the failing step from the job list only, do not infer a cause)"
+                  fi
+                fi
+                ;;
+            esac
           } > "$OUT"
 
           echo "--- CI status for reviewer ---"
@@ -308,8 +332,9 @@ jobs:
           ---
           CI results for the head commit — the build, unit tests, and gametests
           that actually ran the code. Use this to ground the Correctness verdict:
-          a failing check is a 🔴 must-fix; do not score Correctness ✓ while CI
-          is failing or unverified. Tie a failure back to the diff when you can.
+          a failing check is a 🔴 must-fix unless it is a provably unrelated
+          test (see the prompt); do not score Correctness ✓ while CI is failing
+          or unverified. Name the failing step and test from the lists below.
           $(cat /tmp/ci-status.txt 2>/dev/null || echo '(CI status unavailable)')
 
           ---

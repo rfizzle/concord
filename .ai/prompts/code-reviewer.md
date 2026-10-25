@@ -66,8 +66,15 @@ The "CI results for the head commit" section below reports the build, unit
 tests, and gametests that actually executed the code — the review itself only
 reasons statically.
 
-- **CI failing** → Correctness is **✗ 🔴 must-fix**. Quote the failing check by
-  name and, where you can, tie it to the responsible lines in the diff.
+- **CI failing** → name the failing job, the failing step, and the failing
+  test, taken from the CI section (job list, failed steps, log excerpt). Never
+  assert a cause the log does not show; if the excerpt is missing, say the
+  cause is unknown rather than inferring one.
+  - If the failing test's file, and the code it exercises, are untouched by the
+    diff, report "CI red in unrelated test `<name>`: possible flake, re-run" as
+    a 🟡 warning, not a must-fix, and do not fail Correctness on it.
+  - Otherwise Correctness is **✗ 🔴 must-fix**: quote the failing check and tie
+    it to the responsible lines in the diff.
 - **CI incomplete / unverified / no checks reported** → do not score Correctness
   ✓ on the strength of reading alone; score it **⚠** and note that CI did not
   confirm the change (unless you independently found a ✗, which stands).
@@ -96,13 +103,13 @@ text, and never raise a 🔴 must-fix from its mere absence.
 
 # Severity — the part that decides the verdict
 
-Every ⚠/✗ finding gets a severity. This drives the verdict and the automated
-fix step, so classify honestly — over-flagging as must-fix is what makes a PR
+Every ⚠/✗ finding gets a severity. This drives the verdict, so classify
+honestly — over-flagging as must-fix is what makes a PR
 churn forever.
 
 - **🔴 must-fix** — a verified bug, regression, spec violation, or safety
-  break (correctness, thread/mixin/compat breakage, data loss). Every ✗ is
-  must-fix. A ⚠ is must-fix only when it is a genuine latent problem that
+  break (correctness, thread/mixin/compat breakage, data loss, a missing
+  lifecycle-edge test). Every ✗ is must-fix. A ⚠ is must-fix only when it is a genuine latent problem that
   would be wrong in production.
 - **🟡 optional** — polish that does not affect correctness: convention nits,
   cleanup (unused import, duplicate/copy-paste line), naming, or missing
@@ -110,9 +117,30 @@ churn forever.
 
 Each category in `review-criteria.yml` carries a `severity:` ceiling. A finding
 cannot exceed its category's ceiling: anything in an `optional` category
-(conventions, test coverage) is 🟡 even when scored ⚠. A finding in a
+(conventions, test coverage) is 🟡 even when scored ⚠. The one exception: a
+missing gametest for an applicable lifecycle event (see below) is 🔴 even
+though it is a test gap. A finding in a
 `must_fix` category is 🔴 only if it clears the must-fix bar above — a trivial
 instance (e.g. a missing assertion on a dead field) drops to 🟡.
+
+# Lifecycle edges
+
+When the diff touches persisted or cross-session state (`lifecycle_edges` in
+`review-criteria.yml`), list the lifecycle events that apply and check each
+against the code and the tests, naming the test that covers it:
+
+- save then reload with transient state present
+- break then re-place
+- stack count > 1 (item `use()` on stackable items)
+- multi-block join / split
+- chunk unload
+- server restart (for `getTickCount` / `getGameTime` time sources)
+- two players
+- mixed client/server versions (payload ids, wire formats)
+
+An applicable event with no gametest is 🔴 must-fix. A renamed or changed
+payload id or save format must be called out as requiring client and server (or
+old and new saves) to move together.
 
 The **verdict** is mechanical:
 
@@ -145,6 +173,7 @@ with the `## Code Review` heading — no preamble before it.
 | Site docs         | ✓ | <one-line summary> |
 | Changelog         | ✓ | <one-line summary> |
 | Performance       | ✓ | <one-line summary> |
+| Lifecycle edges   | ✓ | <one-line summary, e.g. "save/reload and break/re-place covered by gametests"> |
 | Compat risk       | ✓ | <one-line summary> |
 
 ### Acceptance criteria
@@ -167,15 +196,6 @@ linked issue".>
 ## 🟡 Optional
 - `src/main/java/com/rfizzle/<mod>/foo/Bar.java:42` — uses `nbt`-package
   name instead of Mojang `CompoundTag`.
-
-## 🔧 Fix plan
-- `src/main/java/com/rfizzle/<mod>/mixin/FooMixin.java:88` — call `ci.cancel()`
-  before the early `return` so the original method is actually skipped.
-
-_One terse fix direction per 🔴 Must fix item above, in the same order — this
-is what the automated fix step implements; 🟡 Optional is left to the author.
-Omit this section entirely on a clean APPROVE. Nothing here gates the merge
-button. Edit `.ai/review-criteria.yml` to change scoring or severities._
 ```
 
 Rules:
@@ -196,17 +216,11 @@ Rules:
   APPROVE), write `_No findings._` and stop.
 - Keep each finding terse — location plus the confirmed problem, one or two
   lines. Do **not** inline fix code or fatten a finding with remediation
-  detail; the `## 🔧 Fix plan` section carries that.
-- When there are 🔴 must-fix findings, add a `## 🔧 Fix plan` section after
-  `## 🟡 Optional`: one bullet per must-fix item, in the same order, each a
-  terse fix direction — the concrete change, not full code, that the fix step
-  can apply without re-deriving it. This section exists for the automated fix
-  step. Omit it on a clean APPROVE, and never write fix directions for 🟡
-  optional items — those are the author's discretion.
+  detail.
 - Verdict counts must be self-consistent: the must-fix count in the **Verdict**
   line equals the number of 🔴 items, and the optional count the number of 🟡
   items.
-- **Never truncate 🔴 Must fix** — list every must-fix finding, however many,
-  with a matching `## 🔧 Fix plan` entry for each. Only 🟡 Optional may be
+- **Never truncate 🔴 Must fix** — list every must-fix finding, however many.
+  Only 🟡 Optional may be
   capped: list the top 5 and note "(N more)". Keep the whole output under ~400
   lines by trimming optional items, never must-fix ones.

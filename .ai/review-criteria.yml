@@ -11,18 +11,16 @@
 #
 #   must_fix — a verified bug, regression, spec violation, or safety break
 #              (correctness, thread/mixin/compat breakage, data loss). One or
-#              more sets the verdict to CHANGES_REQUESTED; these are the items
-#              the fix step addresses.
+#              more sets the verdict to CHANGES_REQUESTED.
 #   optional — polish that does not affect correctness: convention nits,
 #              cleanup (unused import, copy-paste), naming, or missing coverage
-#              on trivial / dead code. Never sets CHANGES_REQUESTED; never
-#              drives the fix loop.
+#              on trivial / dead code. Never sets CHANGES_REQUESTED.
 #
 # Verdict = CHANGES_REQUESTED if any must_fix finding exists, else APPROVE.
 # Each category carries a `severity:` that is the *ceiling* for real findings
 # in it: a ✗ is always must_fix; a ⚠ takes the category severity only when it
 # is a genuine latent problem, otherwise it drops to optional. Nothing here
-# gates the GitHub merge button — the verdict guides the author and the fix step.
+# gates the GitHub merge button — the verdict guides the author.
 #
 # Each category may declare `applies_when` to scope it to specific diffs;
 # omitting it means the category always applies.
@@ -96,6 +94,8 @@ categories:
     name: Test coverage
     severity: optional
     description: |
+      (Ceiling does not apply to a missing gametest for an applicable
+      `lifecycle_edges` event; that is must_fix there.)
       Non-trivial logic has tests. Correct tier chosen: pure JUnit for plain
       logic, fabric-loader-junit for things needing the loader, Fabric
       gametests for anything needing a live world. No mocking of Fabric APIs
@@ -191,6 +191,35 @@ categories:
       Omit for internal-only fix / chore / refactor / perf diffs players never
       observe.
 
+  - id: lifecycle_edges
+    name: Lifecycle edges
+    severity: must_fix
+    description: |
+      Persisted or cross-session state breaks at lifecycle boundaries that a
+      happy-path test never visits. Enumerate the lifecycle events that apply
+      to this diff and check each against the code and the tests:
+        - save -> reload with transient state present
+        - break -> re-place
+        - stack count > 1 (item use() on stackable items)
+        - multi-block join / split
+        - chunk unload
+        - server restart (for getTickCount / getGameTime time sources, which
+          reset or differ across restarts)
+        - two players interacting with the same state
+        - mixed client/server versions (payload ids, wire formats)
+      Name the test that covers each applicable event. A missing gametest for
+      an applicable event is must_fix; this overrides test_coverage's optional
+      ceiling. Inapplicable events are simply omitted, not listed.
+    look_at:
+      - .ai/skills/mc-persistence/SKILL.md (if present)
+      - .ai/skills/mc-mod-testing/SKILL.md (if present)
+    applies_when: |
+      Diff touches persisted or cross-session state: saveAdditional /
+      loadAdditional, codecs, SavedData, attachments, data components,
+      collectImplicitComponents / applyImplicitComponents, getTickCount /
+      getGameTime, item use() on stackable items, multi-block join/split logic,
+      network payload ids, or a config `version`.
+
   - id: performance
     name: Performance (20Hz tick budget)
     severity: must_fix
@@ -208,13 +237,17 @@ categories:
     description: |
       Changes that could break optional integrations (Mod Menu, Cloth Config,
       Jade/WTHIT, EMI/REI/JEI) or sibling Concord mods consuming this mod's
-      public api package. Any new public API used by compat classes. Scope is
-      breakage of an EXISTING integration; omitting a NEW surface for a new
+      public api package. Any new public API used by compat classes. Also
+      save-format and network-protocol compatibility: a changed codec or
+      persisted layout must still read old saves, and renaming or reshaping a
+      payload id requires client and server to update together and must be
+      called out. Scope is breakage of an EXISTING integration; omitting a NEW surface for a new
       feature is `feature_completeness`'s job, not this one.
     look_at:
       - .ai/skills/mc-public-api/SKILL.md (if present)
       - .ai/skills/mc-hud/SKILL.md (if present)
     applies_when: |
       PR touches a compat.* package, the mod's public api package, public
-      APIs that compat classes import, or fabric.mod.json
-      depends/suggests/recommends entries.
+      APIs that compat classes import, fabric.mod.json
+      depends/suggests/recommends entries, a persisted format (codec, NBT
+      layout, config version), or a network payload id / wire format.
