@@ -1,0 +1,29 @@
+# Guards scripts/promote.py — the only thing that moves the `stable` branch every
+# member's workflows call. A regression in its gates (fast-forward check, hub
+# checks, canary CI) would promote an unverified change to the whole suite, so
+# run its unit tests before it can merge. Hermetic: no network, python3 only.
+name: Promote script tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/promote.py"
+      - "scripts/test_promote.py"
+      - ".github/workflows/promote-test.yml"
+  push:
+    branches: [master]
+    paths:
+      - "scripts/promote.py"
+      - "scripts/test_promote.py"
+      - ".github/workflows/promote-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run promote unit tests
+        run: python3 -m unittest scripts.test_promote

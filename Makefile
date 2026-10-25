@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: catalog catalog-check pull-members agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test art-verify art-verify-all status status-test sync-test labels-check labels-test release-test gametest-check gametest-test makefile-check makefile-test help
+.PHONY: catalog catalog-check pull-members agents-sync agents-check gitignore-sync gitignore-check stubs-check stubs-test toolchain-check toolchain-test art-test art-verify art-verify-all status status-test sync-test labels-check labels-test release-test gametest-check gametest-test makefile-check makefile-test promote promote-test help
 
 help:
 	@echo "catalog        regenerate .ai/skills/CATALOG.md from SKILL.md frontmatter"
@@ -32,6 +32,8 @@ help:
 	@echo "gametest-test  run the gametest-manifest checker's unit tests"
 	@echo "makefile-check report members whose Makefile drifts from concord.mk"
 	@echo "makefile-test  run the Makefile-target checker's unit tests"
+	@echo "promote        fast-forward the stable channel to origin/master after the gates (promote SHA=<sha> for another commit)"
+	@echo "promote-test   run the promote script's unit tests"
 
 catalog:
 	@$(PY) scripts/gen-skills-catalog.py
@@ -151,3 +153,15 @@ makefile-check:
 
 makefile-test:
 	@$(PY) -m unittest scripts.test_check_makefile_targets
+
+# Fast-forward the `stable` branch (what 7 of 8 members call) to a master commit
+# once the hub checks, the hub unit tests and the canary's CI on master are green.
+# Never push stable by hand. To run the gates without pushing:
+#   python3 scripts/promote.py --dry-run
+#   make promote            # origin/master
+#   make promote SHA=<sha>  # a specific commit
+promote:
+	@$(PY) scripts/promote.py $(SHA)
+
+promote-test:
+	@$(PY) -m unittest scripts.test_promote
