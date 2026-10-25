@@ -161,7 +161,7 @@ homes, not store variants — don't "correct" them per-store.
   manifest is truth and the listing is wrong.
 - **Companion mods** always names **Concord** (never "the rfizzle mod suite" or
   similar), links the concord repo, uses the "Install any, combine all:" lead,
-  and lists the *other three* members **with their taglines**.
+  and lists the *other* members **with their taglines**.
 - **License & credits** carries the © line with the mod's own year(s) (these
   differ per mod — don't homogenize them) and the "not affiliated with Mojang
   Studios or Microsoft" disclaimer. Add a credits paragraph only for a mod that
