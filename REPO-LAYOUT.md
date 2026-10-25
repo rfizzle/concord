@@ -124,28 +124,22 @@ pasting the single marker pair; sections added inside the block thereafter
 propagate automatically, no new markers needed.
 
 ### `Makefile`
-Thin task shortcuts wrapping gradle, and a fixed contract: the canonical target
-list, recipes, and `help` descriptions live in concord's
-[`makefile-targets.json`](makefile-targets.json) and are checked by
-`make makefile-check`. Thirteen targets are required in every member and are
-byte-identical across the suite once the jar name is substituted — `build`, `jar`,
-`test`, `run-client`, `run-server`, `gen-sources`, `refresh-deps`, `clean`,
-`version`, `release`, `site`, `site-serve`, `sync`.
+A two-line shell around a hub-owned file: the member's `Makefile` does
+`include concord.mk` and adds only its member-specific targets. `concord.mk` is
+propagated verbatim (`propagate/concord.mk`) and reads the mod id from
+`gradle.properties`, so it is byte-identical in every member. The target list it
+owns lives in concord's [`makefile-targets.json`](makefile-targets.json) and is
+checked by `make makefile-check`: the Makefile must include `concord.mk`, carry
+an unmodified copy, and not redefine any target it owns — `build`, `jar`, `test`,
+`coverage`, `ci`, `run-client`, `run-server`, `run-datagen`, `gen-sources`,
+`refresh-deps`, `clean`, `version`, `release`, `site`, `site-serve`, `sync`, and
+`help`. A change to a shared recipe is one hub commit, not eight member PRs.
 
-Two more are required **conditionally**, owed when the member's `build.gradle`
-wires what they drive:
-
-- `coverage` — when `jacocoMergedReport` is wired. Without the target, the
-  documented way to get the mod's real coverage number is missing, and what a
-  reader finds instead is the unit-only report.
-- `run-datagen` — when a Loom `datagen` run config exists (the third of the four
-  datagen anchors in the `mc-datagen` skill).
-
-`help` is the one recipe that varies, because it lists only the targets that
-member has. It is held to the contract as an *ordered projection* of those
-descriptions rather than byte-for-byte — the wording of each line is fixed even
-though the set of lines is not. Targets beyond the contract are a member's own
-business: the list is a floor, not a ceiling.
+`make ci` runs exactly what `mod-ci.yml` runs, in the same order, so a green local
+run predicts a green CI job. `help` is generated: it lists every target carrying a
+trailing `## description` note, hub targets first, member targets after.
+Targets beyond the contract are a member's own business: the list is a floor, not a
+ceiling.
 
 ### `.ai/` — AI working area
 Committed. `skills/` and `commands/` are **vendored from the concord repo** —
@@ -288,15 +282,17 @@ A repo conforms when all of these are true at the same paths:
    each stub's `uses:` ref and `permissions:` block per
    [`workflow-stubs.json`](workflow-stubs.json) (checked by `make stubs-check`);
    per-repo triggers and `with:` inputs (e.g. `curseforge-id`) may vary
-8. The `Makefile` carries the canonical targets per
-   [`makefile-targets.json`](makefile-targets.json) — the thirteen universal ones,
-   plus `coverage` and `run-datagen` where `build.gradle` wires them (checked by
-   `make makefile-check`); extra targets are a member's own business
-9. `build.gradle` carries the canonical skeleton blocks, per the
-   `mc-gradle-builds` skill — the blocks themselves, not their line numbers, and
-   the access-widener and datagen blocks only where the member has those things.
-   Not machine-checked: the file is read and applied, never synced, because
-   `propagate/` copies whole files and every member's build.gradle differs
+8. The `Makefile` does `include concord.mk` — the hub-owned file carrying the
+   universal targets per [`makefile-targets.json`](makefile-targets.json) — and
+   redefines none of them (checked by `make makefile-check`); extra targets are a
+   member's own business
+9. `build.gradle` keeps `plugins {}`, `dependencies {}`, extra repositories, the
+   access widener, and mod-specific tasks, and runs
+   `apply from: 'gradle/concord-common.gradle'` for everything shared — the
+   hub-owned file (`propagate/gradle/concord-common.gradle`) carries the version
+   computation, gametest/datagen wiring, JaCoCo, and packaging excludes, per the
+   `mc-gradle-builds` skill. Not machine-checked: the member's own file differs by
+   design, and the shared file arrives byte-identical through the sync
 10. Datagen is either **4-of-4** on the anchors in the `mc-datagen` skill —
     entrypoint, Loom run config, make target, `verifyDatagenIdempotent` — or
     deliberately none of the four, recorded in `AGENTS.md`. The one carve-out is
