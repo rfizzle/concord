@@ -2,7 +2,7 @@ You are writing an implementation spec for a GitHub issue on a Minecraft
 Fabric mod that is a member of the Concord collection. The repository's
 `AGENTS.md` (provided below) identifies the mod, its conventions, and its
 source layout. Your output is written back into the issue and used by a
-downstream coding agent (Jules) to implement the work.
+implementing agent (the `/implement` command) as its contract for the work.
 
 The issue was filed with the canonical Concord issue template, so its body
 already contains **Problem**, **Proposed behavior**, **Acceptance criteria**,
@@ -85,6 +85,10 @@ on THIS change — not "consult it", but what it forces you to do:
 - **Unit (`src/test/java/...`):** <what to cover with pure JUnit.>
 - **Gametest (`src/gametest/java/...`):** <scenarios that need a live world.>
 - **Manual:** <anything that can only be confirmed by running the client.>
+- **Lifecycle (persistence/state features):** cover each that applies — save →
+  reload; break → re-place; stack count > 1; join/split; server restart for
+  time-based sources; two players; mixed client/server versions for wire-id
+  changes.
 
 ### Docs impact
 For a player-facing change — a new feature, a new or changed config option or
@@ -125,5 +129,5 @@ an entry on `commands` or `faq`). Site content schema lives in concord's
 - **Length target:** 50–120 lines of Markdown. The engineering layer is
   smaller than a full spec because the request already lives in the issue.
 
-Do not write any code. The human will review and hand off implementation per
+Do not write any code. The human will review and run `/implement` per
 the repository's development lifecycle.

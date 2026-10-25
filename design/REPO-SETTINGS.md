@@ -40,12 +40,14 @@ gh repo edit rfizzle/$MOD --homepage "https://$MOD.rfizzle.com" \
       Conventional Commits, so the squash lands on `master` as one
       conventional commit with the branch history in the body.
 - [ ] **Automatically delete head branches** on.
-- [ ] Auto-merge off; "Always suggest updating pull request branches" off.
+- [ ] **Allow auto-merge** on — the `concord-sync` PR merges itself once the
+      required check passes. "Always suggest updating pull request branches"
+      off.
 
 ```bash
 gh repo edit rfizzle/$MOD --enable-squash-merge --enable-merge-commit=false \
   --enable-rebase-merge=false --delete-branch-on-merge \
-  --enable-auto-merge=false
+  --enable-auto-merge
 gh api -X PATCH repos/rfizzle/$MOD \
   -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=COMMIT_MESSAGES
 ```
@@ -58,13 +60,16 @@ through a pull request, without demanding a second account's approval from a
 solo maintainer.
 
 - [ ] **Require a pull request before merging**, required approvals **0**.
-- [ ] **Require status checks**: strict ("require branches to be up to date"),
-      with **no named contexts** — CI gates via the PR checks themselves, and
-      an empty required list means a new member is never blocked on a check
-      that hasn't run yet.
+- [ ] **Require status checks**: the context **`ci / test`** (the `ci` job of
+      the `ci.yml` stub calling `mod-ci.yml`'s `test` job), with strict off
+      ("require branches to be up to date" unticked) so a queue of PRs doesn't
+      each need a rebase.
 - [ ] **Do not allow bypassing the above settings** (applies to admins). This
       is why `propagate.yml` proposes changes as `concord-sync` PRs instead of
       pushing.
+- [ ] **Bootstrap exception:** a brand-new member can't require a check that has
+      never run, so create the rule without the status check, then add `ci /
+      test` after the first CI run completes on `master`.
 - [ ] Force pushes and branch deletion blocked.
 - [ ] Everything else off: signatures, linear history (squash-only merging
       already yields one), conversation resolution, code-owner review, branch
@@ -73,7 +78,7 @@ solo maintainer.
 ```bash
 gh api -X PUT repos/rfizzle/$MOD/branches/master/protection --input - <<'EOF'
 {
-  "required_status_checks": { "strict": true, "contexts": [] },
+  "required_status_checks": { "strict": false, "contexts": ["ci / test"] },
   "required_pull_request_reviews": { "required_approving_review_count": 0 },
   "enforce_admins": true,
   "restrictions": null,
@@ -137,23 +142,24 @@ labels by hand; edit `labels.json`, not the repos.
 
 GitHub's nine default labels stay (the manifest pins `bug` to GitHub's own
 color and description so a fresh repo is never without it); the suite labels
-below join them. The lifecycle four drive the issue flow in
+below join them. The lifecycle three drive the issue flow in
 [`AGENTS-COMMON.md`](../AGENTS-COMMON.md) — `needs-spec` fires `claude-spec.yml`,
-which swaps it for `ready` or `open-questions`, and `jules` hands off to the
-coding agent.
+which swaps it for `ready` or `open-questions`, after which `/implement` takes
+the issue.
 
 | Label | Color | Purpose |
 |---|---|---|
 | `needs-spec` | `#1d76db` | Issue needs a spec — triggers `claude-spec.yml` |
 | `ready` | `#0e8a16` | Spec complete, no open questions — ready to implement |
 | `open-questions` | `#d93f0b` | Spec raised open questions needing a human ruling |
-| `jules` | `#5319e7` | Hands the issue to Jules for a draft PR |
 | `integration` | `#0052cc` | Cross-mod (Concord) integration / compat work |
 | `exploratory` | `#c2e0c6` | Exploratory / not-yet-committed change; needs playtesting |
 | `regression` | `#b60205` | Worked in a previous release, now broken |
 | `balance` | `#fbca04` | Gameplay balance / tuning adjustment |
 | `blocked` | `#e11d21` | Blocked on an upstream fix or another issue |
 | `compat` | `#c5def5` | Third-party (non-Concord) mod compatibility |
+| `concord-sync` | `#ededed` | Automated concord file sync PR; excluded from release notes |
+| `flaky` | `#f9d0c4` | Flaky test — fails intermittently without a code change |
 
 `propagate.yml` only reconciles repos listed in `members.json`, so an admitted
 member picks these up on the next run. A repo still being bootstrapped (not yet
@@ -205,8 +211,9 @@ done
 # defaults, so it won't appear in this row.
 ```
 
-Expected: squash-only merging with `PR_TITLE`/`COMMIT_MESSAGES`, branch
-deletion on merge, the §3 protection shape, read-only workflow token with PR
+Expected: squash-only merging with `PR_TITLE`/`COMMIT_MESSAGES`, auto-merge
+allowed, branch deletion on merge, the §3 protection shape (required check
+`ci / test`, strict off, admins enforced), read-only workflow token with PR
 approval allowed, the three secrets (release tokens may lag until first
 release), workflow-built Pages on the custom domain, and the suite labels from
 [`labels.json`](../labels.json) (minus the pinned `bug` default) in the final

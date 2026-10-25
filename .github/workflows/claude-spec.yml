@@ -3,12 +3,12 @@
 # When an issue gets the `needs-spec` label, normalizes the issue title to a
 # conventional-commit form and writes a plain-language summary plus a
 # structured implementation spec into the issue body, preserving the
-# reporter's original text in between (Jules reads the body, not comments).
+# reporter's original text in between.
 #
 # Once the spec lands the `needs-spec` label is removed and a status label is
 # added: `ready` when the spec has no open questions, `open-questions` when it
-# does. Both lead to a human applying `jules`; the open-questions path is just
-# answered inline first.
+# does. Both lead to a human running `/implement`; the open-questions path is
+# just answered inline first.
 #
 # Prompt resolution order (first match wins):
 #   1. explicit `prompt-file` workflow input (path in the calling repo)
@@ -42,12 +42,12 @@ on:
         type: string
         default: needs-spec
       ready-label:
-        # Added when the spec lands with no open questions: apply `jules`.
+        # Added when the spec lands with no open questions: run `/implement`.
         type: string
         default: ready
       open-questions-label:
         # Added when the spec raises open questions: answer them inline, then
-        # apply `jules` directly. No spec re-run is required.
+        # run `/implement`. No spec re-run is required.
         type: string
         default: open-questions
       model:
@@ -226,8 +226,7 @@ jobs:
           # Two fenced regions keep the body idempotent across re-runs: the
           # generated summary sits above the reporter's original text, the spec
           # below it. Re-running strips both fences before regenerating, so the
-          # human-authored middle is preserved and nothing stacks. Jules reads
-          # the body, not comments.
+          # human-authored middle is preserved and nothing stacks.
           SUM_BEGIN='<!-- claude-summary:begin -->'
           SUM_END='<!-- claude-summary:end -->'
           SPEC_BEGIN='<!-- claude-spec:begin -->'
@@ -292,8 +291,8 @@ jobs:
 
       - name: Add status label
         # Route the issue to its follow-up state. A clean spec gets `ready`
-        # (apply `jules`). A spec that raised open questions gets
-        # `open-questions` — answer them inline, then apply `jules` directly;
+        # (run `/implement`). A spec that raised open questions gets
+        # `open-questions` — answer them inline, then run `/implement`;
         # the spec is not re-run for that.
         run: |
           if [ ! -s /tmp/spec-trimmed.md ]; then

@@ -24,7 +24,7 @@
 #     build/reports/jacoco/jacocoMergedReport/jacocoMergedReport.xml
 #   junit xml at build/test-results/test/ and build/junit-gametest.xml
 #
-# Optional, run when the member defines it:
+# Also required:
 #   ./gradlew verifyDatagenIdempotent
 name: Mod CI
 
@@ -86,21 +86,14 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build (compile + unit tests + jar)
-        run: ./gradlew build --no-daemon --stacktrace
+        run: ./gradlew build --no-daemon --stacktrace --warning-mode=all
 
       - name: Run gametests
-        run: ./gradlew runGametest --no-daemon --stacktrace
+        run: ./gradlew runGametest --no-daemon --stacktrace --warning-mode=all
 
-      # dependsOn runDatagen, which forks a Minecraft server — so this only
-      # runs for members that define the task. `help --task` exits non-zero
-      # when the task is absent, which is the gate.
+      # dependsOn runDatagen, which forks a Minecraft server.
       - name: Verify datagen is idempotent
-        run: |
-          if ./gradlew --no-daemon -q help --task verifyDatagenIdempotent >/dev/null 2>&1; then
-            ./gradlew verifyDatagenIdempotent --no-daemon --stacktrace
-          else
-            echo "verifyDatagenIdempotent is not defined in this repo — skipping."
-          fi
+        run: ./gradlew verifyDatagenIdempotent --no-daemon --stacktrace
 
       # always(), so a failed sweep still publishes what coverage it has. The
       # task itself warns when an exec file is missing or empty, so a partial
@@ -108,6 +101,29 @@ jobs:
       - name: Merged coverage report (unit + gametest)
         if: always()
         run: ./gradlew jacocoMergedReport --no-daemon --stacktrace
+
+      # The report-level counters are the last <counter> elements of <report>.
+      - name: Coverage summary
+        if: always()
+        run: |
+          python3 - >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          path = "build/reports/jacoco/jacocoMergedReport/jacocoMergedReport.xml"
+          print("### Merged coverage (unit + gametest)")
+          if not os.path.exists(path):
+              print("No merged JaCoCo report was produced.")
+          else:
+              counters = {c.get("type"): c for c in ET.parse(path).getroot().findall("counter")}
+              for kind in ("LINE", "BRANCH"):
+                  c = counters.get(kind)
+                  if c is None:
+                      continue
+                  covered, missed = int(c.get("covered")), int(c.get("missed"))
+                  total = covered + missed
+                  pct = 100.0 * covered / total if total else 0.0
+                  print(f"- {kind.title()}: {pct:.1f}% ({covered}/{total})")
+          PY
 
       - name: Upload unit test report
         if: always()
