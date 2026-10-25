@@ -57,8 +57,13 @@
 #     checks: read
 #   jobs:
 #     release:
-#       uses: rfizzle/concord/.github/workflows/mod-release.yml@master
+#       uses: rfizzle/concord/.github/workflows/mod-release.yml@stable
 #       secrets: inherit
+#
+# The hub files this workflow checks out load from the `concord-ref` input
+# (default stable). The canary stub calls @master and passes
+# `concord-ref: master`, so the workflow and the hub files it loads come from
+# the same ref.
 name: Mod Release
 
 on:
@@ -101,9 +106,9 @@ on:
         type: string
         default: "client_and_server"
       concord-ref:
-        description: "concord ref to load the release scripts from (pin to freeze them)"
+        description: "concord ref to load the release scripts from (stable by default; the canary stub passes master)"
         type: string
-        default: master
+        default: stable
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         # Optional: when absent the release body falls back to GitHub's raw

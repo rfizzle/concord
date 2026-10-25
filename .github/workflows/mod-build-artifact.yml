@@ -17,7 +17,7 @@
 #     actions: read
 #   jobs:
 #     build:
-#       uses: rfizzle/concord/.github/workflows/mod-build-artifact.yml@master
+#       uses: rfizzle/concord/.github/workflows/mod-build-artifact.yml@stable
 #       secrets: inherit
 name: Mod Build Artifact
 

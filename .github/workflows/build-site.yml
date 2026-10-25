@@ -10,7 +10,12 @@
 #     id-token: write
 #   jobs:
 #     site:
-#       uses: rfizzle/concord/.github/workflows/build-site.yml@master
+#       uses: rfizzle/concord/.github/workflows/build-site.yml@stable
+#
+# The hub files this workflow checks out load from the `concord-ref` input
+# (default stable). The canary stub calls @master and passes
+# `concord-ref: master`, so the workflow and the hub files it loads come from
+# the same ref.
 #
 # Builds the mod's site/ content with the shared template in this repo and
 # deploys it to GitHub Pages (Pages source must be set to "GitHub Actions"
@@ -21,9 +26,9 @@ on:
   workflow_call:
     inputs:
       concord-ref:
-        description: "concord ref to build with (pin to a tag to freeze the template)"
+        description: "concord ref to build with (stable by default; the canary stub passes master)"
         type: string
-        default: master
+        default: stable
       site-dir:
         description: "content directory in the calling repo"
         type: string

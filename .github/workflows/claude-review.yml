@@ -41,17 +41,26 @@
 #     actions: read        # read the triggering CI run's per-job results
 #   jobs:
 #     review:
-#       uses: rfizzle/concord/.github/workflows/claude-review.yml@master
+#       uses: rfizzle/concord/.github/workflows/claude-review.yml@stable
 #       with:
 #         head-sha: ${{ github.event.workflow_run.head_sha }}
 #         ci-conclusion: ${{ github.event.workflow_run.conclusion }}
 #         ci-run-id: ${{ github.event.workflow_run.id }}
 #       secrets: inherit
+#
+# The hub files this workflow checks out load from the `concord-ref` input
+# (default stable). The canary stub calls @master and passes
+# `concord-ref: master`, so the workflow and the hub files it loads come from
+# the same ref.
 name: Claude Code Review
 
 on:
   workflow_call:
     inputs:
+      concord-ref:
+        description: "concord ref to load the prompt defaults from (stable by default; the canary stub passes master)"
+        type: string
+        default: stable
       head-sha:
         description: >-
           the CI run's head commit SHA (github.event.workflow_run.head_sha).
@@ -168,7 +177,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: rfizzle/concord
-          ref: master
+          ref: ${{ inputs.concord-ref }}
           path: .concord
 
       - name: Install Claude Code

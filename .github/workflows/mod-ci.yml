@@ -15,8 +15,13 @@
 #     pull-requests: write
 #   jobs:
 #     ci:
-#       uses: rfizzle/concord/.github/workflows/mod-ci.yml@master
+#       uses: rfizzle/concord/.github/workflows/mod-ci.yml@stable
 #       secrets: inherit
+#
+# The hub files this workflow checks out load from the `concord-ref` input
+# (default stable). The canary stub calls @master and passes
+# `concord-ref: master`, so the workflow and the hub files it loads come from
+# the same ref.
 #
 # CI contract (every member repo's gradle must provide):
 #   ./gradlew build runGametest jacocoMergedReport
@@ -30,6 +35,11 @@ name: Mod CI
 
 on:
   workflow_call:
+    inputs:
+      concord-ref:
+        description: "concord ref to load the shared check scripts and members.json from (stable by default; the canary stub passes master)"
+        type: string
+        default: stable
 
 jobs:
   test:
@@ -58,7 +68,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: rfizzle/concord
-          ref: master
+          ref: ${{ inputs.concord-ref }}
           path: .concord
 
       # Fails on a store listing that claims an integration the code does not

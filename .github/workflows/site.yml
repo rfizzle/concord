@@ -37,4 +37,6 @@ jobs:
   site:
     uses: ./.github/workflows/build-site.yml
     with:
+      # The hub's own site builds with the commit being pushed, not stable.
+      concord-ref: ${{ github.sha }}
       prebuild: python3 scripts/gen-status.py

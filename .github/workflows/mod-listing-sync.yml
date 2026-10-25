@@ -30,7 +30,7 @@
 #     contents: read
 #   jobs:
 #     listing:
-#       uses: rfizzle/concord/.github/workflows/mod-listing-sync.yml@master
+#       uses: rfizzle/concord/.github/workflows/mod-listing-sync.yml@stable
 #       secrets: inherit
 name: Mod Listing Sync
 

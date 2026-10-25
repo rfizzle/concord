@@ -27,13 +27,22 @@
 #     issues: write
 #   jobs:
 #     spec:
-#       uses: rfizzle/concord/.github/workflows/claude-spec.yml@master
+#       uses: rfizzle/concord/.github/workflows/claude-spec.yml@stable
 #       secrets: inherit
+#
+# The hub files this workflow checks out load from the `concord-ref` input
+# (default stable). The canary stub calls @master and passes
+# `concord-ref: master`, so the workflow and the hub files it loads come from
+# the same ref.
 name: Claude Spec Writer
 
 on:
   workflow_call:
     inputs:
+      concord-ref:
+        description: "concord ref to load the prompt defaults from (stable by default; the canary stub passes master)"
+        type: string
+        default: stable
       prompt-file:
         description: "path (in the calling repo) to a custom spec-writer prompt; empty = auto-resolve"
         type: string
@@ -85,7 +94,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: rfizzle/concord
-          ref: master
+          ref: ${{ inputs.concord-ref }}
           path: .concord
 
       - name: Install Claude Code
