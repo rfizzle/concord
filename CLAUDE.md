@@ -18,7 +18,8 @@ Member-facing hub files (the reusable workflows, the scripts and data they check
 out, `propagate/`, `.ai/`, `AGENTS-COMMON.md`, `gitignore-common`) reach the canary
 members on push to master and every other member only through `make promote`.
 Promote fast-forwards the `stable` branch after the canary's CI is green on the
-change. Never push to or force-push `stable` by hand. A fix that must reach every
+change. Never push to or force-push `stable` by hand; branch protection blocks
+force pushes and deletion of `stable`. A fix that must reach every
 member immediately still goes through `make promote`.
 
 ## Generated files
